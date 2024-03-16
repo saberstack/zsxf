@@ -1,10 +1,17 @@
 (ns org.zsxf.core
   (:require [net.cgrand.xforms :as xforms]
+            [nrepl.server :as nrepl-server]
             [taoensso.timbre :as timbre]))
 
 ; Basic implementation of the ideas presented in
 ; DBSP: Automatic Incremental View Maintenance for Rich Query Languages
 ; https://www.youtube.com/watch?v=J4uqlG1mtbU
+
+(defn -main
+  [& args]
+  (let [port 7899]
+    (nrepl-server/start-server :port port)
+    (println "ZSXF: REPL on port" port)))
 
 (defn stream->stream
   [s]

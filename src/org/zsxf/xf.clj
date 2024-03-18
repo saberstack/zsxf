@@ -1,5 +1,6 @@
 (ns org.zsxf.xf
-  (:require [taoensso.timbre :as timbre]))
+  (:require [net.cgrand.xforms :as xforms]
+            [taoensso.timbre :as timbre]))
 
 (defn zset-w [m]
   (timbre/spy
@@ -26,3 +27,7 @@
        ([acc] (rf (unreduced (rf acc @n))))
        ([acc item]
         (rf acc (swap! n (fn [prev-n] (+ prev-n (zset-w item))))) acc)))))
+
+(defn for-xf [a-set]
+  (xforms/for
+    [x % y a-set] [x y]))

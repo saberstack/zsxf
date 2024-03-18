@@ -4,6 +4,7 @@
             [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.xf :as dbsp-xf]
+            [clojure.math.combinatorics :as comb]
             [taoensso.timbre :as timbre]))
 
 ;How to turn a zset into a proper Clojure collection
@@ -118,6 +119,10 @@
 (defn ->zset-neg
   [coll]
   (->zset coll (map identity) -1))
+
+(defn cartesian-product [set-1 set-2]
+  (set (for [x set-1, y set-2]
+         [x y])))
 
 ;SELECT * FROM users WHERE status = active;
 ;JOIN
@@ -236,3 +241,11 @@
 
 (defn delete->zset [& maps]
   (->zset `#{~@maps}))
+
+(defn for-chan-test []
+  (let [ch (a/chan 42
+             (comp
+               (mapcat identity)
+               (dbsp-xf/for-xf #{:a :b})
+               (dbsp-xf/->dbsp-result-xf! *computation-state)))]
+    (def for-chan-1 ch)))

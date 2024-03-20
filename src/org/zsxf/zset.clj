@@ -12,17 +12,23 @@
 
 (set! *print-meta* true)
 
+(defn zset-weight
+  "Get the weight of a zset item, typically a map"
+  [m]
+  (timbre/spy
+    (:zset/w (meta m))))
+
 (s/def ::zset (s/and
                 (s/coll-of map?)                            ;potentially relax this to other collections
                 (s/every (fn [set-item-map]
-                           (some? (:zset/w (meta set-item-map)))))))
+                           (some? (zset-weight set-item-map))))))
 
 (defn zset? [x]
   (let [result (s/valid? ::zset x)]
     (when-not result (timbre/error (s/explain-data ::zset x)))
     result))
 
-(defn common-keep-and-remove
+(defn- common-keep-and-remove
   [zset-1 zset-2 commons]
   (transduce
     (comp
@@ -33,7 +39,7 @@
                (with-meta common (merge-with + meta-1 meta-2)))))
       ;group items in two buckets: "remove" and "keep" based on weight
       (xforms/by-key
-        (fn [common] (if (zero? (:zset/w (meta common)))
+        (fn [common] (if (zero? (zset-weight common))
                        :common-remove
                        :common-keep))
         (fn [common] common)
@@ -43,11 +49,10 @@
     {}
     commons))
 
-(defn plus
+(defn zset+
   "Z-Sets addition implemented as per https://www.feldera.com/blog/Z-sets/#z-sets"
   [zset-1 zset-2]
-  {:pre [(zset? zset-1)
-         (zset? zset-2)]}
+  {:pre [(zset? zset-1) (zset? zset-2)]}
   (let [commons (clojure.set/intersection zset-1 zset-2)
         {:keys [common-keep common-remove]} (common-keep-and-remove zset-1 zset-2 commons)]
     (transduce
@@ -55,7 +60,7 @@
       (comp cat)
       (completing
         (fn [accum set-item]
-          (if (zero? (:zset/w (meta set-item)))
+          (if (zero? (zset-weight set-item))
             ;remove common-remove items
             (disj accum set-item)
             ;keep everything else
@@ -67,7 +72,7 @@
        ;common-remove items **must** stay at the end here to be properly removed during the reduction!
        common-remove])))
 
-(defn negate
+(defn zset-negate
   "Change the sign of all the weights in a zset"
   [zset]
   {:pre [(zset? zset)]}
@@ -79,10 +84,6 @@
     conj
     #{}
     zset))
-
-(defn zset-w [m]
-  (timbre/spy
-    (:zset/w (meta m) 0)))
 
 (defn ->zset
   "Collection to zset as per https://www.feldera.com/blog/Implementing%20Z-sets/#converting-a-collection-to-a-z-set"
@@ -106,9 +107,13 @@
             (let [accum'      (disj accum existing-m)
                   existing-m' (vary-meta existing-m
                                 (fn [prev-meta]
-                                  (update prev-meta :zset/w (fn [prev-w] (+ prev-w (zset-w m))))))
+                                  (update prev-meta :zset/w
+                                    (fn [prev-w]
+                                      ; fnil is used to handle the case where the weight is not present
+                                      ; in the meta, aka it is nil
+                                      ((fnil + 0) (zset-weight m) prev-w)))))
                   _           (timbre/spy existing-m')
-                  zset-w'     (zset-w existing-m')]
+                  zset-w'     (zset-weight existing-m')]
               (if (zero? zset-w')
                 accum'
                 (conj accum' existing-m')))
@@ -120,31 +125,19 @@
   [coll]
   (->zset coll (map identity) -1))
 
-(defn cartesian-product [set-1 set-2]
-  (set (for [x set-1, y set-2]
-         [x y])))
+(defn zset*
+  "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"
+  [zset-1 zset-2]
+  {:pre [(zset? zset-1) (zset? zset-2)]}
+  (set (for [m-1 zset-1 m-2 zset-2]
+         (with-meta
+           [m-1 m-2]
+           {:zset/w (* (zset-weight m-1) (zset-weight m-2))}))))
 
 ;SELECT * FROM users WHERE status = active;
 ;JOIN
 ;GROUP-By
 ;
-
-(comment
-  (let [zset (->zset [{:name "Alice" :age 940} {:name "Bob" :age 950} {:name "Bob" :age 950}])]
-    (->zset
-      zset
-      (dbsp-xf/->where-xf (fn [m] (< 900 (:age m)))))))
-
-(comment
-  (let [zset (->zset [{:name "Alice" :age 940} {:name "Alice" :age 941} {:name "Bob" :age 950} {:name "Bob" :age 950}])]
-    (->zset
-      zset
-      (dbsp-xf/->select-xf (fn [m] (select-keys m [:name])))))
-
-  (let [zset (->zset [{:name "Alice" :age 940} {:name "Alice" :age 941} {:name "Bob" :age 950} {:name "Bob" :age 950}])]
-    (->zset
-      zset
-      (dbsp-xf/->select-xf (fn [m] m)))))
 
 (defn ->dbsp-chan-1
   "First working DBSP chan with transducer"
@@ -182,14 +175,18 @@
     (a/close! ch-1)
     @an-atom))
 
-
 (comment
+
   (->zset [{:a 1} {:b 2}])                                  ;ok
   (->zset [{:a 1} 1])                                       ;error
-  )
 
-(comment
-  (plus
+
+  (let [zset (->zset [{:name "Alice" :age 940} {:name "Bob" :age 950} {:name "Bob" :age 950}])]
+    (->zset
+      zset
+      (dbsp-xf/->where-xf (fn [m] (< 900 (:age m))))))
+
+  (zset+
     #{^#:zset {:w 2} {:name "Alice"}
       ^#:zset {:w -5} {:name "Bob"}
       ^#:zset {:w -10} {:name "Clara"}}
@@ -198,25 +195,32 @@
       ^#:zset {:w 5} {:name "Bob"}
       ^#:zset {:w 1} {:name "Clara"}})
 
-  (plus
+  (zset+
     #{^#:zset {:w 2} {:name "Alice"}}
 
     #{^#:zset {:w -1} {:name "Bob"}})
 
-  (plus
+  (zset+
     #{^#:zset {:w 1} {:name "Alice"}}
 
     #{^#:zset {:w -1} {:name "Alice"}})
 
-  (plus
+  (zset+
     #{^#:zset {:w 2} {:name "Alice"}}
 
     #{^#:zset {:w 0} {:name "Bob"}})
 
 
-  (negate #{^#:zset {:w 1} {:name "Alice"}})
+  (zset-negate #{^#:zset {:w 1} {:name "Alice"}})
 
-  (negate #{^#:zset {:w -1} {:name "Bob"}}))
+  (zset-negate #{^#:zset {:w -1} {:name "Bob"}})
+
+  (zset*
+    #{^#:zset {:w 3} {:name "Alice"}
+      ^#:zset {:w 5} {:name "Bob"}}
+    #{^#:zset {:w 3} {:name "Alice"}
+      ^#:zset {:w 5} {:name "Bob"}})
+  )
 
 ;Next
 ; https://www.feldera.com/blog/Implementing%20Z-sets/

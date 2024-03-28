@@ -136,9 +136,12 @@
 
 (defn ->indexed-zset
   "Convert a zset into a map indexed by a key function"
+  #_(comment
+      (->indexed-zset
+        (->zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+        (fn [m] (first (:name m)))))
   [zset kfn]
-  (into
-    {}
+  (into {}
     (xforms/by-key
       kfn
       (xforms/reduce conj #{}))

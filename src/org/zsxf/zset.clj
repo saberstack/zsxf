@@ -134,6 +134,16 @@
            [m-1 m-2]
            {:zset/w (* (zset-weight m-1) (zset-weight m-2))}))))
 
+(defn ->indexed-zset
+  "Convert a zset into a map indexed by a key function"
+  [zset kfn]
+  (into
+    {}
+    (xforms/by-key
+      kfn
+      (xforms/reduce conj #{}))
+    zset))
+
 ;SELECT * FROM users WHERE status = active;
 ;JOIN
 ;GROUP-By
@@ -252,4 +262,5 @@
                (mapcat identity)
                (dbsp-xf/for-xf #{:a :b})
                (dbsp-xf/->dbsp-result-xf! *computation-state)))]
-    (def for-chan-1 ch)))
+    (def for-chan-1 ch)
+    (a/>!! ch #{:c})))

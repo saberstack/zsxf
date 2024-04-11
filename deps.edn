@@ -18,5 +18,7 @@
            com.taoensso/nippy             {:mvn/version "3.3.0"}
            datascript/datascript          {:mvn/version "1.6.1"}
            org.clojure/math.combinatorics {:mvn/version "0.3.0"}
+           saberstack/loop                {:git/url "https://github.com/saberstack/loop"
+                                           :sha     "627adc4febad2c2105510416fe92003bacf58c4b"}
            }
  :aliases {}}

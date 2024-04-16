@@ -1,6 +1,7 @@
-(ns org.zsxf.async-dataflow
+(ns org.zsxf.dataflow
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
+            [org.zsxf.zset :as zset]
             [taoensso.timbre :as timbre]
             [ss.loop :as ss.loop]))
 
@@ -46,12 +47,26 @@
     (a/>!! entry-2-chan {:person/uuid "Charles" :person/team 1})))
 
 
-(defn pipelined [])
+
 
 ;1. sequence of z-sets (one seq per transaction)
 ;2. dataflow of core.async loops
 ; or
 ;2. dataflow of transducers
+;3. pipeline which receives vectors of one or many z-sets
+; (pipeline n to xf from)
+
+
+(defn pipelined []
+  (let [from (a/chan 42)]
+    (a/pipeline 8
+      (a/chan 42)
+      (comp
+        (mapcat identity)
+        (map (fn [z-set] (timbre/spy z-set))))
+      from)
+    from))
+
 
 (defn go-loop-test []
   (ss.loop/go-loop []
@@ -72,3 +87,28 @@
   (a/<!! mix-out-1)
   (a/>!! mix-in-1 :aaa)
   (a/<!! mix-out-1))
+
+(comment
+  (->
+    #{{:team/name "Angels" :team/id 1}}
+    (zset/->zset)
+    (zset/zset+ (zset/->zset #{{:team/country "Italy"}}))
+    (zset/zset+ (zset/->zset #{{:team/name "Angels" :team/id 1}})))
+
+
+
+
+  (zset/->indexed-zset
+    (zset/->zset
+      #{{:team/name "Angels" :team/id 1}})
+    :team/id)
+
+  (zset/->zset
+    #{{:player/name "Alice" :team/id 1}})
+
+  )
+
+;JOIN Output contents vary depending on the upstream/parent requirements in the dataflow tree
+; - logically, the output of a JOIN is always the same: the tuples that match
+;PROBLEM: how to do queries without feeding all changes since start of time?
+;

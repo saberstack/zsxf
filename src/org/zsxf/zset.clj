@@ -11,6 +11,7 @@
 ; Follow the example from https://github.com/clj-commons/ordered/blob/master/src/flatland/ordered/set.clj
 
 (set! *print-meta* true)
+(declare ->zset)
 
 (defn zset-weight
   "Get the weight of a zset item, typically a map"
@@ -51,26 +52,30 @@
 
 (defn zset+
   "Z-Sets addition implemented as per https://www.feldera.com/blog/Z-sets/#z-sets"
-  [zset-1 zset-2]
-  {:pre [(zset? zset-1) (zset? zset-2)]}
-  (let [commons (clojure.set/intersection zset-1 zset-2)
-        {:keys [common-keep common-remove]} (common-keep-and-remove zset-1 zset-2 commons)]
-    (transduce
-      ;get set items one by one
-      (comp cat)
-      (completing
-        (fn [accum set-item]
-          (if (zero? (zset-weight set-item))
-            ;remove common-remove items
-            (disj accum set-item)
-            ;keep everything else
-            (conj accum set-item))))
-      #{}
-      [common-keep
-       zset-1
-       zset-2
-       ;common-remove items **must** stay at the end here to be properly removed during the reduction!
-       common-remove])))
+  ([]
+   (->zset #{}))
+  ([zset-1]
+   (zset+ zset-1 (->zset #{})))
+  ([zset-1 zset-2]
+   {:pre [(zset? zset-1) (zset? zset-2)]}
+   (let [commons (clojure.set/intersection zset-1 zset-2)
+         {:keys [common-keep common-remove]} (common-keep-and-remove zset-1 zset-2 commons)]
+     (transduce
+       ;get set items one by one
+       (comp cat)
+       (completing
+         (fn [accum set-item]
+           (if (zero? (zset-weight set-item))
+             ;remove common-remove items
+             (disj accum set-item)
+             ;keep everything else
+             (conj accum set-item))))
+       #{}
+       [common-keep
+        zset-1
+        zset-2
+        ;common-remove items **must** stay at the end here to be properly removed during the reduction!
+        common-remove]))))
 
 (defn zset-negate
   "Change the sign of all the weights in a zset"

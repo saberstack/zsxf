@@ -1,6 +1,7 @@
 (ns org.zsxf.core
   (:require [net.cgrand.xforms :as xforms]
             [nrepl.server :as nrepl-server]
+            [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre]))
 
 ; Basic implementation of the ideas presented in
@@ -60,7 +61,7 @@
 
 (defn integration-xf []
   (comp
-    (xforms/reductions +)
+    (xforms/reductions zs/zset+)
     (drop 1)))
 
 (defn changes-2
@@ -72,7 +73,5 @@
 (defn integration
   [s]
   (sequence
-     (comp
-      (xforms/reductions +)
-      (drop 1))
+     (integration-xf)
     s))

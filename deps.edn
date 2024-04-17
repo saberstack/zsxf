@@ -20,5 +20,6 @@
            org.clojure/math.combinatorics {:mvn/version "0.3.0"}
            saberstack/loop                {:git/url "https://github.com/saberstack/loop"
                                            :sha     "627adc4febad2c2105510416fe92003bacf58c4b"}
-           }
+           pangloss/transducers           {:git/url "https://github.com/pangloss/transducers"
+                                           :sha     "8aa53db7800f04507632b1fbea1e018c52a318f5"}}
  :aliases {}}

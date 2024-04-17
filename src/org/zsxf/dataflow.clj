@@ -3,7 +3,8 @@
             [net.cgrand.xforms :as x]
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre]
-            [ss.loop :as ss.loop]))
+            [ss.loop :as ss.loop]
+            [pangloss.transducers :as pxf]))
 
 (defonce index-1-atom (atom {}))
 (defonce index-2-atom (atom {}))
@@ -71,9 +72,14 @@
   ;WIP
   (into
     []
-    (x/transjuxt
+    #_(x/transjuxt
       {:player/team (x/by-key :player/team (x/reduce conj))
        :team/id     (x/by-key :team/id (x/reduce conj))})
+
+    (pxf/cond-branch
+      :team/id (map (fn [m] (assoc m :info "team!")))
+      :player/team (map (fn [m] (assoc m :info "player!"))))
+
     [{:team/id 1 :team/name "SF"}
      {:team/id 1 :team/name "NY"}
      {:player/name "Alice" :player/team 2}

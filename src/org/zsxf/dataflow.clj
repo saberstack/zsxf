@@ -73,17 +73,60 @@
   (into
     []
     #_(x/transjuxt
-      {:player/team (x/by-key :player/team (x/reduce conj))
-       :team/id     (x/by-key :team/id (x/reduce conj))})
-
-    (pxf/cond-branch
-      :team/id (map (fn [m] (assoc m :info "team!")))
-      :player/team (map (fn [m] (assoc m :info "player!"))))
-
+        {:player/team (x/by-key :player/team (x/reduce conj))
+         :team/id     (x/by-key :team/id (x/reduce conj))})
+    (comp
+      (pxf/cond-branch
+        :team/id (map (fn [m] (assoc m :info "team!")))
+        :player/team (map (fn [m] (assoc m :info "player!"))))
+      (map (fn [& xs] (timbre/spy xs))))
     [{:team/id 1 :team/name "SF"}
-     {:team/id 1 :team/name "NY"}
-     {:player/name "Alice" :player/team 2}
+     {:team/id 2 :team/name "NY"}
+     {:player/name "Alice" :player/team 1}
      {:player/name "Bob" :player/team 2}]))
+
+(def pipeline-data
+  [{:team/id 1 :team/name "SF"}
+   {:team/id 2 :team/name "NY"}
+   {:player/name "Alice" :player/team 1}
+   {:player/name "Bob" :player/team 2}
+   {:player/name "Chris" :player/team 2}])
+
+(def pipeline-2-xf
+  (comp
+    (mapcat identity)
+    (pxf/cond-branch
+      :team/id
+      (comp
+        (map (fn [m] (assoc m :info "team!")))
+        (pxf/grouped-by :team/id))
+      :player/team
+      (comp
+        (map (fn [m] (assoc m :info "player!")))
+        (pxf/grouped-by :player/team)))
+    (map (fn [grouped-by-result] (timbre/spy grouped-by-result)))))
+
+(defn pipeline-2 []
+  (let [from (a/chan 42)
+        to (a/chan 42)]
+    (a/pipeline 8
+      to
+      pipeline-2-xf
+      from)
+    [from to]))
+
+(comment
+  (into
+    []
+    pipeline-2-xf
+    [pipeline-data])
+
+  (let [[from to] (pipeline-2)]
+    (a/>!! from pipeline-data)
+    (timbre/spy (a/<!! to))
+    (timbre/spy (a/<!! to)))
+
+  )
 
 
 (defn go-loop-test []
@@ -130,3 +173,10 @@
 ; - logically, the output of a JOIN is always the same: the tuples that match
 ;PROBLEM: how to do queries without feeding all changes since the start of time?
 ;
+(defn set-join []
+  (clojure.set/join
+    [{:team/id 1 :team/name "SF"}
+     {:team/id 2 :team/name "NY"}]
+    [{:player/name "Alice" :player/team 1}
+     {:player/name "Bob" :player/team 2}]
+    {:team/id :player/team}))

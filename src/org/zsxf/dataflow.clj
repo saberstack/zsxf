@@ -85,12 +85,21 @@
      {:player/name "Alice" :player/team 1}
      {:player/name "Bob" :player/team 2}]))
 
-(def pipeline-data
-  [{:team/id 1 :team/name "SF"}
-   {:team/id 2 :team/name "NY"}
-   {:player/name "Alice" :player/team 1}
-   {:player/name "Bob" :player/team 2}
-   {:player/name "Chris" :player/team 2}])
+(defn pipeline-data []
+  (zs/->zset
+    [{:team/id 1 :team/name "SF"}
+     {:team/id 2 :team/name "NY"}
+     {:player/name "Alice" :player/team 1}
+     {:player/name "Bob" :player/team 2}
+     {:player/name "Chris" :player/team 2}]))
+
+(defn pipeline-data-2 []
+  (zs/->zset
+    [{:team/id 3 :team/name "LA"}
+     {:team/id 4 :team/name "AU"}
+     {:player/name "A" :player/team 3}
+     {:player/name "B" :player/team 3}
+     {:player/name "C" :player/team 4}]))
 
 (def pipeline-2-xf
   (comp
@@ -99,11 +108,12 @@
       :team/id
       (comp
         (map (fn [m] (assoc m :info "team!")))
-        (pxf/grouped-by :team/id))
+        (pxf/grouped-by :team/id :on-value set))
       :player/team
       (comp
         (map (fn [m] (assoc m :info "player!")))
-        (pxf/grouped-by :player/team)))
+        (pxf/grouped-by :player/team :on-value set)))
+    ;TODO implement indexed-zset add and multiply
     (map (fn [grouped-by-result] (timbre/spy grouped-by-result)))))
 
 (defn pipeline-2 []
@@ -119,10 +129,13 @@
   (into
     []
     pipeline-2-xf
-    [pipeline-data])
+    [(pipeline-data)])
 
   (let [[from to] (pipeline-2)]
-    (a/>!! from pipeline-data)
+    (a/>!! from (pipeline-data))
+    (a/>!! from (pipeline-data-2))
+    (timbre/spy (a/<!! to))
+    (timbre/spy (a/<!! to))
     (timbre/spy (a/<!! to))
     (timbre/spy (a/<!! to)))
 

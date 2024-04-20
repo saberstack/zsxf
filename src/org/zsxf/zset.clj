@@ -152,6 +152,23 @@
       (xforms/reduce conj #{}))
     zset))
 
+(defn indexed-zset->zset
+  "Convert an indexed zset back into a zset"
+  [indexed-zset]
+  (transduce
+    (mapcat (fn [[_k v]] v))
+    conj
+    #{}
+    indexed-zset))
+
+(defn indexed-zset+
+  [indexed-zset-1 indexed-zset-2]
+  (merge-with zset+ indexed-zset-1 indexed-zset-2))
+
+(defn indexed-zset*
+  [indexed-zset-1 indexed-zset-2]
+  (merge-with zset* indexed-zset-1 indexed-zset-2))
+
 ;SELECT * FROM users WHERE status = active;
 ;JOIN
 ;GROUP-By

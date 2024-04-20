@@ -107,23 +107,30 @@
     (pxf/cond-branch
       :team/id
       (comp
-        (map (fn [m] (assoc m :info "team!")))
+        (map (fn [m]
+               (timbre/info "team!")
+               m))
         (pxf/grouped-by :team/id :on-value set))
       :player/team
       (comp
-        (map (fn [m] (assoc m :info "player!")))
+        (map (fn [m]
+               (timbre/info "player!")
+               m))
         (pxf/grouped-by :player/team :on-value set)))
     ;TODO implement indexed-zset add and multiply
     (map (fn [grouped-by-result] (timbre/spy grouped-by-result)))))
 
-(defn pipeline-2 []
-  (let [from (a/chan 42)
-        to (a/chan 42)]
-    (a/pipeline 8
+(defonce tmp-1 (atom nil))
+
+(defn reset-pipeline []
+  (let [from (a/chan 1)
+        to   (a/chan (a/sliding-buffer 1)
+               (map (fn [to-final] (timbre/spy to-final))))]
+    (a/pipeline 1
       to
       pipeline-2-xf
       from)
-    [from to]))
+    (reset! tmp-1 [from to])))
 
 (comment
   (into
@@ -131,13 +138,31 @@
     pipeline-2-xf
     [(pipeline-data)])
 
-  (let [[from to] (pipeline-2)]
+  (let [[from to] @tmp-1]
     (a/>!! from (pipeline-data))
     (a/>!! from (pipeline-data-2))
     (timbre/spy (a/<!! to))
     (timbre/spy (a/<!! to))
     (timbre/spy (a/<!! to))
     (timbre/spy (a/<!! to)))
+
+  (let [ch (a/chan 1
+             pipeline-2-xf
+             #_(pxf/cond-branch
+                 :team/id
+                 (comp
+                   (pxf/grouped-by :team/id)
+                   (map (fn [grouped-by] (timbre/spy grouped-by))))))]
+    (a/>!! ch {:team/id 1 :name "A"})
+    ;(a/>!! ch {:team/id 1 :name "B"})
+    ;(a/>!! ch {:team/id 1 :name "C"})
+    ;(a/close! ch)
+    (do
+      (timbre/spy (a/<!! ch))
+      ;(timbre/spy (a/<!! ch))
+      ;(timbre/spy (a/<!! ch))
+      )
+    )
 
   )
 

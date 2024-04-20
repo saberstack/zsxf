@@ -162,8 +162,12 @@
     indexed-zset))
 
 (defn indexed-zset+
-  [indexed-zset-1 indexed-zset-2]
-  (merge-with zset+ indexed-zset-1 indexed-zset-2))
+  ([]
+   {})
+  ([indexed-zset]
+   (indexed-zset+ indexed-zset {}))
+  ([indexed-zset-1 indexed-zset-2]
+   (merge-with zset+ indexed-zset-1 indexed-zset-2)))
 
 (defn indexed-zset*
   [indexed-zset-1 indexed-zset-2]

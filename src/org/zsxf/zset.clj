@@ -173,6 +173,20 @@
   [indexed-zset-1 indexed-zset-2]
   (merge-with zset* indexed-zset-1 indexed-zset-2))
 
+;TODO Fix error:
+(comment
+  (indexed-zset*
+    (indexed-zset*
+      (->indexed-zset
+        (->zset [{:team 1} {:team 2}])
+        :team)
+      (->indexed-zset
+        (->zset [{:team 1} {:team 2}])
+        :team))
+    (->indexed-zset
+      (->zset [{:team 1} {:team 2}])
+      :team)))
+
 ;SELECT * FROM users WHERE status = active;
 ;JOIN
 ;GROUP-By

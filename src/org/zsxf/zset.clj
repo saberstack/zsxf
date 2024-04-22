@@ -20,7 +20,7 @@
     (:zset/w (meta m))))
 
 (s/def ::zset (s/and
-                (s/coll-of map?)                            ;potentially relax this to other collections
+                (s/coll-of coll?)
                 (s/every (fn [set-item-map]
                            (some? (zset-weight set-item-map))))))
 
@@ -97,7 +97,7 @@
   ([coll xf]
    (->zset coll xf 1))
   ([coll xf weight]
-   {:pre [(s/valid? (s/coll-of map?) coll)]}
+   {:pre [(s/valid? (s/coll-of coll?) coll)]}
    (transduce
      xf
      (fn
@@ -137,6 +137,7 @@
   (set (for [m-1 zset-1 m-2 zset-2]
          (with-meta
            [m-1 m-2]
+           ;{m-1 m-2}
            {:zset/w (* (zset-weight m-1) (zset-weight m-2))}))))
 
 (defn ->indexed-zset
@@ -175,17 +176,22 @@
 
 ;TODO Fix error:
 (comment
-  (indexed-zset*
+  (clojure.pprint/pprint
     (indexed-zset*
+      (indexed-zset*
+        (indexed-zset*
+          (->indexed-zset
+            (->zset [{:team 1} {:team 2}])
+            :team)
+          (->indexed-zset
+            (->zset [{:team 1} {:team 2}])
+            :team))
+        (->indexed-zset
+          (->zset [{:team 1} {:team 2}])
+          :team))
       (->indexed-zset
         (->zset [{:team 1} {:team 2}])
-        :team)
-      (->indexed-zset
-        (->zset [{:team 1} {:team 2}])
-        :team))
-    (->indexed-zset
-      (->zset [{:team 1} {:team 2}])
-      :team)))
+        :team))))
 
 ;SELECT * FROM users WHERE status = active;
 ;JOIN

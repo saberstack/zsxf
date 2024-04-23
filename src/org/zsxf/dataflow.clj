@@ -86,7 +86,7 @@
      {:player/name "Bob" :player/team 2}]))
 
 (defn pipeline-data []
-  (zs/->zset
+  (zs/zset
     [{:team/id 1 :team/name "SF"}
      {:team/id 2 :team/name "NY"}
      {:player/name "Alice" :player/team 1}
@@ -94,7 +94,7 @@
      {:player/name "Chris" :player/team 2}]))
 
 (defn pipeline-data-2 []
-  (zs/->zset
+  (zs/zset
     [{:team/id 3 :team/name "LA"}
      {:team/id 4 :team/name "AU"}
      {:player/name "A" :player/team 3}
@@ -190,19 +190,19 @@
 (comment
   (->
     #{{:team/name "Angels" :team/id 1}}
-    (zs/->zset)
-    (zs/zset+ (zs/->zset #{{:team/country "Italy"}}))
-    (zs/zset+ (zs/->zset #{{:team/name "Angels" :team/id 1}})))
+    (zs/zset)
+    (zs/zset+ (zs/zset #{{:team/country "Italy"}}))
+    (zs/zset+ (zs/zset #{{:team/name "Angels" :team/id 1}})))
 
 
 
 
   (zs/->indexed-zset
-    (zs/->zset
+    (zs/zset
       #{{:team/name "Angels" :team/id 1}})
     :team/id)
 
-  (zs/->zset
+  (zs/zset
     #{{:player/name "Alice" :team/id 1}})
 
   )

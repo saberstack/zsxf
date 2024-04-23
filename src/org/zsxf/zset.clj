@@ -53,9 +53,9 @@
 (defn zset+
   "Z-Sets addition implemented as per https://www.feldera.com/blog/Z-sets/#z-sets"
   ([]
-   (->zset #{}))
+   (zset #{}))
   ([zset-1]
-   (zset+ zset-1 (->zset #{})))
+   (zset+ zset-1 (zset #{})))
   ([zset-1 zset-2]
    {:pre [(zset? zset-1) (zset? zset-2)]}
    (let [commons (clojure.set/intersection zset-1 zset-2)
@@ -90,12 +90,12 @@
     #{}
     zset))
 
-(defn ->zset
+(defn zset
   "Collection to zset as per https://www.feldera.com/blog/Implementing%20Z-sets/#converting-a-collection-to-a-z-set"
   ([coll]
-   (->zset coll (map identity)))
+   (zset coll (map identity)))
   ([coll xf]
-   (->zset coll xf 1))
+   (zset coll xf 1))
   ([coll xf weight]
    {:pre [(s/valid? (s/coll-of coll?) coll)]}
    (transduce
@@ -128,7 +128,7 @@
 
 (defn ->zset-neg
   [coll]
-  (->zset coll (map identity) -1))
+  (zset coll (map identity) -1))
 
 (defn zset*
   "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"
@@ -144,7 +144,7 @@
   "Convert a zset into a map indexed by a key function"
   #_(comment
       (->indexed-zset
-        (->zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+        (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
         (fn [m] (first (:name m)))))
   [zset kfn]
   (into {}
@@ -181,16 +181,16 @@
       (indexed-zset*
         (indexed-zset*
           (->indexed-zset
-            (->zset [{:team 1} {:team 2}])
+            (zset [{:team 1} {:team 2}])
             :team)
           (->indexed-zset
-            (->zset [{:team 1} {:team 2}])
+            (zset [{:team 1} {:team 2}])
             :team))
         (->indexed-zset
-          (->zset [{:team 1} {:team 2}])
+          (zset [{:team 1} {:team 2}])
           :team))
       (->indexed-zset
-        (->zset [{:team 1} {:team 2}])
+        (zset [{:team 1} {:team 2}])
         :team))))
 
 ;SELECT * FROM users WHERE status = active;
@@ -221,14 +221,14 @@
       (fn [m]
         (timbre/spy m)
         (a/>!! ch-1 m))
-      (->zset
+      (zset
         [{:name "A" :age 960} {:name "B" :age 961} {:name "C" :age 962}]))
 
     (run!
       (fn [m]
         (timbre/spy m)
         (a/>!! ch-1 m))
-      (->zset
+      (zset
         [{:name "E" :age 900} {:name "F" :age 850} {:name "G" :age 888}]))
     ;*dbsp-result is 3
     (a/close! ch-1)
@@ -236,12 +236,12 @@
 
 (comment
 
-  (->zset [{:a 1} {:b 2}])                                  ;ok
-  (->zset [{:a 1} 1])                                       ;error
+  (zset [{:a 1} {:b 2}])                                  ;ok
+  (zset [{:a 1} 1])                                       ;error
 
 
-  (let [zset (->zset [{:name "Alice" :age 940} {:name "Bob" :age 950} {:name "Bob" :age 950}])]
-    (->zset
+  (let [zset (zset [{:name "Alice" :age 940} {:name "Bob" :age 950} {:name "Bob" :age 950}])]
+    (zset
       zset
       (dbsp-xf/->where-xf (fn [m] (< 900 (:age m))))))
 
@@ -300,10 +300,10 @@
   (a/chan xf))
 
 (defn insert->zset [& maps]
-  (->zset `#{~@maps}))
+  (zset `#{~@maps}))
 
 (defn delete->zset [& maps]
-  (->zset `#{~@maps}))
+  (zset `#{~@maps}))
 
 (defn for-chan-test []
   (let [ch (a/chan 42

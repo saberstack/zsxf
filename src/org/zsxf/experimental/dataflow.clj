@@ -85,7 +85,7 @@
     ;(a/>!! from (exp-data/data1))
     ;(a/>!! from (exp-data/data2))
     (a/>!! from
-      (zs/->zset
+      (zs/zset
         [
          ;{:team/id 3 :team/name "T3"}
          {:id 4 :team "A"}

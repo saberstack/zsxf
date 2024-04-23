@@ -168,7 +168,18 @@
   ([indexed-zset-1 indexed-zset-2]
    (merge-with zset+ indexed-zset-1 indexed-zset-2)))
 
+(defn join
+  "Join two indexed zsets"
+  [indexed-zset-1 indexed-zset-2]
+  (let [commons (clojure.set/intersection (set (keys indexed-zset-1)) (set (keys indexed-zset-2)))]
+    (transduce
+      (map (fn [common] [(indexed-zset-1 common) (indexed-zset-2 common)]))
+      conj
+      {}
+      commons)))
+
 (defn indexed-zset*
+  ;TODO fix or remove
   [indexed-zset-1 indexed-zset-2]
   (merge-with zset* indexed-zset-1 indexed-zset-2))
 

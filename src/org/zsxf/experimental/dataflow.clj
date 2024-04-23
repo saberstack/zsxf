@@ -38,21 +38,13 @@
           (map identity)
           :player/team
           (comp
-            #_(xforms/by-key
-              :player/team
-              ;set
-              ;vector
-              ;(map identity)
-              (fn [m] m)
-              (fn [k ms] {k ms})
-              (xforms/into #{}))
             (dbsp-xf/->index-xf :player/team)
             (map (fn [grouped-by-result]
                    (timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-player
                      (fn [m]
                        (zs/indexed-zset+ m grouped-by-result)))))))))
-    ;TODO implement indexed-zset add and multiply
+    ;TODO join indexed-zsets
     (map (fn [j]
            (timbre/spy j)
            ))))
@@ -84,8 +76,8 @@
          ;{:team/id 3 :team/name "T3"}
          {:id 4 :team "A"}
          ;{:player/name "A" :player/team 3}
-         ;{:player/name "B" :player/team 3}
-         ;{:player/name "C" :player/team 4}
+         ;{:player-name "A" :player/team 4}
+         ;{:player-name "A" :player/team 4}
          ]))))
 
 (comment
@@ -97,6 +89,8 @@
     @*grouped-by-state-team)
   (clojure.pprint/pprint
     @*grouped-by-state-player)
+  (clojure.pprint/pprint
+    (zs/join @*grouped-by-state-team @*grouped-by-state-player))
   (clojure.pprint/pprint
     @*join-state)
   )

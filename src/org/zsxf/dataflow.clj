@@ -197,7 +197,7 @@
 
 
 
-  (zs/->indexed-zset
+  (zs/indexed-zset
     (zs/zset
       #{{:team/name "Angels" :team/id 1}})
     :team/id)

@@ -11,7 +11,7 @@
 ; Follow the example from https://github.com/clj-commons/ordered/blob/master/src/flatland/ordered/set.clj
 
 (set! *print-meta* true)
-(declare ->zset)
+(declare zset)
 
 (defn zset-weight
   "Get the weight of a zset item, typically a map"
@@ -140,10 +140,10 @@
            ;{m-1 m-2}
            {:zset/w (* (zset-weight m-1) (zset-weight m-2))}))))
 
-(defn ->indexed-zset
+(defn indexed-zset
   "Convert a zset into a map indexed by a key function"
   #_(comment
-      (->indexed-zset
+      (indexed-zset
         (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
         (fn [m] (first (:name m)))))
   [zset kfn]
@@ -180,16 +180,16 @@
     (indexed-zset*
       (indexed-zset*
         (indexed-zset*
-          (->indexed-zset
+          (indexed-zset
             (zset [{:team 1} {:team 2}])
             :team)
-          (->indexed-zset
+          (indexed-zset
             (zset [{:team 1} {:team 2}])
             :team))
-        (->indexed-zset
+        (indexed-zset
           (zset [{:team 1} {:team 2}])
           :team))
-      (->indexed-zset
+      (indexed-zset
         (zset [{:team 1} {:team 2}])
         :team))))
 

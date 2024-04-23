@@ -7,6 +7,8 @@
             [org.zsxf.experimental.data :as exp-data]))
 
 (defonce *join-state (atom {}))
+(defonce *grouped-by-state-team (atom {}))
+(defonce *grouped-by-state-player (atom {}))
 
 (def pipeline-xf
   (comp
@@ -15,19 +17,25 @@
       ;:team/id
       (comp
         (map (fn [m] (timbre/info "team!") m))
-        (map (fn [m] (if (:team/id m) m {})))
+        (map (fn [m] (if (:id m) m {})))
         (pxf/cond-branch
           empty?
           (map identity)
-          :team/id
-          (xforms/by-key
-            :team/id
-            ;set
-            ;vector
-            ;(map identity)
-            (fn [m] m)
-            (fn [k ms] {k ms})
-            (xforms/into #{}))))
+          :id
+          (comp
+            (xforms/by-key
+              :id
+              ;set
+              ;vector
+              ;(map identity)
+              (fn [m] m)
+              (fn [k ms] {k ms})
+              (xforms/into #{}))
+            (map (fn [grouped-by-result]
+                   (timbre/spy grouped-by-result)
+                   (swap! *grouped-by-state-team
+                     (fn [m]
+                       (zs/indexed-zset+ m grouped-by-result))))))))
       (comp
         (map (fn [m] (timbre/info "player!") m))
         (map (fn [m] (if (:player/team m) m {})))
@@ -35,25 +43,32 @@
           empty?
           (map identity)
           :player/team
-          (xforms/by-key
-            :player/team
-            ;set
-            ;vector
-            ;(map identity)
-            (fn [m] m)
-            (fn [k ms] {k ms})
-            (xforms/into #{})))))
+          (comp
+            (xforms/by-key
+              :player/team
+              ;set
+              ;vector
+              ;(map identity)
+              (fn [m] m)
+              (fn [k ms] {k ms})
+              (xforms/into #{}))
+            (map (fn [grouped-by-result]
+                   (timbre/spy grouped-by-result)
+                   (swap! *grouped-by-state-player
+                     (fn [m]
+                       (zs/indexed-zset+ m grouped-by-result)))))))))
     ;TODO implement indexed-zset add and multiply
-    (map (fn [grouped-by-result]
-           (timbre/spy grouped-by-result)
-           (swap! *join-state
-             (fn [m]
-               (zs/indexed-zset* m grouped-by-result)))))))
+    (map (fn [j]
+           (timbre/spy j)
+
+           ))))
 
 (defonce *state (atom nil))
 
 (defn reset-pipeline []
   (reset! *join-state {})
+  (reset! *grouped-by-state-team {})
+  (reset! *grouped-by-state-player {})
   (let [from (a/chan 1)
         to   (a/chan (a/sliding-buffer 1)
                (map (fn [to-final] (timbre/spy to-final))))]
@@ -71,16 +86,23 @@
     ;(a/>!! from (exp-data/data2))
     (a/>!! from
       (zs/->zset
-        [{:team/id 3 :team/name "T3"}
-
-         {:team/id 4 :team/name "T4"}
-         {:player/name "A" :player/team 3}
-         {:player/name "B" :player/team 3}
+        [
+         ;{:team/id 3 :team/name "T3"}
+         {:id 4 :team "A"}
+         ;{:player/name "A" :player/team 3}
+         ;{:player/name "B" :player/team 3}
          ;{:player/name "C" :player/team 4}
          ]))))
 
 (comment
+  (set! *print-meta* false)
+  (set! *print-meta* true)
   (reset-pipeline)
   (init)
-  @*join-state
+  (clojure.pprint/pprint
+    @*grouped-by-state-team)
+  (clojure.pprint/pprint
+    @*grouped-by-state-player)
+  (clojure.pprint/pprint
+    @*join-state)
   )

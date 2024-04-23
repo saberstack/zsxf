@@ -1,6 +1,7 @@
 (ns org.zsxf.experimental.dataflow
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
+            [org.zsxf.xf :as dbsp-xf]
             [org.zsxf.zset :as zs]
             [pangloss.transducers :as pxf]
             [taoensso.timbre :as timbre]
@@ -23,14 +24,7 @@
           (map identity)
           :id
           (comp
-            (xforms/by-key
-              :id
-              ;set
-              ;vector
-              ;(map identity)
-              (fn [m] m)
-              (fn [k ms] {k ms})
-              (xforms/into #{}))
+            (dbsp-xf/->index-xf :id)
             (map (fn [grouped-by-result]
                    (timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-team
@@ -44,7 +38,7 @@
           (map identity)
           :player/team
           (comp
-            (xforms/by-key
+            #_(xforms/by-key
               :player/team
               ;set
               ;vector
@@ -52,6 +46,7 @@
               (fn [m] m)
               (fn [k ms] {k ms})
               (xforms/into #{}))
+            (dbsp-xf/->index-xf :player/team)
             (map (fn [grouped-by-result]
                    (timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-player
@@ -60,7 +55,6 @@
     ;TODO implement indexed-zset add and multiply
     (map (fn [j]
            (timbre/spy j)
-
            ))))
 
 (defonce *state (atom nil))
@@ -105,4 +99,19 @@
     @*grouped-by-state-player)
   (clojure.pprint/pprint
     @*join-state)
+  )
+
+; Scratch
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(comment
+
+  (zs/indexed-zset*
+    (zs/indexed-zset
+      (zs/zset [{:team "A" :id 1} {:team "Aa" :id 1} {:team "B" :id 2}])
+      :id)
+    (zs/indexed-zset
+      (zs/zset [{:player "R" :team 1} {:player "S" :team 2} {:player "T" :team 3}])
+      :team))
+
   )

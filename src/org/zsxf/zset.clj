@@ -148,9 +148,7 @@
         (fn [m] (first (:name m)))))
   [zset kfn]
   (into {}
-    (xforms/by-key
-      kfn
-      (xforms/reduce conj #{}))
+    (dbsp-xf/->index-xf kfn)
     zset))
 
 (defn indexed-zset->zset
@@ -173,25 +171,6 @@
 (defn indexed-zset*
   [indexed-zset-1 indexed-zset-2]
   (merge-with zset* indexed-zset-1 indexed-zset-2))
-
-;TODO Fix error:
-(comment
-  (clojure.pprint/pprint
-    (indexed-zset*
-      (indexed-zset*
-        (indexed-zset*
-          (indexed-zset
-            (zset [{:team 1} {:team 2}])
-            :team)
-          (indexed-zset
-            (zset [{:team 1} {:team 2}])
-            :team))
-        (indexed-zset
-          (zset [{:team 1} {:team 2}])
-          :team))
-      (indexed-zset
-        (zset [{:team 1} {:team 2}])
-        :team))))
 
 ;SELECT * FROM users WHERE status = active;
 ;JOIN

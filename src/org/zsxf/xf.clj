@@ -18,6 +18,14 @@
          (timbre/spy dbsp-result)
          (reset! an-atom dbsp-result))))
 
+(defn ->index-xf
+  [kfn]
+  (xforms/by-key
+    kfn
+    (fn [m] m)
+    (fn [k ms] {k ms})
+    (xforms/into #{})))
+
 (defn count-xf
   "DBSP SQL COUNT"
   ([rf]

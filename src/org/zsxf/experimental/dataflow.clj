@@ -74,10 +74,11 @@
       (zs/zset
         [
          ;{:team/id 3 :team/name "T3"}
-         {:id 4 :team "A"}
-         ;{:player/name "A" :player/team 3}
-         ;{:player-name "A" :player/team 4}
-         ;{:player-name "A" :player/team 4}
+         {:id 4 :team "A-dupe"}
+         ;{:id 5 :team "B"}
+         ;{:player-name "BP" :player/team 5}
+         ;{:player-name "A1" :player/team 4}
+         ;{:player-name "A2" :player/team 4}
          ]))))
 
 (defn init-remove []
@@ -87,7 +88,7 @@
     (a/>!! from
       (zs/zset-negative
         [
-         {:id 4 :team "A"}
+         {:id 4 :team "A-dupe"}
          ]))))
 
 (comment
@@ -113,10 +114,10 @@
 (comment
 
   (zs/indexed-zset*
-    (zs/indexed-zset
+    (zs/index
       (zs/zset [{:team "A" :id 1} {:team "Aa" :id 1} {:team "B" :id 2}])
       :id)
-    (zs/indexed-zset
+    (zs/index
       (zs/zset [{:player "R" :team 1} {:player "S" :team 2} {:player "T" :team 3}])
       :team))
 

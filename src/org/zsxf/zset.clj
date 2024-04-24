@@ -126,7 +126,8 @@
      #{}
      coll)))
 
-(defn ->zset-neg
+(defn zset-negative
+  "Represents a deletion change"
   [coll]
   (zset coll (map identity) -1))
 

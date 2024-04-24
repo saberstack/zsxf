@@ -80,6 +80,16 @@
          ;{:player-name "A" :player/team 4}
          ]))))
 
+(defn init-remove []
+  (let [[from to] @*state]
+    ;(a/>!! from (exp-data/data1))
+    ;(a/>!! from (exp-data/data2))
+    (a/>!! from
+      (zs/zset-negative
+        [
+         {:id 4 :team "A"}
+         ]))))
+
 (comment
   (set! *print-meta* false)
   (set! *print-meta* true)
@@ -93,6 +103,8 @@
     (zs/join @*grouped-by-state-team @*grouped-by-state-player))
   (clojure.pprint/pprint
     @*join-state)
+
+  (init-remove)
   )
 
 ; Scratch

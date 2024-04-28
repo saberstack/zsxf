@@ -22,22 +22,25 @@
 
 (comment
 
+  ; Fastest
   (run!
     (fn [_]
       (future (change-atom!)))
     (range 1000000))
   @*zset-atom-1
 
+  ; Acceptable
   (run!
     (fn [_]
       (future (change-ref-with-commute!)))
     (range 1000000))
   @*zset-ref-1
 
-  (run!
+  ; Very slow
+  #_(run!
     (fn [_]
       (future (change-ref-with-alter!)))
-    (range 1000000))
+    (range 100000))
   @*zset-ref-1
 
   ;TLDR atoms with clojure.core/swap! appear to be faster than refs even if we're using clojure.core/commute

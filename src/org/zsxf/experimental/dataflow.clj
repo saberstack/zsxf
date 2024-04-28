@@ -5,6 +5,7 @@
             [org.zsxf.zset :as zs]
             [pangloss.transducers :as pxf]
             [taoensso.timbre :as timbre]
+            [tech.v3.dataset :as ds]
             [org.zsxf.experimental.data :as exp-data]))
 
 (defonce *join-state (atom {}))
@@ -121,4 +122,23 @@
       (zs/zset [{:player "R" :team 1} {:player "S" :team 2} {:player "T" :team 3}])
       :team))
 
+  )
+
+(comment
+  (let [one   #{1}
+        two   #{2}
+        three #{3}
+        four  #{4}
+        five  #{5}
+        m     {1 one 2 two 3 three 4 four 5 five}
+        kfn   (comp odd? first)
+        m'    (transduce (xforms/by-key kfn (xforms/into #{})) conj {} m)
+        five' (second (some (fn [x] (when (= 5 (first x)) x)) (m' true)))]
+    (identical? five' five)))
+
+(comment
+  ;complex column names seem to be supported
+  (ds/row-map
+    (ds/->>dataset [{#{:a 1} 1} {#{:a 2} 2}])
+    (fn [row] (update-vals row inc)))
   )

@@ -13,6 +13,8 @@
 (set! *print-meta* true)
 (declare zset)
 
+(timbre/set-ns-min-level! :error)
+
 (defn zset-weight
   "Get the weight of a zset item, typically a map"
   [m]

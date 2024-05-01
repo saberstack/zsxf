@@ -6,7 +6,8 @@
             [pangloss.transducers :as pxf]
             [taoensso.timbre :as timbre]
             [tech.v3.dataset :as ds]
-            [org.zsxf.experimental.data :as exp-data]))
+            [org.zsxf.experimental.data :as exp-data]
+            [clj-java-decompiler.core :as decompiler]))
 
 (defonce *join-state (atom {}))
 (defonce *grouped-by-state-team (atom {}))
@@ -78,7 +79,7 @@
          {:id 4 :team "A-dupe"}
          ;{:id 5 :team "B"}
          ;{:player-name "BP" :player/team 5}
-         ;{:player-name "A1" :player/team 4}
+         {:player-name "A1" :player/team 4}
          ;{:player-name "A2" :player/team 4}
          ]))))
 
@@ -108,6 +109,22 @@
 
   (init-remove)
   )
+
+(defn init-postgres-queries []
+  [
+   ;database and schema
+   "CREATE DATABASE saberstack;"
+   "CREATE SCHEMA zsxf;"
+   ;experimental_team table
+   "CREATE TABLE zsxf.experimental_team (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                                         name text NOT NULL);
+   CREATE UNIQUE INDEX experimental_team_pkey ON zsxf.experimental_team(id int4_ops);"
+   ;experimental_player tables
+   "CREATE TABLE zsxf.experimental_player (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                                           last_name text NOT NULL,
+                                           team integer NOT NULL REFERENCES zsxf.experimental_team(id));
+   CREATE UNIQUE INDEX experimental_player_pkey ON zsxf.experimental_player(id int4_ops);"
+   ])
 
 ; Scratch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

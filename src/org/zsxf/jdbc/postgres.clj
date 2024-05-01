@@ -8,7 +8,7 @@
    [next.jdbc.prepare :as prepare])
   (:import (com.zaxxer.hikari HikariDataSource)))
 
-(defonce db-conn-pool (atom nil))
+(defonce *db-conn-pool (atom nil))
 
 (defn- jdbc-postgres-params
   "Returns a map with the parameters needed to create a JDBC connection."
@@ -23,9 +23,9 @@
    })
 
 (defn init-db-connection-pool []
-  (when (nil? @db-conn-pool)
+  (when (nil? @*db-conn-pool)
     (let [{:keys [dbtype host dbname user password]} (jdbc-postgres-params)]
-      (reset! db-conn-pool
+      (reset! *db-conn-pool
         (connection/->pool
           HikariDataSource
           ;; HikariCP-specific keys (Postgres connection pool)
@@ -39,5 +39,5 @@
            :dataSourceProperties {:socketTimeout 30}})))))
 
 
-(defn table->zsets [fully-qualified-table-name]
+(defn table->zsets [db-conn fully-qualified-table-name]
   )

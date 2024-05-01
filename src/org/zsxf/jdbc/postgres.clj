@@ -5,7 +5,8 @@
    [next.jdbc :as jdbc]
    [next.jdbc.connection :as connection]
    [next.jdbc.result-set :as rs]
-   [next.jdbc.prepare :as prepare])
+   [next.jdbc.prepare :as prepare]
+   [taoensso.timbre :as timbre])
   (:import (com.zaxxer.hikari HikariDataSource)))
 
 (defonce *db-conn-pool (atom nil))
@@ -37,6 +38,19 @@
            :password             password
            :connectionInitSql    "COMMIT;"
            :dataSourceProperties {:socketTimeout 30}})))))
+
+(defn check-db-connection-pool!
+  "Performs a check on the connection pool by issuing a basic query.
+  Used to verify and initialize the pool connection to allow the next SQL query to execute faster."
+  []
+  (timbre/spy
+    (jdbc/execute! @*db-conn-pool ["SELECT 1;"])))
+
+(defn init
+  "Initializes the database connection pool and checks the connection."
+  []
+  (init-db-connection-pool)
+  (check-db-connection-pool!))
 
 
 (defn table->zsets [db-conn fully-qualified-table-name]

@@ -1,6 +1,9 @@
 (ns org.zsxf.experimental.dataflow
   (:require [clojure.core.async :as a]
+            [honey.sql :as hsql]
             [net.cgrand.xforms :as xforms]
+            [next.jdbc :as jdbc]
+            [org.zsxf.jdbc.postgres :as postgres]
             [org.zsxf.xf :as dbsp-xf]
             [org.zsxf.zset :as zs]
             [pangloss.transducers :as pxf]
@@ -125,6 +128,44 @@
                                            team integer NOT NULL REFERENCES zsxf.experimental_team(id));
    CREATE UNIQUE INDEX experimental_player_pkey ON zsxf.experimental_player(id int4_ops);"
    ])
+
+(defn init-postgres-data! [db-conn table-name row-maps]
+  (jdbc/execute! db-conn
+    (hsql/format
+      {:insert-into table-name
+       :values      row-maps
+       ;:returning   :*
+       })))
+
+(defn generate-postgres-data-teams []
+  (transduce
+    (map (fn [idx] {:name (str "Team " idx)}))
+    conj
+    []
+    (range 1 101)))
+
+(defn generate-postgres-data-players [idx-multiplier]
+  (transduce
+    (map (fn [idx]
+           (let [idx' (* idx-multiplier idx)]
+             {:last_name (str "Player " idx') :team (inc (rand-int 100))})))
+    conj
+    []
+    (range 1 25001)))
+
+(comment
+  ;write teams
+  (init-postgres-data!
+    @postgres/*db-conn-pool "saberstack.zsxf.experimental_team"
+    (generate-postgres-data-teams))
+
+  ;write players
+  (run!
+    (fn [idx-multiplier]
+      (init-postgres-data!
+        @postgres/*db-conn-pool "saberstack.zsxf.experimental_player"
+        (generate-postgres-data-players idx-multiplier)))
+    (range 1 1000)))
 
 ; Scratch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

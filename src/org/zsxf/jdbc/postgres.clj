@@ -1,5 +1,6 @@
 (ns org.zsxf.jdbc.postgres
   (:require
+   [clojure.core.async :as a]
    [config.core :as config]
    [honey.sql :as hsql]
    [next.jdbc :as jdbc]
@@ -7,7 +8,8 @@
    [next.jdbc.result-set :as rs]
    [next.jdbc.prepare :as prepare]
    [taoensso.timbre :as timbre])
-  (:import (com.zaxxer.hikari HikariDataSource)))
+  (:import (clojure.lang IReduceInit)
+           (com.zaxxer.hikari HikariDataSource)))
 
 (defonce *db-conn-pool (atom nil))
 
@@ -23,10 +25,10 @@
    :password (:pgpassword config/env)                       ; PGPASSWORD
    })
 
-(defn init-db-connection-pool []
-  (when (nil? @*db-conn-pool)
+(defn init-db-connection-pool [*atom]
+  (when (nil? @*atom)
     (let [{:keys [dbtype host dbname user password]} (jdbc-postgres-params)]
-      (reset! *db-conn-pool
+      (reset! *atom
         (connection/->pool
           HikariDataSource
           ;; HikariCP-specific keys (Postgres connection pool)
@@ -42,16 +44,66 @@
 (defn check-db-connection-pool!
   "Performs a check on the connection pool by issuing a basic query.
   Used to verify and initialize the pool connection to allow the next SQL query to execute faster."
-  []
+  [db-conn]
   (timbre/spy
-    (jdbc/execute! @*db-conn-pool ["SELECT 1;"])))
+    (jdbc/execute! db-conn ["SELECT 1;"])))
 
 (defn init
   "Initializes the database connection pool and checks the connection."
   []
-  (init-db-connection-pool)
-  (check-db-connection-pool!))
+  (init-db-connection-pool *db-conn-pool)
+  (check-db-connection-pool! @*db-conn-pool))
 
 
 (defn table->zsets [db-conn fully-qualified-table-name]
-  )
+  (jdbc/plan db-conn
+    (hsql/format
+      {:select [:*]
+       :from   [fully-qualified-table-name]})))
+
+(defn reducible->chan
+  "Take the rows from the reducible and put them onto a channel. Return the channel."
+  ([^IReduceInit reducible]
+   (reducible->chan reducible (a/chan (a/dropping-buffer 1000))))
+  ([^IReduceInit reducible ch]
+   (transduce
+     (comp
+       (map (fn [row] (a/offer! ch row)))
+       ; halt when the receiving channel is full
+       ; WARNING: core.async sliding-buffer and dropping-buffer will not halt
+       (halt-when nil?))
+     conj
+     []
+     (eduction
+       (map (fn [row] (timbre/spy (into {} row))))
+       reducible))
+   (a/close! ch)
+   ;return channel
+   ch))
+
+(comment
+  (init)
+
+  (a/<!!
+    (a/reduce
+      conj
+      []
+      (reducible->chan
+        (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_team)
+        (a/chan (a/sliding-buffer 10) (map (fn [row] (timbre/spy row)))))))
+
+  (a/<!!
+    (a/reduce
+      conj
+      []
+      (reducible->chan
+        (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_team)
+        (a/chan 42 #_(a/dropping-buffer 10) (map (fn [row] row))))))
+
+  (a/<!!
+    (a/reduce
+      conj
+      []
+      (reducible->chan
+        (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_player)
+        (a/chan 42 #_(a/dropping-buffer 10) (map (fn [row] row)))))))

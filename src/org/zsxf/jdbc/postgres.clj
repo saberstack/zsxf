@@ -63,23 +63,21 @@
 
 (defn reducible->chan
   "Take the rows from the reducible and put them onto a channel. Return the channel."
-  ([^IReduceInit reducible]
-   (reducible->chan reducible (a/chan (a/dropping-buffer 1000))))
-  ([^IReduceInit reducible ch]
-   (transduce
-     (comp
-       (map (fn [row] (a/offer! ch row)))
-       ; halt when the receiving channel is full
-       ; WARNING: core.async sliding-buffer and dropping-buffer will not halt
-       (halt-when nil?))
-     conj
-     []
-     (eduction
-       (map (fn [row] (timbre/spy (into {} row))))
-       reducible))
-   (a/close! ch)
-   ;return channel
-   ch))
+  [^IReduceInit reducible ch]
+  (transduce
+    (comp
+      (map (fn [row] (a/offer! ch row)))
+      ; halt when the receiving channel is full
+      ; WARNING: core.async sliding-buffer and dropping-buffer will not halt
+      (halt-when nil?))
+    conj
+    []
+    (eduction
+      (map (fn [row] (timbre/spy (into {} row))))
+      reducible))
+  (a/close! ch)
+  ;return channel
+  ch)
 
 (comment
   (init)

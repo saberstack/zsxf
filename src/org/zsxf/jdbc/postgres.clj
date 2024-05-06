@@ -88,31 +88,31 @@
   ;return channel
   ch)
 
-(comment
+(defonce *all-teams (atom nil))
+(defonce *all-players (atom nil))
+
+(defn init-all-data []
   (init)
+  (reset! *all-teams
+    (a/<!!
+      (a/reduce
+        conj
+        []
+        (reducible->chan
+          (table->zsets @*db-conn-pool :saberstack.zsxf.team)
+          (a/chan 1 table-row->zset-xf)))))
 
-  (do
-    (def all-teams
-      (a/<!!
-        (a/reduce
-          conj
-          []
-          (reducible->chan
-            (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_team)
-            (a/chan 1 table-row->zset-xf))))
-      :done))
+  (reset! *all-players
+    (a/<!!
+      (a/reduce
+        conj
+        []
+        (reducible->chan
+          (table->zsets @*db-conn-pool :saberstack.zsxf.player)
+          (a/chan 1 table-row->zset-xf)))))
+  :done)
 
-  (do
-    (def all-players
-      (a/<!!
-        (a/reduce
-          conj
-          []
-          (reducible->chan
-            (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_player)
-            (a/chan 1 table-row->zset-xf)))))
-    :done)
-
+(comment
   ;TODO process all-teams and all-players through a join dataflow
 
   (a/<!!
@@ -120,7 +120,7 @@
       conj
       []
       (reducible->chan
-        (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_team)
+        (table->zsets @*db-conn-pool :saberstack.zsxf.team)
         (a/chan 42 #_(a/dropping-buffer 10) (map (fn [row] row))))))
 
   (a/<!!
@@ -128,5 +128,5 @@
       conj
       []
       (reducible->chan
-        (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_player)
+        (table->zsets @*db-conn-pool :saberstack.zsxf.player)
         (a/chan 42 #_(a/dropping-buffer 10) (map (fn [row] row)))))))

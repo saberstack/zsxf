@@ -23,13 +23,13 @@
       ;:team/id
       (comp
         (map (fn [m] (timbre/info "team!") m))
-        (map (fn [m] (if (:id m) m {})))
+        (map (fn [m] (if (:team/id m) m {})))
         (pxf/cond-branch
           empty?
           (map identity)
-          :id
+          :team/id
           (comp
-            (dbsp-xf/->index-xf :id)
+            (dbsp-xf/->index-xf :team/id)
             (map (fn [grouped-by-result]
                    (timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-team
@@ -112,6 +112,21 @@
 
   (init-remove)
   )
+
+(defn init-from-postgres []
+  (let [[from to] @*state]
+    ;(a/>!! from (exp-data/data1))
+    ;(a/>!! from (exp-data/data2))
+    (run!
+      (fn [zset] (a/>!! from zset))
+      @postgres/*all-teams))
+
+  (let [[from to] @*state]
+    ;(a/>!! from (exp-data/data1))
+    ;(a/>!! from (exp-data/data2))
+    (run!
+      (fn [zset] (a/>!! from zset))
+      @postgres/*all-players)))
 
 (defn init-postgres-queries []
   [

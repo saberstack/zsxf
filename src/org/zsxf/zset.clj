@@ -21,6 +21,13 @@
   (timbre/spy
     (:zset/w (meta m))))
 
+(defn eligible-coll?
+  "Check if a collection is eligible to be a zset item.
+  All collections of collections are eligible except collections of map entries"
+  [coll]
+  (boolean
+    (or (not (map-entry? coll)) (coll? coll?))))
+
 (s/def ::zset (s/and
                 (s/coll-of coll?)
                 (s/every (fn [set-item-map]
@@ -99,7 +106,7 @@
   ([coll xf]
    (zset coll xf 1))
   ([coll xf weight]
-   {:pre [(s/valid? (s/coll-of coll?) coll)]}
+   {:pre [(s/valid? (s/coll-of eligible-coll?) coll)]}
    (transduce
      xf
      (fn

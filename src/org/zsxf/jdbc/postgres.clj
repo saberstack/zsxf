@@ -7,6 +7,7 @@
    [next.jdbc.connection :as connection]
    [next.jdbc.result-set :as rs]
    [next.jdbc.prepare :as prepare]
+   [org.zsxf.zset :as zs]
    [taoensso.timbre :as timbre])
   (:import (clojure.lang IReduceInit)
            (com.zaxxer.hikari HikariDataSource)))
@@ -59,36 +60,60 @@
   (jdbc/plan db-conn
     (hsql/format
       {:select [:*]
-       :from   [fully-qualified-table-name]})))
+       :from   [fully-qualified-table-name]
+       :limit 100
+       })))
+
+
+(def table-row->zset-xf
+  (map (fn [row] (zs/zset #{row})))) ; transform a table row into a zset
 
 (defn reducible->chan
   "Take the rows from the reducible and put them onto a channel. Return the channel."
   [^IReduceInit reducible ch]
-  (transduce
-    (comp
-      (map (fn [row] (a/offer! ch row)))
-      ; halt when the receiving channel is full
-      ; WARNING: core.async sliding-buffer and dropping-buffer will not halt
-      (halt-when nil?))
-    conj
-    []
-    (eduction
-      (map (fn [row] (timbre/spy (into {} row))))
-      reducible))
-  (a/close! ch)
+  (future
+    (transduce
+      (comp
+        (map (fn [row] (a/>!! ch row)))
+        ; halt when the receiving channel is full
+        ; WARNING: core.async sliding-buffer and dropping-buffer will not halt
+        ;(halt-when nil?)
+        )
+      conj
+      []
+      (eduction
+        (map (fn [row] (into {} row)))
+        reducible))
+    (a/close! ch))
   ;return channel
   ch)
 
 (comment
   (init)
 
-  (a/<!!
-    (a/reduce
-      conj
-      []
-      (reducible->chan
-        (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_team)
-        (a/chan (a/sliding-buffer 10) (map (fn [row] (timbre/spy row)))))))
+  (do
+    (def all-teams
+      (a/<!!
+        (a/reduce
+          conj
+          []
+          (reducible->chan
+            (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_team)
+            (a/chan 1 table-row->zset-xf))))
+      :done))
+
+  (do
+    (def all-players
+      (a/<!!
+        (a/reduce
+          conj
+          []
+          (reducible->chan
+            (table->zsets @*db-conn-pool :saberstack.zsxf.experimental_player)
+            (a/chan 1 table-row->zset-xf)))))
+    :done)
+
+  ;TODO process all-teams and all-players through a join dataflow
 
   (a/<!!
     (a/reduce

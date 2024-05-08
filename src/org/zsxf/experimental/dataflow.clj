@@ -133,15 +133,15 @@
    ;database and schema
    "CREATE DATABASE saberstack;"
    "CREATE SCHEMA zsxf;"
-   ;experimental_team table
-   "CREATE TABLE zsxf.experimental_team (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+   ;experimental 'team' table
+   "CREATE TABLE zsxf.team (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                                          name text NOT NULL);
-   CREATE UNIQUE INDEX experimental_team_pkey ON zsxf.experimental_team(id int4_ops);"
-   ;experimental_player tables
-   "CREATE TABLE zsxf.experimental_player (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+   CREATE UNIQUE INDEX team_pkey ON zsxf.team(id int4_ops);"
+   ;experimental 'player' tables
+   "CREATE TABLE zsxf.player (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                                            last_name text NOT NULL,
-                                           team integer NOT NULL REFERENCES zsxf.experimental_team(id));
-   CREATE UNIQUE INDEX experimental_player_pkey ON zsxf.experimental_player(id int4_ops);"
+                                           team integer NOT NULL REFERENCES zsxf.team(id));
+   CREATE UNIQUE INDEX player_pkey ON zsxf.player(id int4_ops);"
    ])
 
 (defn init-postgres-data! [db-conn table-name row-maps]
@@ -171,14 +171,14 @@
 (comment
   ;write teams
   (init-postgres-data!
-    @postgres/*db-conn-pool "saberstack.zsxf.experimental_team"
+    @postgres/*db-conn-pool "saberstack.zsxf.team"
     (generate-postgres-data-teams))
 
   ;write players
   (run!
     (fn [idx-multiplier]
       (init-postgres-data!
-        @postgres/*db-conn-pool "saberstack.zsxf.experimental_player"
+        @postgres/*db-conn-pool "saberstack.zsxf.player"
         (generate-postgres-data-players idx-multiplier)))
     (range 1 1000)))
 

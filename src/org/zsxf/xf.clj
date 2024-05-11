@@ -7,9 +7,12 @@
     (:zset/w (meta m) 0)))
 
 (defn ->where-xf
-  "SQL WHERE (aka filter), as per https://www.feldera.com/blog/SQL-on-Zsets/#filtering-sql-where"
+  "SQL WHERE (aka filter), as per https://www.feldera.com/blog/SQL-on-Zsets/#filtering-sql-where
+  This is different from regular Clojure filter in that it returns an empty set if the predicate is false.
+  DBSP requires all operators (in our case, transducers) to return a zset rather than skipping the item."
   [pred]
-  (filter pred))
+  (map (fn [x]
+         (if (pred x) x #{}))))
 
 (defn ->dbsp-result-xf!
   "Save DBSP result"
@@ -34,6 +37,7 @@
        ([] (rf))
        ([acc] (rf (unreduced (rf acc @n))))
        ([acc item]
+        (timbre/spy item)
         (rf acc (swap! n (fn [prev-n] (+ prev-n (zset-w item))))) acc)))))
 
 (defn for-xf [a-set]

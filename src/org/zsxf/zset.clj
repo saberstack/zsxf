@@ -222,7 +222,7 @@
         (timbre/spy m)
         (a/>!! ch-1 m))
       (zset
-        [{:name "A" :age 960} {:name "B" :age 961} {:name "C" :age 962}]))
+        [{:name "A" :age 960} {:name "B" :age 961} {:name "C" :age 962} {:name "W" :age 962}]))
 
     (run!
       (fn [m]

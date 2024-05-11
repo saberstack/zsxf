@@ -114,6 +114,7 @@
   )
 
 (defn init-from-postgres []
+  (reset-pipeline)
   (let [[from to] @*state]
     ;(a/>!! from (exp-data/data1))
     ;(a/>!! from (exp-data/data2))

@@ -16,7 +16,18 @@
 (defonce *grouped-by-state-team (atom {}))
 (defonce *grouped-by-state-player (atom {}))
 
-(def pipeline-xf
+(defn pipeline-xf
+  "Equivalent SQL join:
+
+  SELECT * FROM zsxf.team t
+  JOIN zsxf.player p ON t.id = p.team
+  WHERE t.id = 20
+---
+  AND t.id < 21 AND p.id < 21
+
+  (last two conditions are for testing purposes)
+  "
+  []
   (comp
     (mapcat identity)
     (pxf/branch
@@ -66,7 +77,7 @@
                (map (fn [to-final] (timbre/spy to-final))))]
     (a/pipeline 1
       to
-      pipeline-xf
+      (pipeline-xf)
       from)
     (reset! *state [from to])))
 

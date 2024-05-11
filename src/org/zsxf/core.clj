@@ -59,10 +59,12 @@
        (- y x)))
     +))
 
-(defn integration-xf []
-  (comp
-    (xforms/reductions zs/zset+)
-    (drop 1)))
+(defn integration-xf
+  ([] (integration-xf zs/zset+))
+  ([f]
+   (comp
+     (xforms/reductions f)
+     (drop 1))))
 
 (defn changes-2
   [s]

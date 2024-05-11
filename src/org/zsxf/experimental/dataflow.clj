@@ -29,6 +29,7 @@
           (map identity)
           :team/id
           (comp
+            (dbsp-xf/->where-xf (fn [m] (= 20 (:team/id m))))
             (dbsp-xf/->index-xf :team/id)
             (map (fn [grouped-by-result]
                    (timbre/spy grouped-by-result)
@@ -71,7 +72,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn init []
+(defn init-from-memory []
   (let [[from to] @*state]
     ;(a/>!! from (exp-data/data1))
     ;(a/>!! from (exp-data/data2))
@@ -95,39 +96,6 @@
         [
          {:id 4 :team "A-dupe"}
          ]))))
-
-(comment
-  (set! *print-meta* false)
-  (set! *print-meta* true)
-  (reset-pipeline)
-  (init)
-  (clojure.pprint/pprint
-    @*grouped-by-state-team)
-  (clojure.pprint/pprint
-    @*grouped-by-state-player)
-  (clojure.pprint/pprint
-    (zs/join @*grouped-by-state-team @*grouped-by-state-player))
-  (clojure.pprint/pprint
-    @*join-state)
-
-  (init-remove)
-  )
-
-(defn init-from-postgres []
-  (reset-pipeline)
-  (let [[from to] @*state]
-    ;(a/>!! from (exp-data/data1))
-    ;(a/>!! from (exp-data/data2))
-    (run!
-      (fn [zset] (a/>!! from zset))
-      @postgres/*all-teams))
-
-  (let [[from to] @*state]
-    ;(a/>!! from (exp-data/data1))
-    ;(a/>!! from (exp-data/data2))
-    (run!
-      (fn [zset] (a/>!! from zset))
-      @postgres/*all-players)))
 
 (defn init-postgres-queries []
   [
@@ -182,6 +150,40 @@
         @postgres/*db-conn-pool "saberstack.zsxf.player"
         (generate-postgres-data-players idx-multiplier)))
     (range 1 1000)))
+
+
+(defn init-from-postgres []
+  (reset-pipeline)
+  (let [[from to] @*state]
+    ;(a/>!! from (exp-data/data1))
+    ;(a/>!! from (exp-data/data2))
+    (run!
+      (fn [zset] (a/>!! from zset))
+      @postgres/*all-teams))
+
+  (let [[from to] @*state]
+    ;(a/>!! from (exp-data/data1))
+    ;(a/>!! from (exp-data/data2))
+    (run!
+      (fn [zset] (a/>!! from zset))
+      @postgres/*all-players)))
+
+(comment
+  (set! *print-meta* false)
+  (set! *print-meta* true)
+  (reset-pipeline)
+  (init-from-memory)
+  (clojure.pprint/pprint
+    @*grouped-by-state-team)
+  (clojure.pprint/pprint
+    @*grouped-by-state-player)
+  (clojure.pprint/pprint
+    (zs/join @*grouped-by-state-team @*grouped-by-state-player))
+  (clojure.pprint/pprint
+    @*join-state)
+
+  (init-remove)
+  )
 
 ; Scratch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

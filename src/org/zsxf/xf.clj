@@ -26,7 +26,10 @@
   (xforms/by-key
     kfn
     (fn [m] m)
-    (fn [k ms] {k ms})
+    (fn [k ms]
+      (timbre/spy k)
+      (timbre/spy ms)
+      (if k {k ms} {}))
     (xforms/into #{})))
 
 (defn count-xf

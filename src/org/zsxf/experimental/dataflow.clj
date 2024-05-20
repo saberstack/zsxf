@@ -25,7 +25,7 @@
 ---
   AND t.id < 21 AND p.id < 21
 
-  (last two conditions are for testing purposes)
+  (the last two conditions are for testing purposes)
   "
   []
   (comp

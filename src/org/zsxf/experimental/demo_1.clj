@@ -10,14 +10,15 @@
   Only for demo purpose."
   []
   ;TODO Implement
-  (postgres/init-all-data)
+  (time
+    (postgres/init-all-data))
   (timbre/info "Data refreshed"))
 
 (defn start-refresh-data-task! []
   (tt/start!)
   (when (nil? @*refresh-data-task)
     (reset! *refresh-data-task
-      (tt/every! 2
+      (tt/every! 10
         (bound-fn []
           (refresh-data!))))))
 

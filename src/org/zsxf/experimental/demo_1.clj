@@ -1,5 +1,6 @@
 (ns org.zsxf.experimental.demo-1
   (:require [taoensso.timbre :as timbre]
+            [org.zsxf.jdbc.postgres :as postgres]
             [tea-time.core :as tt]))
 
 (defonce *refresh-data-task (atom nil))
@@ -9,7 +10,8 @@
   Only for demo purpose."
   []
   ;TODO Implement
-  (timbre/info ".."))
+  (postgres/init-all-data)
+  (timbre/info "Data refreshed"))
 
 (defn start-refresh-data-task! []
   (tt/start!)

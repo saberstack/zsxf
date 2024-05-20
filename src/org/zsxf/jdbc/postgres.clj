@@ -61,7 +61,7 @@
     (hsql/format
       {:select [:*]
        :from   [fully-qualified-table-name]
-       :where [:< :id 21]
+       :where [:< :id 22]
        ;:limit 100
        })))
 

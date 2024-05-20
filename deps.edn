@@ -29,5 +29,7 @@
            com.zaxxer/HikariCP                       {:mvn/version "5.1.0"}
            com.github.seancorfield/honeysql          {:mvn/version "2.6.1126"}
            yogthos/config                            {:mvn/version "1.2.0"}
+           tea-time/tea-time                         {:mvn/version "1.0.1"}
+
            }
  :aliases {}}

@@ -1,6 +1,7 @@
 (ns org.zsxf.experimental.demo-1
   (:require [taoensso.timbre :as timbre]
             [org.zsxf.jdbc.postgres :as postgres]
+            [org.zsxf.experimental.dataflow :as xp-dataflow]
             [tea-time.core :as tt]))
 
 (defonce *refresh-data-task (atom nil))
@@ -25,3 +26,8 @@
 (defn cancel-refresh-data-task! []
   (tt/cancel! @*refresh-data-task)
   (reset! *refresh-data-task nil))
+
+
+(defn run-demo! []
+  (postgres/init-all-data)
+  (xp-dataflow/init-from-postgres!))

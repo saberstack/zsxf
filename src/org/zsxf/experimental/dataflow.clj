@@ -33,7 +33,7 @@
     (pxf/branch
       ;:team/id
       (comp
-        (map (fn [m] (timbre/info "team!") m))
+        (map (fn [m] #_(timbre/info "team!") m))
         (map (fn [m] (if (:team/id m) m {})))
         (pxf/cond-branch
           empty?
@@ -43,12 +43,12 @@
             (dbsp-xf/->where-xf (fn [m] (= 20 (:team/id m))))
             (dbsp-xf/->index-xf :team/id)
             (map (fn [grouped-by-result]
-                   (timbre/spy grouped-by-result)
+                   ;(timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-team
                      (fn [m]
                        (zs/indexed-zset+ m grouped-by-result))))))))
       (comp
-        (map (fn [m] (timbre/info "player!") m))
+        (map (fn [m] #_(timbre/info "player!") m))
         (map (fn [m] (if (:player/team m) m {})))
         (pxf/cond-branch
           empty?
@@ -57,24 +57,25 @@
           (comp
             (dbsp-xf/->index-xf :player/team)
             (map (fn [grouped-by-result]
-                   (timbre/spy grouped-by-result)
+                   ;(timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-player
                      (fn [m]
                        (zs/indexed-zset+ m grouped-by-result)))))))))
     ;TODO join indexed-zsets
     (map (fn [j]
-           (timbre/spy j)
+           ;(timbre/spy j)
+           j
            ))))
 
 (defonce *state (atom nil))
 
-(defn reset-pipeline []
+(defn reset-pipeline! []
   (reset! *join-state {})
   (reset! *grouped-by-state-team {})
   (reset! *grouped-by-state-player {})
   (let [from (a/chan 1)
         to   (a/chan (a/sliding-buffer 1)
-               (map (fn [to-final] (timbre/spy to-final))))]
+               (map (fn [to-final] to-final)))]
     (a/pipeline 1
       to
       (pipeline-xf)
@@ -163,26 +164,28 @@
     (range 1 1000)))
 
 
-(defn init-from-postgres []
-  (reset-pipeline)
+(defn init-from-postgres! []
+  (reset-pipeline!)
   (let [[from to] @*state]
     ;(a/>!! from (exp-data/data1))
     ;(a/>!! from (exp-data/data2))
     (run!
       (fn [zset] (a/>!! from zset))
-      @postgres/*all-teams))
+      (take 10000000
+        @postgres/*all-teams)))
 
   (let [[from to] @*state]
     ;(a/>!! from (exp-data/data1))
     ;(a/>!! from (exp-data/data2))
     (run!
       (fn [zset] (a/>!! from zset))
-      @postgres/*all-players)))
+      (take 10000000
+        @postgres/*all-players))))
 
 (comment
   (set! *print-meta* false)
   (set! *print-meta* true)
-  (reset-pipeline)
+  (reset-pipeline!)
   (init-from-memory)
   (clojure.pprint/pprint
     @*grouped-by-state-team)

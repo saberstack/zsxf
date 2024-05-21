@@ -18,7 +18,7 @@
   "Save DBSP result"
   [an-atom]
   (map (fn [dbsp-result]
-         (timbre/spy dbsp-result)
+         ;(timbre/spy dbsp-result)
          (reset! an-atom dbsp-result))))
 
 (defn ->index-xf
@@ -27,8 +27,8 @@
     kfn
     (fn [m] m)
     (fn [k ms]
-      (timbre/spy k)
-      (timbre/spy ms)
+      ;(timbre/spy k)
+      ;(timbre/spy ms)
       (if k {k ms} {}))
     (xforms/into #{})))
 

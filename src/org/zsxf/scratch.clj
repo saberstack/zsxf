@@ -1,5 +1,7 @@
 (ns org.zsxf.scratch
   (:require [clojure.core.async :as a]
+            [net.cgrand.xforms :as xforms]
+            [tech.v3.dataset :as ds]
             [datascript.core :as d]))
 
 (defonce *conn (atom nil))
@@ -171,3 +173,22 @@
                                       #datascript/Datom[2 :aka "neo" 536870914 true]],
                           :tempids   {-1 2, :db/current-tx 536870914},
                           :tx-meta   nil})
+
+(comment
+  (let [one   #{1}
+        two   #{2}
+        three #{3}
+        four  #{4}
+        five  #{5}
+        m     {1 one 2 two 3 three 4 four 5 five}
+        kfn   (comp odd? first)
+        m'    (transduce (xforms/by-key kfn (xforms/into #{})) conj {} m)
+        five' (second (some (fn [x] (when (= 5 (first x)) x)) (m' true)))]
+    (identical? five' five)))
+
+(comment
+  ;complex column names seem to be supported
+  (ds/row-map
+    (ds/->>dataset [{#{:a 1} 1} {#{:a 2} 2}])
+    (fn [row] (update-vals row inc)))
+  )

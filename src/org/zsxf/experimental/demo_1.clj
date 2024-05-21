@@ -35,3 +35,8 @@
   (apply +
     (vals
       (update-vals @xp-dataflow/*grouped-by-state-player count))))
+
+(defn count-grouped-by-state-player-2 []
+  (apply +
+    (vals
+      (update-vals @xp-dataflow/*grouped-by-state-player-2 count))))

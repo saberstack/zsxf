@@ -176,6 +176,8 @@
   ([indexed-zset]
    (indexed-zset+ indexed-zset {}))
   ([indexed-zset-1 indexed-zset-2]
+   ;TODO merge-with is likely slow and needs optimization
+   ; https://github.com/bsless/clj-fast
    (merge-with zset+ indexed-zset-1 indexed-zset-2)))
 
 (defn join

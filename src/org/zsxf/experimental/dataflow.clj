@@ -15,6 +15,9 @@
 (defonce *grouped-by-state-team (atom {}))
 (defonce *grouped-by-state-player (atom {}))
 
+(defonce *grouped-by-state-team-2 (ref {}))
+(defonce *grouped-by-state-player-2 (ref {}))
+
 (defn pipeline-xf
   "Equivalent SQL join:
 
@@ -41,11 +44,20 @@
           (comp
             (dbsp-xf/->where-xf (fn [m] (= 20 (:team/id m))))
             (dbsp-xf/->index-xf :team/id)
+            ;atoms
+            #_(map (fn [grouped-by-result]
+                     ;(timbre/spy grouped-by-result)
+                     (swap! *grouped-by-state-team
+                       (fn [m]
+                         (zs/indexed-zset+ m grouped-by-result)))))
+            ;refs
             (map (fn [grouped-by-result]
                    ;(timbre/spy grouped-by-result)
-                   (swap! *grouped-by-state-team
-                     (fn [m]
-                       (zs/indexed-zset+ m grouped-by-result))))))))
+                   (dosync
+                     (commute *grouped-by-state-team-2
+                       (fn [m]
+                         (zs/indexed-zset+ m grouped-by-result))))))
+            )))
       (comp
         (map (fn [m] #_(timbre/info "player!") m))
         (map (fn [m] (if (:player/team m) m {})))
@@ -55,11 +67,19 @@
           :player/team
           (comp
             (dbsp-xf/->index-xf :player/team)
-            (map (fn [grouped-by-result]
+            ;atoms
+            #_(map (fn [grouped-by-result]
                    ;(timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-player
                      (fn [m]
-                       (zs/indexed-zset+ m grouped-by-result)))))))))
+                       (zs/indexed-zset+ m grouped-by-result)))))
+            ;refs
+            (map (fn [grouped-by-result]
+                   ;(timbre/spy grouped-by-result)
+                   (dosync
+                     (commute *grouped-by-state-player-2
+                       (fn [m]
+                         (zs/indexed-zset+ m grouped-by-result))))))))))
     ;TODO join indexed-zsets
     (map (fn [j]
            ;(timbre/spy j)
@@ -69,13 +89,17 @@
 (defonce *state (atom nil))
 
 (defn reset-pipeline! []
-  (reset! *join-state {})
   (reset! *grouped-by-state-team {})
   (reset! *grouped-by-state-player {})
+
+  (dosync
+    (alter *grouped-by-state-player-2 (fn [_] {}))
+    (alter *grouped-by-state-team-2 (fn [_] {})))
+
   (let [from (a/chan 1)
         to   (a/chan (a/sliding-buffer 1)
                (map (fn [to-final] to-final)))]
-    (a/pipeline 1
+    (a/pipeline 5
       to
       (pipeline-xf)
       from)
@@ -123,17 +147,17 @@
   (set! *print-meta* true)
   (reset-pipeline!)
   (init-from-memory)
-  (clojure.pprint/pprint
-    @*grouped-by-state-team)
-  (clojure.pprint/pprint
-    @*grouped-by-state-player)
-  (clojure.pprint/pprint
-    (zs/join @*grouped-by-state-team @*grouped-by-state-player))
-  (clojure.pprint/pprint
-    @*join-state)
+  @*grouped-by-state-team
+  @*grouped-by-state-player
+  (zs/join @*grouped-by-state-team @*grouped-by-state-player)
 
-  (init-remove)
+  @*grouped-by-state-team-2
+  @*grouped-by-state-player-2
+
+  (zs/join @*grouped-by-state-team-2 @*grouped-by-state-player-2)
+
   )
+
 
 ; Scratch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

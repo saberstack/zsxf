@@ -9,7 +9,6 @@
             [pangloss.transducers :as pxf]
             [taoensso.timbre :as timbre]
             [tech.v3.dataset :as ds]
-            [org.zsxf.experimental.data :as exp-data]
             [clj-java-decompiler.core :as decompiler]))
 
 (defonce *join-state (atom {}))
@@ -86,8 +85,6 @@
 
 (defn init-from-memory []
   (let [[from to] @*state]
-    ;(a/>!! from (exp-data/data1))
-    ;(a/>!! from (exp-data/data2))
     (a/>!! from
       (zs/zset
         [
@@ -101,8 +98,6 @@
 
 (defn init-remove []
   (let [[from to] @*state]
-    ;(a/>!! from (exp-data/data1))
-    ;(a/>!! from (exp-data/data2))
     (a/>!! from
       (zs/zset-negative
         [
@@ -167,16 +162,12 @@
 (defn init-from-postgres! []
   (reset-pipeline!)
   (let [[from to] @*state]
-    ;(a/>!! from (exp-data/data1))
-    ;(a/>!! from (exp-data/data2))
     (run!
       (fn [zset] (a/>!! from zset))
       (take 10000000
         @postgres/*all-teams)))
 
   (let [[from to] @*state]
-    ;(a/>!! from (exp-data/data1))
-    ;(a/>!! from (exp-data/data2))
     (run!
       (fn [zset] (a/>!! from zset))
       (take 10000000

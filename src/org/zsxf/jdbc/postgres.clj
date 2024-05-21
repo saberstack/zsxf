@@ -8,6 +8,7 @@
    [next.jdbc.result-set :as rs]
    [next.jdbc.prepare :as prepare]
    [org.zsxf.zset :as zs]
+   [org.zsxf.util :as util]
    [taoensso.timbre :as timbre])
   (:import (clojure.lang IReduceInit)
            (com.zaxxer.hikari HikariDataSource)))
@@ -69,7 +70,8 @@
   (map (fn [row] (zs/zset #{row})))) ; transform a table row into a zset
 
 (defn reducible->chan
-  "Take the rows from the reducible and put them onto a channel. Return the channel."
+  "Take the rows from the reducible and put them onto a channel. Return the channel.
+  Useful for streaming a large number of rows from a database table without out-of-memory errors."
   [^IReduceInit reducible ch]
   (future
     (transduce
@@ -98,7 +100,7 @@
       (a/reduce
         conj
         []
-        (reducible->chan
+        (util/reducible->chan
           (table->reducible @*db-conn-pool :saberstack.zsxf.team)
           (a/chan 1 table-row->zset-xf)))))
 
@@ -107,7 +109,7 @@
       (a/reduce
         conj
         []
-        (reducible->chan
+        (util/reducible->chan
           (table->reducible @*db-conn-pool :saberstack.zsxf.player)
           (a/chan 1 table-row->zset-xf)))))
   :done)
@@ -119,7 +121,7 @@
     (a/reduce
       conj
       []
-      (reducible->chan
+      (util/reducible->chan
         (table->reducible @*db-conn-pool :saberstack.zsxf.team)
         (a/chan 42 #_(a/dropping-buffer 10) (map (fn [row] row))))))
 
@@ -127,6 +129,6 @@
     (a/reduce
       conj
       []
-      (reducible->chan
+      (util/reducible->chan
         (table->reducible @*db-conn-pool :saberstack.zsxf.player)
         (a/chan 42 #_(a/dropping-buffer 10) (map (fn [row] row)))))))

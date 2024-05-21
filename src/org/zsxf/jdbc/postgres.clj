@@ -10,8 +10,7 @@
    [org.zsxf.zset :as zs]
    [org.zsxf.util :as util]
    [taoensso.timbre :as timbre])
-  (:import (clojure.lang IReduceInit)
-           (com.zaxxer.hikari HikariDataSource)))
+  (:import (com.zaxxer.hikari HikariDataSource)))
 
 (defonce *db-conn-pool (atom nil))
 
@@ -56,39 +55,17 @@
   (init-db-connection-pool *db-conn-pool)
   (check-db-connection-pool! @*db-conn-pool))
 
-
 (defn table->reducible [db-conn fully-qualified-table-name]
   (jdbc/plan db-conn
     (hsql/format
       {:select [:*]
        :from   [fully-qualified-table-name]
-       :where [:<= :id 100000]
+       :where [:<= :id 1000000]
        })))
 
-
 (def table-row->zset-xf
-  (map (fn [row] (zs/zset #{row})))) ; transform a table row into a zset
-
-(defn reducible->chan
-  "Take the rows from the reducible and put them onto a channel. Return the channel.
-  Useful for streaming a large number of rows from a database table without out-of-memory errors."
-  [^IReduceInit reducible ch]
-  (future
-    (transduce
-      (comp
-        (map (fn [row] (a/>!! ch row)))
-        ; halt when the receiving channel is full
-        ; WARNING: core.async sliding-buffer and dropping-buffer will not halt
-        ;(halt-when nil?)
-        )
-      conj
-      []
-      (eduction
-        (map (fn [row] (into {} row)))
-        reducible))
-    (a/close! ch))
-  ;return channel
-  ch)
+  ; transform a table row into a zset
+  (map (fn [row] (zs/zset #{row}))))
 
 (defonce *all-teams (atom nil))
 (defonce *all-players (atom nil))
@@ -103,7 +80,6 @@
         (util/reducible->chan
           (table->reducible @*db-conn-pool :saberstack.zsxf.team)
           (a/chan 1 table-row->zset-xf)))))
-
   (reset! *all-players
     (a/<!!
       (a/reduce

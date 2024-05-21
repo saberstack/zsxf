@@ -27,7 +27,11 @@
   (tt/cancel! @*refresh-data-task)
   (reset! *refresh-data-task nil))
 
-
 (defn run-demo! []
   (postgres/init-all-data)
   (xp-dataflow/init-from-postgres!))
+
+(defn count-grouped-by-state-player []
+  (apply +
+    (vals
+      (update-vals @xp-dataflow/*grouped-by-state-player count))))

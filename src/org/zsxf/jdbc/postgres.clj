@@ -56,7 +56,7 @@
   (check-db-connection-pool! @*db-conn-pool))
 
 
-(defn table->zsets [db-conn fully-qualified-table-name]
+(defn table->reducible [db-conn fully-qualified-table-name]
   (jdbc/plan db-conn
     (hsql/format
       {:select [:*]
@@ -100,7 +100,7 @@
         conj
         []
         (reducible->chan
-          (table->zsets @*db-conn-pool :saberstack.zsxf.team)
+          (table->reducible @*db-conn-pool :saberstack.zsxf.team)
           (a/chan 1 table-row->zset-xf)))))
 
   (reset! *all-players
@@ -109,7 +109,7 @@
         conj
         []
         (reducible->chan
-          (table->zsets @*db-conn-pool :saberstack.zsxf.player)
+          (table->reducible @*db-conn-pool :saberstack.zsxf.player)
           (a/chan 1 table-row->zset-xf)))))
   :done)
 
@@ -121,7 +121,7 @@
       conj
       []
       (reducible->chan
-        (table->zsets @*db-conn-pool :saberstack.zsxf.team)
+        (table->reducible @*db-conn-pool :saberstack.zsxf.team)
         (a/chan 42 #_(a/dropping-buffer 10) (map (fn [row] row))))))
 
   (a/<!!
@@ -129,5 +129,5 @@
       conj
       []
       (reducible->chan
-        (table->zsets @*db-conn-pool :saberstack.zsxf.player)
+        (table->reducible @*db-conn-pool :saberstack.zsxf.player)
         (a/chan 42 #_(a/dropping-buffer 10) (map (fn [row] row)))))))

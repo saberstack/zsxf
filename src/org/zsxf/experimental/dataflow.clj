@@ -42,13 +42,13 @@
             (dbsp-xf/->where-xf (fn [m] (= 20 (:team/id m))))
             (dbsp-xf/->index-xf :team/id)
             ;atoms
-            #_(map (fn [grouped-by-result]
+            (map (fn [grouped-by-result]
                      ;(timbre/spy grouped-by-result)
                      (swap! *grouped-by-state-team
                        (fn [m]
                          (zs/indexed-zset+ m grouped-by-result)))))
             ;refs
-            (map (fn [grouped-by-result]
+            #_(map (fn [grouped-by-result]
                    ;(timbre/spy grouped-by-result)
                    (dosync
                      (commute *grouped-by-state-team-2
@@ -65,13 +65,13 @@
           (comp
             (dbsp-xf/->index-xf :player/team)
             ;atoms
-            #_(map (fn [grouped-by-result]
+            (map (fn [grouped-by-result]
                    ;(timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-player
                      (fn [m]
                        (zs/indexed-zset+ m grouped-by-result)))))
             ;refs
-            (map (fn [grouped-by-result]
+            #_(map (fn [grouped-by-result]
                    ;(timbre/spy grouped-by-result)
                    (dosync
                      (commute *grouped-by-state-player-2

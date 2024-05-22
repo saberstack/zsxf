@@ -40,3 +40,6 @@
   (apply +
     (vals
       (update-vals @xp-dataflow/*grouped-by-state-player-2 count))))
+
+; init 100,000 rows
+; the refresh data task looks for id > 100,000

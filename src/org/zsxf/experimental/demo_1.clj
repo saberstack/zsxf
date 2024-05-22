@@ -1,5 +1,6 @@
 (ns org.zsxf.experimental.demo-1
-  (:require [taoensso.timbre :as timbre]
+  (:require [org.zsxf.zset :as zs]
+            [taoensso.timbre :as timbre]
             [org.zsxf.jdbc.postgres :as postgres]
             [org.zsxf.experimental.dataflow :as xp-dataflow]
             [tea-time.core :as tt]))
@@ -40,6 +41,11 @@
   (apply +
     (vals
       (update-vals @xp-dataflow/*grouped-by-state-player-2 count))))
+
+(defn count-final-result []
+  (update-vals
+    (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player)
+    count))
 
 ; init 100,000 rows
 ; the refresh data task looks for id > 100,000

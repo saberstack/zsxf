@@ -55,8 +55,12 @@
         (fn [common] common)
         (fn [remove-or-keep commons] [remove-or-keep commons])
         (xforms/into #{})))
-    conj
-    {}
+    (completing
+      (fn [accum item]
+        (conj! accum item))
+      (fn [accum]
+        (persistent! accum)))
+    (transient {})
     commons))
 
 (defn zset+
@@ -76,10 +80,12 @@
          (fn [accum set-item]
            (if (zero? (zset-weight set-item))
              ;remove common-remove items
-             (disj accum set-item)
+             (disj! accum set-item)
              ;keep everything else
-             (conj accum set-item))))
-       #{}
+             (conj! accum set-item)))
+         (fn [accum]
+           (persistent! accum)))
+       (transient #{})
        [common-keep
         zset-1
         zset-2

@@ -96,7 +96,7 @@
   (let [from (a/chan 1)
         to   (a/chan (a/sliding-buffer 1)
                (map (fn [to-final] to-final)))]
-    (a/pipeline 5
+    (a/pipeline 3
       to
       (pipeline-xf)
       from)

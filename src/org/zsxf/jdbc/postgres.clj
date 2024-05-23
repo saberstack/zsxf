@@ -55,12 +55,17 @@
   (init-db-connection-pool *db-conn-pool)
   (check-db-connection-pool! @*db-conn-pool))
 
+
+(defn query->reducible [db-conn query]
+  (jdbc/plan db-conn
+    (hsql/format query)))
+
 (defn table->reducible [db-conn fully-qualified-table-name]
   (jdbc/plan db-conn
     (hsql/format
       {:select [:*]
        :from   [fully-qualified-table-name]
-       :where [:<= :id 1000000]
+       :where  [:<= :id 1000000]
        })))
 
 (def table-row->zset-xf
@@ -78,7 +83,10 @@
         conj
         []
         (util/reducible->chan
-          (table->reducible @*db-conn-pool :saberstack.zsxf.team)
+          (query->reducible @*db-conn-pool
+            {:select [:*]
+             :from   [:saberstack.zsxf.team]
+             :where  [:<= :id 100]})
           (a/chan 1 table-row->zset-xf)))))
   (reset! *all-players
     (a/<!!
@@ -86,9 +94,43 @@
         conj
         []
         (util/reducible->chan
-          (table->reducible @*db-conn-pool :saberstack.zsxf.player)
+          (query->reducible @*db-conn-pool
+            {:select [:*]
+             :from   [:saberstack.zsxf.player]
+             :where  [:<= :id 1000000]})
           (a/chan 1 table-row->zset-xf)))))
   :done)
+
+(defn incremental-data []
+  (init)
+  (let [new-teams   (a/<!!
+                      (a/reduce conj []
+                        (util/reducible->chan
+                          (query->reducible @*db-conn-pool
+                            {:select [:*]
+                             :from   [:saberstack.zsxf.team]
+                             :where  [:> :id 100]})
+                          (a/chan 1 table-row->zset-xf))))
+        new-players (a/<!!
+                      (a/reduce conj []
+                        (util/reducible->chan
+                          (query->reducible @*db-conn-pool
+                            {:select [:*]
+                             :from   [:saberstack.zsxf.player]
+                             :where  [:> :id 1000000]})
+                          (a/chan 1 table-row->zset-xf))))]
+    (timbre/spy new-teams)
+    (timbre/spy new-players)
+
+    (swap! *all-teams
+      (fn [v]
+        (apply conj v new-teams)))
+
+    (swap! *all-players
+      (fn [v]
+        (apply conj v new-players)))
+    {:new-teams   new-teams
+     :new-players new-players}))
 
 (comment
   ;TODO process all-teams and all-players through a join dataflow

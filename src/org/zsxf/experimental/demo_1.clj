@@ -8,7 +8,7 @@
 
 (defonce *refresh-data-task (atom nil))
 
-(defn refresh-data!
+(defn incremental-refresh-data!
   "Auto refresh data from database.
   Only for demo purpose."
   []
@@ -23,7 +23,7 @@
     (reset! *refresh-data-task
       (tt/every! 10
         (bound-fn []
-          (refresh-data!))))))
+          (incremental-refresh-data!))))))
 
 (defn cancel-refresh-data-task! []
   (tt/cancel! @*refresh-data-task)
@@ -52,12 +52,13 @@
   (let [[k v]
         (first
           (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player))]
-    (ds/->dataset
-      (sequence
-        (comp
-          (map merge))
-        (repeat (first k))
-        v))))
+    (time
+      (ds/->dataset
+        (sequence
+          (comp
+            (map merge))
+          (repeat (first k))
+          v)))))
 
 ; init 100,000 rows
 ; the refresh data task looks for id > 100,000

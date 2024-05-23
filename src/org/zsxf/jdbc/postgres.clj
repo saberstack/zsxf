@@ -46,8 +46,7 @@
   "Performs a check on the connection pool by issuing a basic query.
   Used to verify and initialize the pool connection to allow the next SQL query to execute faster."
   [db-conn]
-  (timbre/spy
-    (jdbc/execute! db-conn ["SELECT 1;"])))
+  (jdbc/execute! db-conn ["SELECT 1;"]))
 
 (defn init
   "Initializes the database connection pool and checks the connection."
@@ -105,6 +104,10 @@
 (defonce *incremental-teams (atom #{}))                        ;set of zsets
 (defonce *incremental-players (atom #{}))                          ;set of maps
 
+(defn reset-incremental-data-state! []
+  (reset! *incremental-teams #{})
+  (reset! *incremental-players #{}))
+
 (defn incremental-data []
   (init)
   (let [new-teams   (a/<!!
@@ -125,8 +128,6 @@
                           (a/chan 1 table-row->zset-xf))))
         prev-incremental-players @*incremental-players
         prev-incremental-teams @*incremental-teams]
-    (timbre/spy new-teams)
-    (timbre/spy new-players)
 
     (swap! *incremental-teams
       (fn [s]

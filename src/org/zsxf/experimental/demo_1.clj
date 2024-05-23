@@ -12,10 +12,10 @@
   "Auto refresh data from database.
   Only for demo purpose."
   []
-  ;TODO Implement
-  (time
-    (let [{:keys [new-players new-teams]} (postgres/incremental-data)]
-      (xp-dataflow/incremental-from-postgres (clojure.set/union new-players new-teams)))))
+  (timbre/info "incremental-refresh-data! runnning ...")
+  (let [{:keys [new-players new-teams]} (postgres/incremental-data)]
+    (xp-dataflow/incremental-from-postgres
+      (clojure.set/union new-players new-teams))))
 
 (defn start-refresh-data-task! []
   (tt/start!)
@@ -53,12 +53,23 @@
         (first
           (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player))]
     (time
-      (ds/->dataset
-        (sequence
-          (comp
-            (map merge))
-          (repeat (first k))
-          v)))))
+      (ds/sort-by-column
+        (ds/->dataset
+          (sequence
+            (comp
+              (map merge))
+            (repeat (first k))
+            v))
+        :player/id
+        >
+        ))))
+
+(comment
+  ;postgres deletion PoC
+  (xp-dataflow/incremental-from-postgres
+    (map zs/zset-negate
+      #{#{^#:zset{:w 1} #:player{:id 24975004, :last_name "Player A1", :team 20}}}))
+  )
 
 ; init 100,000 rows
 ; the refresh data task looks for id > 100,000

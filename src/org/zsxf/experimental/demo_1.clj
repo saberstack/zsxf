@@ -14,14 +14,14 @@
   []
   ;TODO Implement
   (time
-    (postgres/init-all-data))
-  (timbre/info "Data refreshed"))
+    (let [{:keys [new-players new-teams]} (postgres/incremental-data)]
+      (xp-dataflow/incremental-from-postgres (clojure.set/union new-players new-teams)))))
 
 (defn start-refresh-data-task! []
   (tt/start!)
   (when (nil? @*refresh-data-task)
     (reset! *refresh-data-task
-      (tt/every! 10
+      (tt/every! 2
         (bound-fn []
           (incremental-refresh-data!))))))
 

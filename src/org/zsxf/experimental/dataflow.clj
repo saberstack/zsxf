@@ -139,6 +139,12 @@
       (take 10000000
         @postgres/*all-players))))
 
+(defn incremental-from-postgres [zsets]
+  (let [[from _to] @*state]
+    (run!
+      (fn [zset] (a/>!! from zset))
+      zsets)))
+
 (comment
   (set! *print-meta* false)
   (set! *print-meta* true)

@@ -60,7 +60,7 @@
     (hsql/format
       {:select [:*]
        :from   [fully-qualified-table-name]
-       :where [:<= :id 200000]
+       :where [:<= :id 1000000]
        })))
 
 (def table-row->zset-xf

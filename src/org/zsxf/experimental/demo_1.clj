@@ -3,7 +3,8 @@
             [taoensso.timbre :as timbre]
             [org.zsxf.jdbc.postgres :as postgres]
             [org.zsxf.experimental.dataflow :as xp-dataflow]
-            [tea-time.core :as tt]))
+            [tea-time.core :as tt]
+            [tech.v3.dataset :as ds]))
 
 (defonce *refresh-data-task (atom nil))
 
@@ -46,6 +47,17 @@
   (update-vals
     (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player)
     count))
+
+(defn final-result []
+  (let [[k v]
+        (first
+          (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player))]
+    (ds/->dataset
+      (sequence
+        (comp
+          (map merge))
+        (repeat (first k))
+        v))))
 
 ; init 100,000 rows
 ; the refresh data task looks for id > 100,000

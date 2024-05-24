@@ -1,8 +1,5 @@
 (ns org.zsxf.experimental.dataflow
   (:require [clojure.core.async :as a]
-            [honey.sql :as hsql]
-            [net.cgrand.xforms :as xforms]
-            [next.jdbc :as jdbc]
             [org.zsxf.jdbc.postgres :as postgres]
             [org.zsxf.xf :as dbsp-xf]
             [org.zsxf.zset :as zs]
@@ -21,10 +18,6 @@
   SELECT * FROM zsxf.team t
   JOIN zsxf.player p ON t.id = p.team
   WHERE t.id = 20
----
-  AND t.id < 21 AND p.id < 21
-
-  (the last two conditions are for testing purposes)
   "
   []
   (comp
@@ -43,17 +36,9 @@
             (dbsp-xf/->index-xf :team/id)
             ;atoms
             (map (fn [grouped-by-result]
-                     ;(timbre/spy grouped-by-result)
                      (swap! *grouped-by-state-team
                        (fn [m]
                          (zs/indexed-zset+ m grouped-by-result)))))
-            ;refs
-            #_(map (fn [grouped-by-result]
-                   ;(timbre/spy grouped-by-result)
-                   (dosync
-                     (commute *grouped-by-state-team-2
-                       (fn [m]
-                         (zs/indexed-zset+ m grouped-by-result))))))
             )))
       (comp
         (map (fn [m] #_(timbre/info "player!") m))
@@ -66,22 +51,10 @@
             (dbsp-xf/->index-xf :player/team)
             ;atoms
             (map (fn [grouped-by-result]
-                   ;(timbre/spy grouped-by-result)
                    (swap! *grouped-by-state-player
                      (fn [m]
-                       (zs/indexed-zset+ m grouped-by-result)))))
-            ;refs
-            #_(map (fn [grouped-by-result]
-                   ;(timbre/spy grouped-by-result)
-                   (dosync
-                     (commute *grouped-by-state-player-2
-                       (fn [m]
-                         (zs/indexed-zset+ m grouped-by-result))))))))))
-    ;TODO join indexed-zsets
-    (map (fn [j]
-           ;(timbre/spy j)
-           j
-           ))))
+                       (zs/indexed-zset+ m grouped-by-result)))))))))
+    (map (fn [j] j))))
 
 (defonce *state (atom nil))
 

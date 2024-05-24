@@ -25,7 +25,7 @@
     (pxf/branch
       ;:team/id
       (comp
-        (map (fn [m] #_(timbre/info "team!") m))
+        (map (fn [m] m))
         (map (fn [m] (if (:team/id m) m {})))
         (pxf/cond-branch
           empty?
@@ -41,7 +41,7 @@
                          (zs/indexed-zset+ m grouped-by-result)))))
             )))
       (comp
-        (map (fn [m] #_(timbre/info "player!") m))
+        (map (fn [m] m))
         (map (fn [m] (if (:player/team m) m {})))
         (pxf/cond-branch
           empty?

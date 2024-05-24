@@ -57,17 +57,16 @@
   (let [[k v]
         (first
           (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player))]
-    (time
-      (ds/sort-by-column
-        (ds/->dataset
-          (sequence
-            (comp
-              (map merge))
-            (repeat (first k))
-            v))
-        :player/id
-        >
-        ))))
+    (ds/sort-by-column
+      (ds/->dataset
+        (sequence
+          (comp
+            (map merge))
+          (repeat (first k))
+          v))
+      :player/id
+      >
+      )))
 
 (comment
   ;postgres deletion PoC

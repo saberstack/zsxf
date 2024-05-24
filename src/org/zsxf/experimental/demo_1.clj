@@ -12,10 +12,15 @@
   "Auto refresh data from database.
   Only for demo purpose."
   []
-  (timbre/info "incremental-refresh-data! runnning ...")
-  (let [{:keys [new-players new-teams]} (postgres/incremental-data)]
+  (let [{:keys [new-players new-teams deleted-players deleted-teams]} (postgres/incremental-data)]
+    ;(timbre/spy [new-players new-teams])
+    ;(timbre/spy [deleted-players deleted-teams])
     (xp-dataflow/incremental-from-postgres
-      (clojure.set/union new-players new-teams))))
+      (clojure.set/union
+        new-players
+        new-teams
+        (into #{} (map zs/zset-negate) deleted-players)
+        (into #{} (map zs/zset-negate) deleted-teams)))))
 
 (defn start-refresh-data-task! []
   (tt/start!)

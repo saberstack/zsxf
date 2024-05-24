@@ -101,8 +101,8 @@
   :done)
 
 ; demo only
-(defonce *incremental-teams (atom #{}))                        ;set of zsets
-(defonce *incremental-players (atom #{}))                          ;set of maps
+(defonce *incremental-teams (atom #{}))                     ;set of zsets
+(defonce *incremental-players (atom #{}))                   ;set of maps
 
 (defn reset-incremental-data-state! []
   (reset! *incremental-teams #{})
@@ -110,35 +110,37 @@
 
 (defn incremental-data []
   (init)
-  (let [new-teams   (a/<!!
-                      (a/reduce conj #{}
-                        (util/reducible->chan
-                          (query->reducible @*db-conn-pool
-                            {:select [:*]
-                             :from   [:saberstack.zsxf.team]
-                             :where  [:> :id 100]})
-                          (a/chan 1 table-row->zset-xf))))
-        new-players (a/<!!
-                      (a/reduce conj #{}
-                        (util/reducible->chan
-                          (query->reducible @*db-conn-pool
-                            {:select [:*]
-                             :from   [:saberstack.zsxf.player]
-                             :where  [:> :id 1000000]})
-                          (a/chan 1 table-row->zset-xf))))
+  (let [current-teams            (a/<!!
+                                   (a/reduce conj #{}
+                                     (util/reducible->chan
+                                       (query->reducible @*db-conn-pool
+                                         {:select [:*]
+                                          :from   [:saberstack.zsxf.team]
+                                          :where  [:> :id 100]})
+                                       (a/chan 1 table-row->zset-xf))))
+        current-players              (a/<!!
+                                   (a/reduce conj #{}
+                                     (util/reducible->chan
+                                       (query->reducible @*db-conn-pool
+                                         {:select [:*]
+                                          :from   [:saberstack.zsxf.player]
+                                          :where  [:> :id 1000000]})
+                                       (a/chan 1 table-row->zset-xf))))
         prev-incremental-players @*incremental-players
-        prev-incremental-teams @*incremental-teams]
+        prev-incremental-teams   @*incremental-teams]
 
     (swap! *incremental-teams
-      (fn [s]
-        (clojure.set/union new-teams s)))
+      (fn [_s]
+        current-teams))
 
     (swap! *incremental-players
-      (fn [s]
-        (clojure.set/union new-players s)))
+      (fn [_s]
+        current-players))
 
-    {:new-teams   (clojure.set/difference @*incremental-teams prev-incremental-teams)
-     :new-players (clojure.set/difference @*incremental-players prev-incremental-players)}))
+    {:new-teams       (clojure.set/difference @*incremental-teams prev-incremental-teams)
+     :new-players     (clojure.set/difference @*incremental-players prev-incremental-players)
+     :deleted-players (clojure.set/difference prev-incremental-players @*incremental-players)
+     :deleted-teams   (clojure.set/difference prev-incremental-teams @*incremental-teams)}))
 
 (comment
   ;TODO process all-teams and all-players through a join dataflow

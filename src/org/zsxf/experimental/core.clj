@@ -21,13 +21,10 @@
      WHERE t.id = 20")
 
   ;incremental computation example
-  (xp-dataflow/incremental-computation-pipeline-xf)
+  (xp-dataflow/incremental-computation-xf)
 
   ;; ... library
 
   ; 2. view the results
   (xp-demo/final-result)
-  )
-
-(defn view-result []
   )

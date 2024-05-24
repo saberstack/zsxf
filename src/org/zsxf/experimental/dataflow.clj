@@ -12,7 +12,7 @@
 (defonce *grouped-by-state-team-2 (ref {}))
 (defonce *grouped-by-state-player-2 (ref {}))
 
-(defn incremental-computation-pipeline-xf
+(defn incremental-computation-xf
   "Equivalent SQL join:
 
   SELECT * FROM zsxf.team t
@@ -71,7 +71,7 @@
                (map (fn [to-final] to-final)))]
     (a/pipeline 3
       to
-      (incremental-computation-pipeline-xf)
+      (incremental-computation-xf)
       from)
     (reset! *state [from to])))
 

@@ -12,6 +12,9 @@
 (defonce *grouped-by-state-team-2 (ref {}))
 (defonce *grouped-by-state-player-2 (ref {}))
 
+(defonce *grouped-by-state-team-3 (agent {}))
+(defonce *grouped-by-state-player-3 (agent {}))
+
 (defn incremental-computation-xf
   "Equivalent SQL join:
 
@@ -39,6 +42,11 @@
                      (swap! *grouped-by-state-team
                        (fn [m]
                          (zs/indexed-zset+ m grouped-by-result)))))
+            ;agents
+            #_(map (fn [grouped-by-result]
+                   (send *grouped-by-state-team-3
+                     (fn [m]
+                       (zs/indexed-zset+ m grouped-by-result)))))
             )))
       (comp
         (map (fn [m] m))
@@ -53,6 +61,11 @@
             (map (fn [grouped-by-result]
                    (swap! *grouped-by-state-player
                      (fn [m]
+                       (zs/indexed-zset+ m grouped-by-result)))))
+            ;agents
+            #_(map (fn [grouped-by-result]
+                   (send *grouped-by-state-player-3
+                     (fn [m]
                        (zs/indexed-zset+ m grouped-by-result)))))))))
     (map (fn [j] j))))
 
@@ -61,15 +74,17 @@
 (defn reset-pipeline! []
   (reset! *grouped-by-state-team {})
   (reset! *grouped-by-state-player {})
+  (send *grouped-by-state-team-3 (fn [_] {}))
+  (send *grouped-by-state-player-3 (fn [_] {}))
 
   (dosync
     (alter *grouped-by-state-player-2 (fn [_] {}))
     (alter *grouped-by-state-team-2 (fn [_] {})))
 
-  (let [from (a/chan 1)
+  (let [from (a/chan 42)
         to   (a/chan (a/sliding-buffer 1)
                (map (fn [to-final] to-final)))]
-    (a/pipeline 3
+    (a/pipeline 6
       to
       (incremental-computation-xf)
       from)
@@ -98,19 +113,33 @@
          {:id 4 :team "A-dupe"}
          ]))))
 
+(def partition-postgres-data-xf
+  (comp
+    (partition-all 30000)
+    (map (fn [sets]
+           (apply clojure.set/union sets)))))
+
 (defn init-from-postgres! []
   (reset-pipeline!)
   (let [[from to] @*state]
     (run!
       (fn [zset] (a/>!! from zset))
-      (take 10000000
-        @postgres/*all-teams)))
+      ;partitioned
+      (sequence
+        partition-postgres-data-xf
+        @postgres/*all-teams)
+      ;non-partitioned
+      #_@postgres/*all-teams))
 
   (let [[from to] @*state]
     (run!
       (fn [zset] (a/>!! from zset))
-      (take 10000000
-        @postgres/*all-players))))
+      ;partitioned
+      (sequence
+        partition-postgres-data-xf
+        @postgres/*all-players)
+      ;non-partitioned
+      #_@postgres/*all-players)))
 
 (defn incremental-from-postgres [zsets]
   (let [[from _to] @*state]

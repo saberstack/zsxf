@@ -48,6 +48,11 @@
     (vals
       (update-vals @xp-dataflow/*grouped-by-state-player-2 count))))
 
+(defn count-grouped-by-state-player-3 []
+  (apply +
+    (vals
+      (update-vals @xp-dataflow/*grouped-by-state-player-3 count))))
+
 (defn count-final-result []
   (update-vals
     (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player)
@@ -77,3 +82,16 @@
 
 ; init 100,000 rows
 ; the refresh data task looks for id > 100,000
+
+(comment
+  (do
+    (time
+      (doall
+        (sequence
+          (comp
+            ;(take 100)
+            (partition-all 1000)
+            (map (fn [sets]
+                   (apply clojure.set/union sets))))
+          @postgres/*all-players)))
+    :done))

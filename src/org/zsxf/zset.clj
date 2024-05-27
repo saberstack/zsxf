@@ -18,8 +18,7 @@
 (defn zset-weight
   "Get the weight of a zset item, typically a map"
   [m]
-  (timbre/spy
-    (:zset/w (meta m))))
+  (:zset/w (meta m)))
 
 (defn eligible-coll?
   "Check if a collection is eligible to be a zset item.
@@ -70,7 +69,8 @@
   ([zset-1]
    (zset+ zset-1 (zset #{})))
   ([zset-1 zset-2]
-   {:pre [(zset? zset-1) (zset? zset-2)]}
+   ;{:pre [(zset? zset-1) (zset? zset-2)]}
+
    (let [commons (clojure.set/intersection zset-1 zset-2)
          {:keys [common-keep common-remove]} (common-keep-and-remove zset-1 zset-2 commons)]
      (transduce
@@ -112,7 +112,7 @@
   ([coll xf]
    (zset coll xf 1))
   ([coll xf weight]
-   {:pre [(s/valid? (s/coll-of eligible-coll?) coll)]}
+   ;{:pre [(s/valid? (s/coll-of eligible-coll?) coll)]}
    (transduce
      xf
      (fn

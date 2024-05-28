@@ -84,7 +84,7 @@
   (let [from (a/chan 42)
         to   (a/chan (a/sliding-buffer 1)
                (map (fn [to-final] to-final)))]
-    (a/pipeline 6
+    (a/pipeline 3
       to
       (incremental-computation-xf)
       from)
@@ -115,7 +115,7 @@
 
 (def partition-postgres-data-xf
   (comp
-    (partition-all 30000)
+    (partition-all 50000)
     (map (fn [sets]
            (apply clojure.set/union sets)))))
 

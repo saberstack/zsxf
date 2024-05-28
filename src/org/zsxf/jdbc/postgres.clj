@@ -86,7 +86,7 @@
             {:select [:*]
              :from   [:saberstack.zsxf.team]
              :where  [:<= :id 100]})
-          (a/chan 1 table-row->zset-xf)))))
+          (a/chan 42 table-row->zset-xf)))))
   (reset! *all-players
     (a/<!!
       (a/reduce
@@ -97,7 +97,7 @@
             {:select [:*]
              :from   [:saberstack.zsxf.player]
              :where  [:<= :id 1000000]})
-          (a/chan 1 table-row->zset-xf)))))
+          (a/chan 42 table-row->zset-xf)))))
   :done)
 
 ; demo only
@@ -117,7 +117,7 @@
                                          {:select [:*]
                                           :from   [:saberstack.zsxf.team]
                                           :where  [:> :id 100]})
-                                       (a/chan 1 table-row->zset-xf))))
+                                       (a/chan 42 table-row->zset-xf))))
         current-players              (a/<!!
                                    (a/reduce conj #{}
                                      (util/reducible->chan
@@ -125,7 +125,7 @@
                                          {:select [:*]
                                           :from   [:saberstack.zsxf.player]
                                           :where  [:> :id 1000000]})
-                                       (a/chan 1 table-row->zset-xf))))
+                                       (a/chan 42 table-row->zset-xf))))
         prev-incremental-players @*incremental-players
         prev-incremental-teams   @*incremental-teams]
 

@@ -35,7 +35,8 @@
   (reset! *refresh-data-task nil))
 
 (defn run-demo! []
-  ;(postgres/init-all-data)
+  (time
+    (postgres/init-all-data))
   (time
     (xp-dataflow/init-from-postgres!)))
 

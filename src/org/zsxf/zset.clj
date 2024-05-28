@@ -244,8 +244,8 @@
 
 (comment
 
-  (zset [{:a 1} {:b 2}])                                  ;ok
-  (zset [{:a 1} 1])                                       ;error
+  (zset [{:a 1} {:b 2}])                                    ;ok
+  (zset [{:a 1} 1])                                         ;error
 
 
   (let [zset (zset [{:name "Alice" :age 940} {:name "Bob" :age 950} {:name "Bob" :age 950}])]

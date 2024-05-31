@@ -28,5 +28,14 @@
 (defn datalog->zsxf [query]
   (datalog->zsxf-matcher query))
 
+(def my-rule (p/rule '(+ ??x) (p/sub (- ??x))))
+
 (comment
-  (datalog->zsxf example-datalog-query-1))
+  (datalog->zsxf example-datalog-query-1)
+
+  (let [x 2
+        y '[a b c d]]
+    (p/sub (* (+ ??y) ?x)))
+
+
+  (my-rule '(+ 2 5 1)))

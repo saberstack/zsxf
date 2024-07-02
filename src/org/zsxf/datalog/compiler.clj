@@ -16,8 +16,22 @@
   '[:find (pull ?exercise-set-eids [:db/id])
     :in $ ?workout-uuid
     :where
+    [?person-eid :person/country "USA"]
+    [?person-eid :person/workouts ?workout-eid]
     [?workout-eid :workout/uuid ?workout-uuid]
     [?exercise-set-eids :exercise-set/workout ?workout-eid]])
+
+
+(comment
+  (and
+    [?person-eid :person/country "USA"]
+    [?person-eid :person/workouts
+     [?workout-eid :workout/uuid ?workout-uuid]])
+
+  [?exercise-set-eids :exercise-set/workout
+   [?workout-eid :workout/uuid ?workout-uuid]]
+
+  )
 
 
 (def datalog->zsxf-matcher
@@ -39,3 +53,8 @@
 
 
   (my-rule '(+ 2 5 1)))
+
+;TODO
+
+; 1. convert datalog query to a DAG
+; 2. ...

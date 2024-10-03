@@ -13,7 +13,7 @@
   (let [eavt (:eavt db)]
     (transduce
      (comp
-      (partition-by (fn [[e a v tx :as datom]] tx))
+      (partition-by (fn [[_ _ _ tx :as datom]] tx))
       (map tx->zset))
      conj
      []

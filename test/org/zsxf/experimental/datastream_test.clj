@@ -45,3 +45,18 @@
           changes (subject/db->stream-of-changes test-db)]
       (is (= [#{"Alaska" "Arizona"}]
              (map state-names changes))))))
+
+(deftest test-listening
+  (testing "Additions to the database after listening are notified"
+    (let [results (atom [])
+          tx-count (atom 0)
+          db (empty-db)
+          listened-key (d/listen! db (fn [tx-report] (swap! tx-count inc) (swap! results conj tx-report)))
+          _  (doseq [datoms [(take 3 states-data/statoms)
+                            [[:db.fn/retractEntity 1]]]]
+              (d/transact! db datoms))]
+      (def duck @tx-count)
+      (def chicken @results)
+      (def tuna listened-key)
+      (def goose db)
+      (is true))))

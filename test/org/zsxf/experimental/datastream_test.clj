@@ -6,7 +6,7 @@
    [org.zsxf.test-data.states :as states-data]
    [org.zsxf.experimental.datastream :as subject]))
 
-(def empty-db (partial d/create-conn states-data/schema))
+(def empty-db-conn (partial d/create-conn states-data/schema))
 
 (defn- state-names [zset-of-datoms]
   (->> zset-of-datoms
@@ -16,7 +16,7 @@
 
 (deftest populate-existing-db
   (testing "A single transaction comes through as a single zset"
-    (let [test-db (d/db-with @(empty-db) (take 3 states-data/statoms))
+    (let [test-db (d/db-with @(empty-db-conn) (take 3 states-data/statoms))
           changes (subject/db->stream-of-changes test-db)
           first-zset (first changes)]
       (is (= 1 (count changes)))
@@ -25,7 +25,7 @@
   (testing "Multiple transactions come through as multiple zsets"
     (let [test-db (reduce
                    d/db-with
-                   @(empty-db)
+                   @(empty-db-conn)
                    (->> states-data/statoms
                         (take 7)
                         (partition-all 3)))
@@ -39,7 +39,7 @@
   (testing "Retractions don't show up as transactions in themselves"
     (let [test-db (reduce
                     d/db-with
-                    @(empty-db)
+                    @(empty-db-conn)
                     [(take 3 states-data/statoms)
                      [[:db.fn/retractEntity 1]]])
           changes (subject/db->stream-of-changes test-db)]
@@ -47,16 +47,29 @@
              (map state-names changes))))))
 
 (deftest test-listening
-  (testing "Additions to the database after listening are notified"
-    (let [results (atom [])
-          tx-count (atom 0)
-          db (empty-db)
-          listened-key (d/listen! db (fn [tx-report] (swap! tx-count inc) (swap! results conj tx-report)))
-          _  (doseq [datoms [(take 3 states-data/statoms)
-                            [[:db.fn/retractEntity 1]]]]
-              (d/transact! db datoms))]
-      (def duck @tx-count)
-      (def chicken @results)
-      (def tuna listened-key)
-      (def goose db)
-      (is true))))
+  (let [results (atom [])
+        db-conn (empty-db-conn)]
+    (do (subject/listen-datom-stream db-conn results)
+        (d/transact! db-conn (take 3 states-data/statoms))
+        (d/transact! db-conn [[:db.fn/retractEntity 1]]))
+    (testing "Each transaction comes as a zset, including retractions."
+      (are [x f] (= x (map f @results))
+        (testing "Two transactions; Alabama twice."
+          [#{"Alabama" "Alaska" "Arizona"} #{"Alabama"}]) state-names
+        (testing "The second transaction has negative weights."
+          [#{1} #{-1}]) #(set (map zset/zset-weight %))))
+    (testing "Subsequent retractions cancel earlier additions."
+      (let [combined-zset (reduce zset/zset+ @results)]
+        (is (= #{"Alaska" "Arizona"} (state-names combined-zset)))
+        (is (= #{1} (set (map zset/zset-weight combined-zset))))))
+    (testing "Building a new immutable db from the original one will evade listening."
+      (reset! results [])
+      (let [new-db (d/db-with @db-conn (take 1 states-data/statoms))]
+        (is (= 0 (count @results)))
+        (is (= [#{"Alaska" "Arizona"} #{"Alabama"}]
+               (map state-names (subject/db->stream-of-changes new-db))))))
+    (testing "But subsequent transactions on the original connection will be heard."
+      (d/transact! db-conn (->> states-data/statoms (drop 3) (take 1)) )
+      (is (= 1 (count @results)))
+      (is (= [#{"Alaska" "Arizona"} #{"Arkansas"}]
+             (map state-names (subject/db->stream-of-changes @db-conn)))))))

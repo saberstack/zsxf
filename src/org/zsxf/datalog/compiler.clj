@@ -14,7 +14,7 @@
 
 (def example-datalog-query-1
   '[:find (pull ?exercise-set-eids [:db/id])
-    :in $ ?workout-uuid
+    :in $ ?workout-uuid ?person-eid
     :where
     [?person-eid :person/country "USA"]
     [?person-eid :person/workouts ?workout-eid]
@@ -24,11 +24,11 @@
 
 (comment
   (and
-    [?person-eid :person/country "USA"]
-    [?person-eid :person/workouts
-     [?workout-eid :workout/uuid ?workout-uuid]])
+      [?person-eid :person/country "USA"]
+      [?person-eid :person/workouts
+       [?workout-eid :workout/uuid ?workout-uuid]])
 
-  [?exercise-set-eids :exercise-set/workout
+    [?exercise-set-eids :exercise-set/workout
    [?workout-eid :workout/uuid ?workout-uuid]]
 
   )

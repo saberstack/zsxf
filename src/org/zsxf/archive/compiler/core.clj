@@ -53,14 +53,30 @@
                  :db/valueType   :db.type/ref}
    :player/name {:db/cardinality :db.cardinality/one}})
 
+(defonce *conn-1 (atom nil))
+
+(defonce *transactions-1 (atom []))
+
 (defn init-datascript! []
-  (let [schema {:aka {:db/cardinality :db.cardinality/many}}
-        conn   (d/create-conn schema)
-        tx     (d/transact! conn [{:team/name "A"}])]
+  (let [conn (d/create-conn schema-teams-players-1)
+        _    (reset! *conn-1 conn)
+        tx  (d/transact! conn
+               [{:db/id     -42
+                 :team/name "A"}
+                {:player/name "Alice"
+                 :player/team -42}])
+        _ (swap! *transactions-1 conj tx)]
     (d/q '[:find ?team-name
            :where
            [_ :team/name ?team-name]]
       @conn)))
+
+;;Usage
+(comment
+  (init-datascript!)
+  @@*conn-1
+  @*transactions-1
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Question:

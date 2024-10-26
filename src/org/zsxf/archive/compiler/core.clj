@@ -53,6 +53,15 @@
 
    ])
 
+; Explore change cases:
+
+;; :team/name changes name from "A" to "B"
+;;; Expected: the result set becomes #{}
+
+;; :player/team changes (player goes to another team)
+;;; Expected: the player disappears from the result set, #{["A"]} is now #{}
+
+
 ;; Example start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def schema-teams-players-1
@@ -90,6 +99,7 @@
   (init-datascript!)
   @@*conn-1
   @*transactions-1
+  (mapv :tx-data @*transactions-1)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

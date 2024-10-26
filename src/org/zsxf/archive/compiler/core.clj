@@ -1,4 +1,5 @@
-(ns org.zsxf.archive.compiler.core)
+(ns org.zsxf.archive.compiler.core
+  (:require [datascript.core :as d]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; STEP 1: Obtain a stream of database changes (transaction data) from DataScript
@@ -24,11 +25,42 @@
    [#_?workout-eid [?person-eid :person/workouts ?workout-eid] :workout/uuid ?workout-uuid]])
 
 
-[?exercise-set-eids :exercise-set/workout
- [[?person-eid :person/workouts ?workout-eid] :workout/uuid ?workout-uuid]]
+(comment
+  [?exercise-set-eids :exercise-set/workout
+   [[?person-eid :person/workouts ?workout-eid] :workout/uuid ?workout-uuid]]
 
-[?person-eid :person/workouts
- [[?exercise-set-eids :exercise-set/workout ?workout-eid] :workout/uuid ?workout-uuid]]
+  [?person-eid :person/workouts
+   [[?exercise-set-eids :exercise-set/workout ?workout-eid] :workout/uuid ?workout-uuid]])
+
+(comment
+  (def teams-and-players-query-2
+    '[:find ?player-name
+      :in ?team-name
+      :where
+      [?team-eid :team/name ?team-name]
+      [_ :player/team ?team-eid]
+      [_ :player/name ?player-name]]))
+
+(comment
+  [[_ :player/name ?player-name]
+   [?player-eid :player/team #_?team-eid
+    [?team-eid :team/name "Team A"]]])
+
+(def schema-teams-players-1
+  {:team/name   {:db/cardinality :db.cardinality/one
+                 :db/unique      :db.unique/identity}
+   :player/team {:db/cardinality :db.cardinality/one
+                 :db/valueType   :db.type/ref}
+   :player/name {:db/cardinality :db.cardinality/one}})
+
+(defn init-datascript! []
+  (let [schema {:aka {:db/cardinality :db.cardinality/many}}
+        conn   (d/create-conn schema)
+        tx     (d/transact! conn [{:team/name "A"}])]
+    (d/q '[:find ?team-name
+           :where
+           [_ :team/name ?team-name]]
+      @conn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Question:

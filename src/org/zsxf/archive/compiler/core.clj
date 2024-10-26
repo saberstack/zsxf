@@ -42,10 +42,19 @@
       [_ :player/name ?player-name]]))
 
 (comment
-  [[_ :player/name ?player-name]
-   [?player-eid :player/team #_?team-eid
-    [?team-eid :team/name "Team A"]]])
+  [;?player-name is what we are looking for
 
+   [_ :player/name ?player-name]
+
+   [?player-eid :player/team
+    ;... "points" to ?team-eid
+    ; ?team-name gets resolved from context (aka the query :in clause)
+    [?team-eid :team/name "A"]]
+
+   ])
+
+;; Example start
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def schema-teams-players-1
   {:team/name   {:db/cardinality :db.cardinality/one
                  :db/unique      :db.unique/identity}
@@ -57,15 +66,20 @@
 
 (defonce *transactions-1 (atom []))
 
+(defn clear-state! []
+  (reset! *conn-1 nil)
+  (reset! *transactions-1 []))
+
 (defn init-datascript! []
+  (clear-state!)                                            ;clear REPL state
   (let [conn (d/create-conn schema-teams-players-1)
         _    (reset! *conn-1 conn)
-        tx  (d/transact! conn
+        tx   (d/transact! conn
                [{:db/id     -42
                  :team/name "A"}
                 {:player/name "Alice"
                  :player/team -42}])
-        _ (swap! *transactions-1 conj tx)]
+        _    (swap! *transactions-1 conj tx)]
     (d/q '[:find ?team-name
            :where
            [_ :team/name ?team-name]]

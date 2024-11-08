@@ -38,13 +38,13 @@
       :in ?team-name
       :where
       [?team-eid :team/name ?team-name]
-      [_ :player/team ?team-eid]
-      [_ :player/name ?player-name]]))
+      [?player-eid :player/team ?team-eid]
+      [?player-eid :player/name ?player-name]]))
 
 (comment
   [;?player-name is what we are looking for
 
-   [_ :player/name ?player-name]
+   [?player-eid :player/name ?player-name]
 
    [?player-eid :player/team
     ;... "points" to ?team-eid
@@ -87,16 +87,29 @@
                [{:db/id     -42
                  :team/name "A"}
                 {:player/name "Alice"
-                 :player/team -42}])
+                 :player/team -42}
+                {:player/name "Bob"}])
         _    (swap! *transactions-1 conj tx)]
     (d/q '[:find ?team-name
            :where
            [_ :team/name ?team-name]]
       @conn)))
 
+(defn run-query-1 []
+  (d/q
+    '[:find ?player-name
+      :in $ ?team-name
+      :where
+      [?team-eid :team/name ?team-name]
+      [?player-eid :player/team ?team-eid]
+      [?player-eid :player/name ?player-name]]
+    @@*conn-1
+    "A"))
+
 ;;Usage
 (comment
   (init-datascript!)
+  (run-query-1)
   @@*conn-1
   @*transactions-1
   (mapv :tx-data @*transactions-1)

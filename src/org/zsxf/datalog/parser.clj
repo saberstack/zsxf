@@ -23,3 +23,25 @@
   (where-clauses-independent?
     '[[?e :name ?v]
       [?e2 :name ?v2]]))
+
+(defn variable?
+  "Returns true if x is a variable per https://docs.datomic.com/query/query-data-reference.html#variables
+   False otherwise."
+  [x]
+  (and (symbol? x) (clojure.string/starts-with? (str x) "?")))
+
+(defn where-clauses-to-graph [clauses]
+  ;TODO WIP
+  (transduce
+    (comp
+      (map identity))
+    conj
+    []
+    clauses))
+
+; Usage example
+(comment
+  (where-clauses-to-graph
+    '[[?team-eid :team/name ?team-name]
+      [?player-eid :player/team ?team-eid]
+      [?player-eid :player/name ?player-name]]))

@@ -1,4 +1,4 @@
-(ns org.zsxf.archive.compiler.core
+(ns org.zsxf.compiler.core
   (:require [datascript.core :as d]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41,10 +41,9 @@
       [?player-eid :player/team ?team-eid]
       [?player-eid :player/name ?player-name]]))
 
+;variant 1
 (comment
-  [;?player-name is what we are looking for
-
-   [?player-eid :player/name ?player-name]
+  [[?player-eid :player/name ?player-name]                  ;?player-name is what we are looking for
 
    [?player-eid :player/team
     ;... "points" to ?team-eid
@@ -52,6 +51,14 @@
     [?team-eid :team/name "A"]]
 
    ])
+
+;variant 2
+(comment
+  [[?player-eid :player/name ?player-name]                  ;?player-name is what we are looking for
+
+   [[?player-eid :player/name ?player-name]
+    [[?player-eid :player/team ?team-eid]
+     :team/name "A"]]])
 
 ; Explore change cases:
 

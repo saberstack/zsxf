@@ -26,7 +26,7 @@
   (comp
     (mapcat identity)
     (pxf/branch
-      ;:team/id
+      ;:team/id (or :team/name, a unique attribute)
       (comp
         (map (fn [m] m))
         (map (fn [m] (if (:team/id m) m {})))
@@ -49,6 +49,7 @@
                        (zs/indexed-zset+ m grouped-by-result)))))
             )))
       (comp
+        ;:player/team
         (map (fn [m] m))
         (map (fn [m] (if (:player/team m) m {})))
         (pxf/cond-branch

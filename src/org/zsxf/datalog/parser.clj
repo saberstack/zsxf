@@ -1,5 +1,7 @@
 (ns org.zsxf.datalog.parser
-  (:require [clojure.set :as set])
+  (:require [clojure.set :as set]
+            [taoensso.timbre :as timbre]
+            [medley.core :as medley])
   (:import (clojure.lang IPersistentVector)))
 
 
@@ -31,13 +33,18 @@
   (and (symbol? x) (clojure.string/starts-with? (str x) "?")))
 
 (defn where-clauses-to-graph [clauses]
-  ;TODO WIP
-  (transduce
-    (comp
-      (map identity))
-    conj
-    []
-    clauses))
+  (let [clauses-set (into #{} clauses)]
+    (transduce
+      (comp
+        (map (fn [clause]
+               (let [[e a v] clause]
+                 (if (variable? v)
+                   (let [result (medley/find-first (fn [[e _a _v]] (= e v)) clauses-set)]
+                     (if result (conj (pop clause) result) clause))
+                   clause)))))
+      conj
+      []
+      clauses)))
 
 ; Usage example
 (comment

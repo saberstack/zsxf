@@ -37,12 +37,18 @@
     (map identity)
     (completing
       (fn [accum clause]
-        (conj accum
-          (let [[e _a _v] clause]
-            (if (variable? e)
-              (let [result (medley/find-first (fn [[_e _a v]] (= e v)) clauses)]
-                (if result (conj (pop result) clause) clause))
-              clause)))))
+        (let [[e _a _v] clause
+              ;TODO make intention behind conj? more clear
+              [ref-found? clause]
+              (if (variable? e)
+                (let [result (medley/find-first (fn [[_e _a v]] (= e v)) clauses)]
+                  (if result
+                    [true (conj (pop result) clause)]      ;return
+                    [false clause]))                         ;return
+                [false clause])]                             ;return
+          (if ref-found?
+            (conj accum clause)
+            accum))))
     []
     clauses))
 

@@ -63,11 +63,7 @@
                    (swap! *grouped-by-state-player
                      (fn [m]
                        (zs/indexed-zset+ m grouped-by-result)))))
-            ;agents
-            #_(map (fn [grouped-by-result]
-                   (send *grouped-by-state-player-3
-                     (fn [m]
-                       (zs/indexed-zset+ m grouped-by-result)))))))))
+            ))))
     (map (fn [j] j))))
 
 (defonce *state (atom nil))

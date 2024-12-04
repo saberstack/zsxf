@@ -9,7 +9,9 @@
 (defonce index-1-atom (atom {}))
 (defonce index-2-atom (atom {}))
 
-(defn init []
+(defn init
+  "This is scratch code, to be deleted"
+  []
   (let [join-chan     (a/chan 2
                         (comp
                           (partition-all 2)

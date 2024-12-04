@@ -33,22 +33,23 @@
   (and (symbol? x) (clojure.string/starts-with? (str x) "?")))
 
 (defn where-clauses-to-graph [clauses]
-  (let [clauses-set (into #{} clauses)]
-    (transduce
-      (comp
-        (map (fn [clause]
-               (let [[e a v] clause]
-                 (if (variable? v)
-                   (let [result (medley/find-first (fn [[e _a _v]] (= e v)) clauses-set)]
-                     (if result (conj (pop clause) result) clause))
-                   clause)))))
-      conj
-      []
-      clauses)))
+  (transduce
+    (map identity)
+    (completing
+      (fn [accum clause]
+        (conj accum
+          (let [[e _a _v] clause]
+            (if (variable? e)
+              (let [result (medley/find-first (fn [[_e _a v]] (= e v)) clauses)]
+                (if result (conj (pop result) clause) clause))
+              clause)))))
+    []
+    clauses))
 
 ; Usage example
 (comment
   (where-clauses-to-graph
     '[[?team-eid :team/name ?team-name]
       [?player-eid :player/team ?team-eid]
-      [?player-eid :player/name ?player-name]]))
+      [?player-eid :player/name ?player-name]
+      ]))

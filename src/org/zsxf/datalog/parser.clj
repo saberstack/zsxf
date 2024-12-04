@@ -46,9 +46,11 @@
                     [true (conj (pop result) clause)]      ;return
                     [false clause]))                         ;return
                 [false clause])]                             ;return
-          (if ref-found?
+          #_(if ref-found?
             (conj accum clause)
-            accum))))
+            accum)
+          ;TODO exclude already used clauses
+          (conj accum clause))))
     []
     clauses))
 

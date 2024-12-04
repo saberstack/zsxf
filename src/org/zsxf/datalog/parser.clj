@@ -32,28 +32,43 @@
   [x]
   (and (symbol? x) (clojure.string/starts-with? (str x) "?")))
 
+(defn find-ref-clause
+  "Returns a clause or nil if not found"
+  [variable clauses]
+  (medley/find-first (fn [[_e _a v]] (= variable v)) clauses))
+
 (defn- where-clauses-to-graph-impl [^IPersistentVector dag ^IPersistentSet clauses]
   (let [[e _a _v :as clause] (first clauses)]
     (if clause
       ;clause found, build DAG
       (if (variable? e)
-        (let [ref-clause (medley/find-first (fn [[_e _a v]] (= e v)) clauses)
+        (let [ref-clause (find-ref-clause e clauses)
               dag'       (conj dag
                            (if ref-clause
                              (conj (pop ref-clause) clause)
                              clause))]
-          (where-clauses-to-graph-impl dag' (disj clauses ref-clause clause))))
+          (where-clauses-to-graph-impl dag' (disj clauses ref-clause clause)))
+        ;no variable found
+        (where-clauses-to-graph-impl (conj dag clause) (disj clauses clause)))
       ;stop recursion and return
       dag)))
 
 (defn where-clauses-to-graph [clauses]
-  (where-clauses-to-graph-impl [] (set clauses)))
+  (where-clauses-to-graph-impl [] (timbre/spy (set clauses))))
 
 ; Usage example
 (comment
-  (clojure.pprint/pprint
-    (where-clauses-to-graph
-      '[[?team-eid :team/name ?team-name]
-        [?player-eid :player/team ?team-eid]
-        [?player-eid :player/name ?player-name]
-        ])))
+  (where-clauses-to-graph
+    '[[?team-eid :team/name ?team-name]
+      [?player-eid :player/team ?team-eid]
+      [?player-eid :player/name ?player-name]
+      ])
+
+  (where-clauses-to-graph
+    '[[?team-eid :team/name ?team-name]
+      [?player-eid :player/team ?team-eid]
+
+      [?player-eid :player/team ?team-eid2]
+      [?team-eid2 :team/name ?team-name]
+
+      ]))

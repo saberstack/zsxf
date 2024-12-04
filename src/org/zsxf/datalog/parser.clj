@@ -2,7 +2,7 @@
   (:require [clojure.set :as set]
             [taoensso.timbre :as timbre]
             [medley.core :as medley])
-  (:import (clojure.lang IPersistentVector)))
+  (:import (clojure.lang IPersistentSet IPersistentVector)))
 
 
 (defn where-clauses-independent? [clauses]
@@ -32,32 +32,28 @@
   [x]
   (and (symbol? x) (clojure.string/starts-with? (str x) "?")))
 
+(defn- where-clauses-to-graph-impl [^IPersistentVector dag ^IPersistentSet clauses]
+  (let [[e _a _v :as clause] (first clauses)]
+    (if clause
+      ;clause found, build DAG
+      (if (variable? e)
+        (let [ref-clause (medley/find-first (fn [[_e _a v]] (= e v)) clauses)
+              dag'       (conj dag
+                           (if ref-clause
+                             (conj (pop ref-clause) clause)
+                             clause))]
+          (where-clauses-to-graph-impl dag' (disj clauses ref-clause clause))))
+      ;stop recursion and return
+      dag)))
+
 (defn where-clauses-to-graph [clauses]
-  (transduce
-    (map identity)
-    (completing
-      (fn [accum clause]
-        (let [[e _a _v] clause
-              ;TODO make intention behind conj? more clear
-              [ref-found? clause]
-              (if (variable? e)
-                (let [result (medley/find-first (fn [[_e _a v]] (= e v)) clauses)]
-                  (if result
-                    [true (conj (pop result) clause)]      ;return
-                    [false clause]))                         ;return
-                [false clause])]                             ;return
-          #_(if ref-found?
-            (conj accum clause)
-            accum)
-          ;TODO exclude already used clauses
-          (conj accum clause))))
-    []
-    clauses))
+  (where-clauses-to-graph-impl [] (set clauses)))
 
 ; Usage example
 (comment
-  (where-clauses-to-graph
-    '[[?team-eid :team/name ?team-name]
-      [?player-eid :player/team ?team-eid]
-      [?player-eid :player/name ?player-name]
-      ]))
+  (clojure.pprint/pprint
+    (where-clauses-to-graph
+      '[[?team-eid :team/name ?team-name]
+        [?player-eid :player/team ?team-eid]
+        [?player-eid :player/name ?player-name]
+        ])))

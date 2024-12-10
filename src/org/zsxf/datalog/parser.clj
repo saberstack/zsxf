@@ -74,13 +74,9 @@
           (let [prev-used-clauses (get accum :used-clauses)
                 next-used-clauses (clojure.set/union prev-used-clauses used-clauses)]
             (-> accum
-              (update :graph (fn [graph] (if (contains? next-used-clauses clause)
-                                           ;graph stays the same, clause has been nested in another clause
-                                           graph
-                                           ;else, build the graph
-                                           (conj graph clause))))
+              (update :graph (fn [graph] (apply disj (conj graph clause) next-used-clauses)))
               (assoc :used-clauses next-used-clauses)))))
-      {:graph []
+      {:graph        #{}
        :used-clauses #{}}
       clauses)))
 

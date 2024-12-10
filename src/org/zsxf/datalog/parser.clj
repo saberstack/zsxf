@@ -37,24 +37,52 @@
   [variable clauses]
   (medley/find-first (fn [[_e _a v]] (= variable v)) clauses))
 
-(defn- where-clauses-to-graph-impl [^IPersistentVector dag ^IPersistentSet clauses]
-  (let [[e _a _v :as clause] (first clauses)]
-    (if clause
-      ;clause found, build DAG
-      (if (variable? e)
-        (let [ref-clause (find-ref-clause e clauses)
-              dag'       (conj dag
-                           (if ref-clause
-                             (conj (pop ref-clause) clause)
-                             clause))]
-          (where-clauses-to-graph-impl dag' (disj clauses ref-clause clause)))
-        ;no variable found
-        (where-clauses-to-graph-impl (conj dag clause) (disj clauses clause)))
-      ;stop recursion and return
-      dag)))
+(defn nest-clauses [ref-clause clause]
+  (conj (pop ref-clause) clause))
+
+(defn where-clauses-to-nested-clauses
+  ([^IPersistentVector clause ^IPersistentSet all-clauses]
+   (where-clauses-to-nested-clauses clause all-clauses #{}))
+  ([^IPersistentVector clause ^IPersistentSet all-clauses ^IPersistentSet used-clauses]
+   (let [[e _a _v :as clause] clause]
+     (if (variable? e)
+       (let [ref-clause (find-ref-clause e all-clauses)]
+         (if ref-clause
+           ;recursion
+           (trampoline where-clauses-to-nested-clauses (nest-clauses ref-clause clause) all-clauses (conj used-clauses ref-clause))
+           ;return
+           {:clause clause :used-clauses used-clauses}))
+       ;no variable found
+       {:clause clause :used-clauses used-clauses}))))
+
+; Usage example
+(comment
+  (where-clauses-to-nested-clauses
+    '[?team-eid :team/name ?team-name]
+    '[[?team-eid :team/name ?team-name]
+      [?player-eid :player/team ?team-eid]
+      [?player-eid :player/name ?player-name]
+      [?z :a/b ?player-eid]
+      ]))
 
 (defn where-clauses-to-graph [clauses]
-  (where-clauses-to-graph-impl [] (timbre/spy (set clauses))))
+  (let [all-clauses (set clauses)]
+    (transduce
+      (map (fn [clause] (where-clauses-to-nested-clauses clause all-clauses)))
+      (completing
+        (fn [accum {:keys [clause used-clauses] :as _item}]
+          (let [prev-used-clauses (get accum :used-clauses)
+                next-used-clauses (clojure.set/union prev-used-clauses used-clauses)]
+            (-> accum
+              (update :graph (fn [graph] (if (contains? next-used-clauses clause)
+                                           ;graph stays the same, clause has been nested in another clause
+                                           graph
+                                           ;else, build the graph
+                                           (conj graph clause))))
+              (assoc :used-clauses next-used-clauses)))))
+      {:graph []
+       :used-clauses #{}}
+      clauses)))
 
 ; Usage example
 (comment

@@ -97,4 +97,11 @@
       [?player-eid :player/team ?team-eid2]
       [?team-eid2 :team/name ?team-name]
 
-      ]))
+      ])
+
+  (where-clauses-to-graph
+    '[[?a :b ?c]
+      [?c :d ?e]
+
+      [?q :r ?s]
+      [?s :t ?u]]))

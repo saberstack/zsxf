@@ -65,7 +65,9 @@
       [?z :a/b ?player-eid]
       ]))
 
-(defn where-clauses-to-graph [clauses]
+(defn where-clauses-to-graph
+  "Converts a set of where clauses to a graph."
+  [clauses]
   (let [all-clauses (set clauses)]
     (transduce
       (map (fn [clause] (where-clauses-to-nested-clauses clause all-clauses)))

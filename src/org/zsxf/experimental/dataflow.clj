@@ -40,14 +40,7 @@
             ;atoms
             (map (fn [grouped-by-result]
                      (swap! *grouped-by-state-team
-                       (fn [m]
-                         (zs/indexed-zset+ m grouped-by-result)))))
-            ;agents
-            #_(map (fn [grouped-by-result]
-                   (send *grouped-by-state-team-3
-                     (fn [m]
-                       (zs/indexed-zset+ m grouped-by-result)))))
-            )))
+                       (fn [m] (zs/indexed-zset+ m grouped-by-result))))))))
       (comp
         ;:player/team
         (map (fn [m] m))
@@ -61,9 +54,7 @@
             ;atoms
             (map (fn [grouped-by-result]
                    (swap! *grouped-by-state-player
-                     (fn [m]
-                       (zs/indexed-zset+ m grouped-by-result)))))
-            ))))
+                     (fn [m] (zs/indexed-zset+ m grouped-by-result)))))))))
     (map (fn [j] j))))
 
 (defonce *state (atom nil))

@@ -86,9 +86,7 @@
 (comment
   (where-clauses-to-graph
     '[[?team-eid :team/name ?team-name]
-      [?player-eid :player/team ?team-eid]
-      [?player-eid :player/name ?player-name]
-      ])
+      [?player-eid :player/team ?team-eid]])
 
   (where-clauses-to-graph
     '[[?team-eid :team/name ?team-name]

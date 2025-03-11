@@ -35,7 +35,7 @@
           (map identity)
           :team/id
           (comp
-            (dbsp-xf/->where-xf (fn [m] (= 20 (:team/id m))))
+            ;(dbsp-xf/->where-xf (fn [m] (= 20 (:team/id m))))
             (dbsp-xf/->index-xf :team/id)
             ;atoms
             (map (fn [grouped-by-result]
@@ -85,12 +85,12 @@
     (a/>!! from
       (zs/zset
         [
-         ;{:team/id 3 :team/name "T3"}
+         {:team/id 4 :team/name "T3"}
          {:id 4 :team "A-dupe"}
-         ;{:id 5 :team "B"}
-         ;{:player-name "BP" :player/team 5}
+         {:id 5 :team "B"}
+         {:player-name "BP" :player/team 5}
          {:player-name "A1" :player/team 4}
-         ;{:player-name "A2" :player/team 4}
+         {:player-name "A2" :player/team 4}
          ]))))
 
 (defn init-remove []

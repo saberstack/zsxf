@@ -26,7 +26,7 @@
   [coll]
   (if (map-entry? coll)
     false
-    (coll? coll?)))
+    (coll? coll)))
 
 (s/def ::zset (s/and
                 (s/coll-of coll?)

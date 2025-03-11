@@ -22,7 +22,7 @@
 
 (defn eligible-coll?
   "Check if a collection is eligible to be a zset item.
-  All collections of collections are eligible except collections of map entries"
+  All collections are eligible except map entries."
   [coll]
   (if (map-entry? coll)
     false

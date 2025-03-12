@@ -1,5 +1,6 @@
 (ns org.zsxf.experimental.dataflow
   (:require [clojure.core.async :as a]
+            [net.cgrand.xforms :as xforms]
             [org.zsxf.jdbc.postgres :as postgres]
             [org.zsxf.xf :as dbsp-xf]
             [org.zsxf.zset :as zs]
@@ -25,37 +26,98 @@
   []
   (comp
     (mapcat identity)
+    (map (fn [current-value]
+           (timbre/spy current-value)))
     (pxf/branch
       ;:team/id (or :team/name, a unique attribute)
+      ;branch
       (comp
-        (map (fn [m] m))
+        (map (fn [branch-m] (timbre/spy branch-m)))
         (map (fn [m] (if (:team/id m) m {})))
+        (map (fn [branch-m] (timbre/spy branch-m)))
         (pxf/cond-branch
-          empty?
-          (map identity)
           :team/id
           (comp
             ;(dbsp-xf/->where-xf (fn [m] (= 20 (:team/id m))))
             (dbsp-xf/->index-xf :team/id)
             ;atoms
             (map (fn [grouped-by-result]
-                     (swap! *grouped-by-state-team
-                       (fn [m] (zs/indexed-zset+ m grouped-by-result))))))))
+                   (swap! *grouped-by-state-team
+                     (fn [m] (zs/indexed-zset+ m grouped-by-result)))
+                   (timbre/spy
+                     grouped-by-result))))))
+      ;branch
       (comp
         ;:player/team
-        (map (fn [m] m))
+        (map (fn [branch-m] (timbre/spy branch-m)))
         (map (fn [m] (if (:player/team m) m {})))
+        (map (fn [branch-m] (timbre/spy branch-m)))
         (pxf/cond-branch
-          empty?
-          (map identity)
           :player/team
           (comp
             (dbsp-xf/->index-xf :player/team)
             ;atoms
             (map (fn [grouped-by-result]
                    (swap! *grouped-by-state-player
-                     (fn [m] (zs/indexed-zset+ m grouped-by-result)))))))))
-    (map (fn [j] j))))
+                     (fn [m] (zs/indexed-zset+ m grouped-by-result)))
+                   (timbre/spy grouped-by-result)))))))
+    (map (fn [branch-result] (timbre/spy branch-result)))
+    (map (fn [join-output]
+           ;(timbre/spy [(count join-output) join-output])
+           join-output))
+    ;(xforms/reduce conj [])
+    ))
+
+(defn incremental-computation-xf-2 []
+  (comp
+    (mapcat identity)                                       ;receives a vector representing transaction
+    (mapcat identity)                                       ;receives a zset of maps
+    (pxf/branch
+      ;join branch 1
+      (comp
+        (pxf/cond-branch
+          :team/id
+          (comp
+            (map (fn [m] #{m}))                             ;put each map back into a set so we can zset+ it
+            (xforms/reduce zs/zset+)))                      ;zset+ all the items
+        )
+      ;join branch 2
+      (comp
+        ;:player/team
+        (pxf/cond-branch
+          :player/team
+          (comp
+            (map (fn [m] #{m}))                             ;put each map back into a set so we can zset+ it
+            (xforms/reduce zs/zset+)))                      ;zset+ all the items
+        ))
+    (map (fn [branch-output]
+           ;join diffs for both tables
+           (timbre/spy branch-output)))
+    ))
+
+; At every time step...
+; Streaming incremental join update
+; ΔPlayers ⋈ Teams + ΔPlayers ⋈ ΔTeams + Players ⋈ ΔTeams (update, to be summed with result set)
+; vs...
+; Streaming non-incremental join
+
+(comment
+  ;Delete poc
+  (let [tx-1 (zs/join
+               (zs/index
+                 (zs/zset [{:team/name "T1" :team/id 1}])
+                 :team/id)
+               (zs/index
+                 (zs/zset [{:player/name "P1" :player/team 1}])
+                 :player/team))
+        tx-2 (zs/join
+               (zs/index
+                 (zs/zset [{:team/name "T1" :team/id 1}])
+                 :team/id)
+               (zs/index
+                 (zs/zset-negative [{:player/name "P1" :player/team 1}])
+                 :player/team))]
+    (zs/indexed-zset+ tx-1 tx-2)))
 
 (defonce *state (atom nil))
 
@@ -71,7 +133,8 @@
 
   (let [from (a/chan 42)
         to   (a/chan (a/sliding-buffer 1)
-               (map (fn [to-final] to-final)))]
+               (map (fn [to-final]
+                      (timbre/spy to-final))))]
     (a/pipeline 3
       to
       (incremental-computation-xf)
@@ -80,25 +143,44 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+#_(defn init-from-memory []
+    (let [[from to] @*state]
+      (a/>!! from
+        (zs/zset
+          [
+           {:team/id 4 :team/name "T3"}
+           {:player-name "BP" :player/team 5}
+           {:player-name "A1" :player/team 4}
+           {:player-name "A2" :player/team 4}
+           ]))))
+
 (defn init-from-memory []
   (let [[from to] @*state]
     (a/>!! from
       (zs/zset
-        [
-         {:team/id 4 :team/name "T3"}
-         {:id 4 :team "A-dupe"}
-         {:id 5 :team "B"}
-         {:player-name "BP" :player/team 5}
-         {:player-name "A1" :player/team 4}
-         {:player-name "A2" :player/team 4}
-         ]))))
+        [{:team/name "T1" :team/id 2}
+         {:player/name "P1" :player/team 1}
+         {:player/name "P2" :player/team 2}
+         {:player/name "P3" :player/team 3}
+         {:player/name "P4" :player/team 4}
+         {:player/name "P5" :player/team 5}
+         {:player/name "P6" :player/team 6}
+         {:player/name "P7" :player/team 2}
+         ]))
+
+    #_(a/>!! from
+        (zs/zset
+          [
+           {:player/name "P3" :player/team 1}
+           {:player/name "P4" :player/team 1}
+           ]))))
 
 (defn init-remove []
   (let [[from to] @*state]
     (a/>!! from
       (zs/zset-negative
         [
-         {:id 4 :team "A-dupe"}
+         #:team{:name "T1", :id 2}
          ]))))
 
 (def partition-postgres-data-xf

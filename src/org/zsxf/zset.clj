@@ -190,11 +190,21 @@
    (apply merge-with zset+ indexed-zset-1 indexed-zset-2 args)))
 
 (defn join
-  "Join two indexed zsets"
+  "Join two indexed zsets as a map relation. Does not multiply zsets."
   [indexed-zset-1 indexed-zset-2]
   (let [commons (clojure.set/intersection (set (keys indexed-zset-1)) (set (keys indexed-zset-2)))]
     (transduce
       (map (fn [common] [(indexed-zset-1 common) (indexed-zset-2 common)]))
+      conj
+      {}
+      commons)))
+
+(defn join-indexed*
+  "Join and multiply two indexed zsets"
+  [indexed-zset-1 indexed-zset-2]
+  (let [commons (clojure.set/intersection (set (keys indexed-zset-1)) (set (keys indexed-zset-2)))]
+    (transduce
+      (map (fn [common] [common (zset* (indexed-zset-1 common) (indexed-zset-2 common))]))
       conj
       {}
       commons)))
@@ -290,6 +300,10 @@
       ^#:zset {:w 5} {:name "Bob"}}
     #{^#:zset {:w 3} {:name "Alice"}
       ^#:zset {:w 5} {:name "Bob"}})
+
+  (zset*
+    (zset [{:name "T" :team/id 1}])
+    (zset [{:name "P" :person/team 1} {:name "P_2" :person/team 1}]))
   )
 
 ;Next

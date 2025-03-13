@@ -109,12 +109,12 @@
              (timbre/spy delta-1)
              (timbre/spy delta-2)
              (zs/indexed-zset+
-               ;ΔPlayers ⋈ Teams
-               (timbre/spy (zs/join delta-1 index-state-2-prev))
-               ;ΔTeams ⋈ Players
-               (timbre/spy (zs/join index-state-1-prev delta-2))
-               ; ΔPlayers ⋈ ΔTeams
-               (timbre/spy (zs/join delta-1 delta-2)))))
+               ;ΔTeam ⋈ Players, new teams?
+               (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev))
+               ;Players ⋈ ΔTeams, new players?
+               (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
+               ; ΔPlayers ⋈ ΔTeams, new both?
+               (timbre/spy (zs/join-indexed* delta-1 delta-2)))))
       (map (fn [final-delta]
              (timbre/spy final-delta)))
       )))
@@ -126,7 +126,6 @@
 
 (defn query-result-set-xf [result-set-state]
   (map (fn [delta]
-         delta
          (swap! result-set-state
            (fn [m] (zs/indexed-zset+ m delta))))))
 
@@ -140,18 +139,20 @@
     ;trivial
     [
      [(zs/zset
-        [{:team/id 1 :team/name "T1"}])]]
+        [{:team/id 1 :team/name "T1"}])]])
+
+  (into []
+    (comp
+      (incremental-computation-xf-2 *index-state-1 *index-state-2)
+      (query-result-set-xf *result-set-state))
     ;more involved
-    #_[
-     ;1
+    [;1
      [(zs/zset
-        [{:team/name "T1" :team/id 1}
-         {:team/name "T2" :team/id 2}
-         {:player/team 1}])
-      (zs/zset-negative
-        [{:team/name "T1" :team/id 1}
-         {:team/name "T2" :team/id 2}
-         {:player/team 1}])]])
+        [{:team/id 1 :team/name "T1"}
+         {:team/id 2 :team/name "T2"}])
+      (zs/zset
+        [{:player/team 1 :player/name "P1"}
+         {:player/team 2 :player/name "P2"}])]])
 
   (into []
     (comp

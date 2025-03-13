@@ -16,6 +16,10 @@
 (defonce *grouped-by-state-team-3 (agent {}))
 (defonce *grouped-by-state-player-3 (agent {}))
 
+(defonce *result-set-state (atom {}))
+(defonce *index-state-1 (atom {}))
+(defonce *index-state-2 (atom {}))
+
 (defn incremental-computation-xf
   "Equivalent SQL join:
 
@@ -68,32 +72,108 @@
     ;(xforms/reduce conj [])
     ))
 
-(defn incremental-computation-xf-2 []
-  (comp
-    (mapcat identity)                                       ;receives a vector representing transaction
-    (mapcat identity)                                       ;receives a zset of maps
-    (pxf/branch
-      ;join branch 1
-      (comp
-        (pxf/cond-branch
-          :team/id
-          (comp
-            (map (fn [m] #{m}))                             ;put each map back into a set so we can zset+ it
-            (xforms/reduce zs/zset+)))                      ;zset+ all the items
-        )
-      ;join branch 2
-      (comp
-        ;:player/team
-        (pxf/cond-branch
-          :player/team
-          (comp
-            (map (fn [m] #{m}))                             ;put each map back into a set so we can zset+ it
-            (xforms/reduce zs/zset+)))                      ;zset+ all the items
-        ))
-    (map (fn [branch-output]
-           ;join diffs for both tables
-           (timbre/spy branch-output)))
-    ))
+(defn incremental-computation-xf-2
+  [index-state-1 index-state-2]
+  (let [index-state-1-prev @index-state-1
+        index-state-2-prev @index-state-2]
+    (comp
+      (mapcat identity)                                     ;receives a vector representing transaction
+      (mapcat identity)                                     ;receives a zset of maps
+      (pxf/branch
+        ;join branch 1
+        (comp
+          (pxf/cond-branch
+            :team/id
+            (comp
+              (map (fn [m] #{m}))                           ;put each map back into a set so we can zset+ it
+              (xforms/reduce zs/zset+)                      ;zset+ all the items
+              (map (fn [zset] (zs/index zset :team/id)))))
+          )
+        ;join branch 2
+        (comp
+          ;:player/team
+          (pxf/cond-branch
+            :player/team
+            (comp
+              (map (fn [m] #{m}))                           ;put each map back into a set so we can zset+ it
+              (xforms/reduce zs/zset+)                      ;zset+ all the items
+              (map (fn [zset] (zs/index zset :player/team)))))
+          ))
+      (partition-all 2)
+      (map (fn [[delta-1 delta-2 :as v]]
+             ;advance player and team indices
+             (swap! index-state-1 (fn [m] (zs/indexed-zset+ m delta-1)))
+             (swap! index-state-2 (fn [m] (zs/indexed-zset+ m delta-2)))
+             v))
+      (map (fn [[delta-1 delta-2]]
+             (timbre/spy delta-1)
+             (timbre/spy delta-2)
+             (zs/indexed-zset+
+               ;ΔPlayers ⋈ Teams
+               (timbre/spy (zs/join delta-1 index-state-2-prev))
+               ;ΔTeams ⋈ Players
+               (timbre/spy (zs/join index-state-1-prev delta-2))
+               ; ΔPlayers ⋈ ΔTeams
+               (timbre/spy (zs/join delta-1 delta-2)))))
+      (map (fn [final-delta]
+             (timbre/spy final-delta)))
+      )))
+
+(defn reset-index-state! []
+  (reset! *index-state-1 {})
+  (reset! *index-state-2 {})
+  (reset! *result-set-state {}))
+
+(defn query-result-set-xf [result-set-state]
+  (map (fn [delta]
+         delta
+         (swap! result-set-state
+           (fn [m] (zs/indexed-zset+ m delta))))))
+
+(comment
+  (reset-index-state!)
+  ;transaction example
+  (into []
+    (comp
+      (incremental-computation-xf-2 *index-state-1 *index-state-2)
+      (query-result-set-xf *result-set-state))
+    ;trivial
+    [
+     [(zs/zset
+        [{:team/id 1 :team/name "T1"}])]]
+    ;more involved
+    #_[
+     ;1
+     [(zs/zset
+        [{:team/name "T1" :team/id 1}
+         {:team/name "T2" :team/id 2}
+         {:player/team 1}])
+      (zs/zset-negative
+        [{:team/name "T1" :team/id 1}
+         {:team/name "T2" :team/id 2}
+         {:player/team 1}])]])
+
+  (into []
+    (comp
+      (incremental-computation-xf-2 *index-state-1 *index-state-2)
+      (query-result-set-xf *result-set-state))
+    ;trivial
+    [
+     [(zs/zset
+        [{:player/team 1 :player/name "P1"}])]])
+
+  (into []
+    (comp
+      (incremental-computation-xf-2 *index-state-1 *index-state-2)
+      (query-result-set-xf *result-set-state))
+    ;trivial
+    [
+     [(zs/zset-negative
+        [{:team/id 1 :team/name "T1"}])]])
+  (do
+    (timbre/spy @*index-state-1)
+    (timbre/spy @*index-state-2)
+    (timbre/spy @*result-set-state)))
 
 ; At every time step...
 ; Streaming incremental join update

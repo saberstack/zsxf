@@ -34,6 +34,7 @@
            pangloss/pattern                          {:git/url "https://github.com/pangloss/pattern"
                                                       :sha     "93fb43e3223bbcfe08c4e37414709021d8a99604"}
            dev.weavejester/medley                    {:mvn/version "1.8.1"}
+           io.replikativ/datalog-parser              {:mvn/version "0.2.30"}
 
            }
  :aliases {}}

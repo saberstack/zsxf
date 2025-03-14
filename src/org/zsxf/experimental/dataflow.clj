@@ -97,8 +97,7 @@
             (comp
               (map (fn [m] #{m}))                           ;put each map back into a set so we can zset+ it
               (xforms/reduce zs/zset+)                      ;zset+ all the items
-              (map (fn [zset] (zs/index zset :player/team)))))
-          ))
+              (map (fn [zset] (zs/index zset :player/team)))))))
       (partition-all 2)
       (map (fn [[delta-1 delta-2 :as v]]
              ;advance player and team indices

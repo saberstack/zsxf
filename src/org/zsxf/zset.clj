@@ -3,8 +3,6 @@
             [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]
-            [org.zsxf.xf :as dbsp-xf]
-            [clojure.math.combinatorics :as comb]
             [taoensso.timbre :as timbre]))
 
 ;How to turn a zset into a proper Clojure collection
@@ -71,7 +69,6 @@
    (zset+ zset-1 (zset #{})))
   ([zset-1 zset-2]
    ;{:pre [(zset? zset-1) (zset? zset-2)]}
-
    (let [commons (clojure.set/intersection zset-1 zset-2)
          {:keys [common-keep common-remove]} (common-keep-and-remove zset-1 zset-2 commons)]
      (transduce
@@ -165,7 +162,12 @@
         (fn [m] (first (:name m)))))
   [zset kfn]
   (into {}
-    (dbsp-xf/->index-xf kfn)
+    (xforms/by-key
+      kfn
+      (fn [m] m)
+      (fn [k ms]
+        (if k {k ms} {}))
+      (xforms/into #{}))
     zset))
 
 (defn indexed-zset->zset
@@ -214,57 +216,11 @@
   [indexed-zset-1 indexed-zset-2]
   (merge-with zset* indexed-zset-1 indexed-zset-2))
 
-;SELECT * FROM users WHERE status = active;
-;JOIN
-;GROUP-By
-;
-
-(defn ->dbsp-chan-1
-  "First working DBSP chan with transducer"
-  [xf an-atom]
-  (a/chan (a/sliding-buffer 1)
-    (comp
-      xf
-      (dbsp-xf/->dbsp-result-xf! an-atom))))
-
-(def xf-1
-  (comp
-    (dbsp-xf/->where-xf (fn [m] (< 949 (:age m))))
-    dbsp-xf/count-xf))
-
-(defn dbsp-example-1
-  "First working example
-  INSERT working state"
-  []
-  (let [an-atom (atom nil)
-        ch-1    (->dbsp-chan-1 xf-1 an-atom)]
-    (run!
-      (fn [m]
-        (timbre/spy m)
-        (a/>!! ch-1 m))
-      (zset
-        [{:name "A" :age 960} {:name "B" :age 961} {:name "C" :age 962} {:name "W" :age 962}]))
-
-    (run!
-      (fn [m]
-        (timbre/spy m)
-        (a/>!! ch-1 m))
-      (zset
-        [{:name "E" :age 900} {:name "F" :age 850} {:name "G" :age 888}]))
-    ;*dbsp-result is 3
-    (a/close! ch-1)
-    @an-atom))
-
 (comment
 
   (zset [{:a 1} {:b 2}])                                    ;ok
   (zset [{:a 1} 1])                                         ;error
 
-
-  (let [zset (zset [{:name "Alice" :age 940} {:name "Bob" :age 950} {:name "Bob" :age 950}])]
-    (zset
-      zset
-      (dbsp-xf/->where-xf (fn [m] (< 900 (:age m))))))
 
   (zset+
     #{^#:zset {:w 2} {:name "Alice"}
@@ -329,12 +285,3 @@
 
 (defn delete->zset [& maps]
   (zset `#{~@maps}))
-
-(defn for-chan-test []
-  (let [ch (a/chan 42
-             (comp
-               (mapcat identity)
-               (dbsp-xf/for-xf #{:a :b})
-               (dbsp-xf/->dbsp-result-xf! *computation-state)))]
-    (def for-chan-1 ch)
-    (a/>!! ch #{:c})))

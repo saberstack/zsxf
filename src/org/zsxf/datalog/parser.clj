@@ -32,6 +32,12 @@
   [x]
   (and (symbol? x) (clojure.string/starts-with? (str x) "?")))
 
+(defn inline-value?
+  [x]
+  ;TODO fix this. This is likely too simplistic.
+  ; Determine what values can be in the 'v' of [e a v]
+  (not (variable? x)))
+
 (defn find-ref-clause
   "Returns a clause or nil if not found"
   [variable clauses]
@@ -100,6 +106,7 @@
   (where-clauses-to-graph
     '[[?a :b ?c]
       [?c :d ?e]
+      [?e :f ?g]
 
       [?q :r ?s]
       [?s :t ?u]]))

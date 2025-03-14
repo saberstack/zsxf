@@ -109,11 +109,11 @@
              (timbre/spy delta-1)
              (timbre/spy delta-2)
              (zs/indexed-zset+
-               ;ΔTeam ⋈ Players, new teams?
+               ;ΔTeam ⋈ Players
                (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev))
-               ;Players ⋈ ΔTeams, new players?
+               ;Teams ⋈ ΔPlayers
                (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
-               ; ΔPlayers ⋈ ΔTeams, new both?
+               ;ΔTeams ⋈ ΔPlayers
                (timbre/spy (zs/join-indexed* delta-1 delta-2)))))
       (map (fn [final-delta]
              (timbre/spy final-delta)))

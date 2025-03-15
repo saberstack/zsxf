@@ -101,8 +101,8 @@
       (partition-all 2)
       (map (fn [[delta-1 delta-2 :as v]]
              ;advance player and team indices
-             (swap! index-state-1 (fn [m] (zs/indexed-zset+ m delta-1)))
-             (swap! index-state-2 (fn [m] (zs/indexed-zset+ m delta-2)))
+             (swap! index-state-1 (fn [m] (zs/indexed-zset-pos+ m delta-1)))
+             (swap! index-state-2 (fn [m] (zs/indexed-zset-pos+ m delta-2)))
              v))
       (map (fn [[delta-1 delta-2]]
              (timbre/spy delta-1)
@@ -114,8 +114,7 @@
                (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
                ;ΔTeams ⋈ ΔPlayers
                (timbre/spy (zs/join-indexed* delta-1 delta-2)))))
-      (map (fn [final-delta]
-             (timbre/spy final-delta)))
+      (map (fn [final-delta] (zs/indexed-zset->zset final-delta)))
       )))
 
 (defn reset-index-state! []
@@ -126,7 +125,7 @@
 (defn query-result-set-xf [result-set-state]
   (map (fn [delta]
          (swap! result-set-state
-           (fn [m] (zs/indexed-zset+ m delta))))))
+           (fn [m] (zs/zset-pos+ m delta))))))
 
 (comment
   (reset-index-state!)

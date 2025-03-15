@@ -11,7 +11,7 @@
 (set! *print-meta* true)
 (declare zset)
 
-(timbre/set-ns-min-level! :error)
+(timbre/set-ns-min-level! :trace)
 
 (defn zset-weight
   "Get the weight of a zset item, typically a map"
@@ -36,86 +36,7 @@
     (when-not result (timbre/error (s/explain-data ::zset x)))
     result))
 
-(defn- common-keep-and-remove
-  [zset-1 zset-2 commons]
-  (transduce
-    (comp
-      (map (fn [common]
-             (timbre/spy common)
-             (let [meta-1 (meta (zset-1 common))
-                   meta-2 (meta (zset-2 common))]
-               (with-meta common (merge-with + meta-1 meta-2)))))
-      ;group items in two buckets: "remove" and "keep" based on weight
-      (xforms/by-key
-        (fn [common] (if (zero? (zset-weight common))
-                       :common-remove
-                       :common-keep))
-        (fn [common] common)
-        (fn [remove-or-keep commons] [remove-or-keep commons])
-        (xforms/into #{})))
-    (completing
-      (fn [accum item]
-        (conj accum item))
-      (fn [accum]
-        accum))
-    {}
-    commons))
-
-(defn- common-keep-and-remove-2
-  [zset-1 zset-2 commons]
-  (transduce
-    (comp
-      (map (fn [common]
-             (timbre/spy common)
-             (let [meta-1 (meta (zset-1 common))
-                   meta-2 (meta (zset-2 common))]
-               (with-meta common (merge-with + meta-1 meta-2)))))
-      ;group items in two buckets: "remove" and "keep" based on weight
-      (xforms/by-key
-        (fn [common] (if (<= (zset-weight common) 0)
-                       :common-remove
-                       :common-keep))
-        (fn [common] common)
-        (fn [remove-or-keep commons] [remove-or-keep commons])
-        (xforms/into #{})))
-    (completing
-      (fn [accum item]
-        (conj accum item))
-      (fn [accum]
-        accum))
-    {}
-    commons))
-
 (defn zset+
-  "Z-Sets addition implemented as per https://www.feldera.com/blog/Z-sets/#z-sets"
-  ([]
-   (zset #{}))
-  ([zset-1]
-   (zset+ zset-1 (zset #{})))
-  ([zset-1 zset-2]
-   ;{:pre [(zset? zset-1) (zset? zset-2)]}
-   (let [commons (clojure.set/intersection zset-1 zset-2)
-         {:keys [common-keep common-remove]} (common-keep-and-remove zset-1 zset-2 commons)]
-     (transduce
-       ;get set items one by one
-       (comp cat)
-       (completing
-         (fn [accum set-item]
-           (if (zero? (zset-weight set-item))
-             ;remove common-remove items
-             (disj accum set-item)
-             ;keep everything else
-             (conj accum set-item)))
-         (fn [accum]
-           accum))
-       #{}
-       [common-keep
-        zset-1
-        zset-2
-        ;common-remove items **must** stay at the end here to be properly removed during the reduction!
-        common-remove]))))
-
-(defn zset-pos+
   "Same as zset+ but does not maintain items with negative weight after +"
   ([]
    (zset #{}))
@@ -123,26 +44,57 @@
    (zset+ zset-1 (zset #{})))
   ([zset-1 zset-2]
    ;{:pre [(zset? zset-1) (zset? zset-2)]}
-   (let [commons (clojure.set/intersection zset-1 zset-2)
-         {:keys [common-keep common-remove]} (common-keep-and-remove-2 zset-1 zset-2 commons)]
+   (let []
      (transduce
        ;get set items one by one
        (comp cat)
        (completing
-         (fn [accum set-item]
-           (if (<= (zset-weight set-item) 0)
-             ;remove common-remove items
-             (disj accum set-item)
-             ;keep everything else
-             (conj accum set-item)))
+         (fn [s new-zset-item]
+           (if-let [zset-item (s new-zset-item)]
+             (let [meta-1     (meta zset-item)
+                   meta-2     (meta new-zset-item)
+                   new-weight (+ (:zset/w meta-1) (:zset/w meta-2))]
+               (if (zero? new-weight)
+                 (disj s zset-item)
+                 (conj (disj s zset-item) (vary-meta new-zset-item
+                                            (fn [meta-map] (assoc meta-map :zset/w new-weight))))))
+             (if (not= 0 (:zset/w (meta new-zset-item)))
+               (conj s new-zset-item)
+               s)))
          (fn [accum]
            accum))
-       #{}
-       [common-keep
-        zset-1
-        zset-2
-        ;common-remove items **must** stay at the end here to be properly removed during the reduction!
-        common-remove]))))
+       zset-1
+       [zset-2]))))
+
+(defn zset-pos+
+  "Same as zset+ but does not maintain items with negative weight after +"
+  ([]
+   (zset #{}))
+  ([zset-1]
+   (zset-pos+ zset-1 (zset #{})))
+  ([zset-1 zset-2]
+   ;{:pre [(zset? zset-1) (zset? zset-2)]}
+   (let []
+     (transduce
+       ;get set items one by one
+       (comp cat)
+       (completing
+         (fn [s new-zset-item]
+           (if-let [zset-item (s new-zset-item)]
+             (let [meta-1     (meta zset-item)
+                   meta-2     (meta new-zset-item)
+                   new-weight (+ (:zset/w meta-1) (:zset/w meta-2))]
+               (if (zero? new-weight)
+                 (disj s zset-item)
+                 (conj (disj s zset-item) (vary-meta new-zset-item
+                                            (fn [meta-map] (assoc meta-map :zset/w new-weight))))))
+             (if (pos-int? (:zset/w (meta new-zset-item)))
+               (conj s new-zset-item)
+               s)))
+         (fn [accum]
+           accum))
+       zset-1
+       [zset-2]))))
 
 (defn zset-negate
   "Change the sign of all the weights in a zset"

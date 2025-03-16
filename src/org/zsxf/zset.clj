@@ -18,6 +18,12 @@
   [m]
   (:zset/w (meta m)))
 
+(defn zset-item
+  ([x]
+   (zset-item x 1))
+  ([x weight]
+   (with-meta x {:zset/w weight})))
+
 (defn eligible-coll?
   "Check if a collection is eligible to be a zset item.
   All collections are eligible except map entries."

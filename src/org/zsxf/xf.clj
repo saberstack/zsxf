@@ -50,29 +50,31 @@
     [x % y a-set] [x y]))
 
 (defn join-xf
-  [k-1 index-state-1 k-2 index-state-2]
+  [cond-pred-1 index-k-1 index-state-1 cond-pred-2 index-k-2 index-state-2]
   (let [index-state-1-prev @index-state-1
         index-state-2-prev @index-state-2]
     (comp
-      (mapcat identity)                                     ;receives a zset of maps
-      (pxf/branch                                           ;receives a map (with zset weight)
+      ;receives a zset of maps
+      (mapcat identity)
+      ;receives a map (with zset weight)
+      (pxf/branch
         ;join branch 1
         (comp
           (pxf/cond-branch
-            k-1
+            cond-pred-1
             (comp
-              (map (fn [m] #{m}))                           ;put each map back into a set so we can zset+ it
+              (map (fn [m] (timbre/spy #{m})))              ;put each map back into a set so we can zset+ it
               (xforms/reduce zs/zset+)                      ;zset+ all the items
-              (map (fn [zset] (zs/index zset k-1))))))
+              (map (fn [zset] (zs/index zset index-k-1))))))
         ;join branch 2
         (comp
           ;:player/team
           (pxf/cond-branch
-            k-2
+            cond-pred-2
             (comp
               (map (fn [m] #{m}))                           ;put each map back into a set so we can zset+ it
               (xforms/reduce zs/zset+)                      ;zset+ all the items
-              (map (fn [zset] (zs/index zset k-2)))))))
+              (map (fn [zset] (zs/index zset index-k-2)))))))
       (partition-all 2)
       (map (fn [[delta-1 delta-2 :as v]]
              ;advance player and team indices
@@ -90,6 +92,12 @@
                ;ΔTeams ⋈ ΔPlayers
                (timbre/spy (zs/join-indexed* delta-1 delta-2)))))
       (map (fn [final-delta] (zs/indexed-zset->zset final-delta))))))
+
+(defn mapcat-zset-tx
+  "Receives a transaction represented by a vectors of zsets.
+  Returns zsets one by one"
+  []
+  (mapcat (fn [tx-v] (timbre/spy tx-v))))
 
 (defn query-result-set-xf [result-set-state]
   (map (fn [delta]

@@ -1,6 +1,7 @@
 (ns org.zsxf.datascript
   (:require [org.zsxf.zset :as zset]
-            [org.zsxf.xf :as xf]))
+            [org.zsxf.xf :as xf]
+            [taoensso.timbre :as timbre]))
 
 
 (defn tx-datoms->zset
@@ -15,17 +16,40 @@
     datoms))
 
 (comment
-  (comment
-    (let [index-state-1 (atom {})
-          index-state-2 (atom {})]
-      (into []
-        (comp
-          (xf/mapcat-zset-tx)
-          (xf/join-xf
-            :player/team :player/team index-state-1
-            (fn [m] (and (= (:team/name m)) (= (:team/name m) "A"))) :db/id index-state-2))
-        [[(tx-datoms->zset
-            [[1 :team/name "A" 0 true]])
-          (tx-datoms->zset
-            [[2 :player/name "Alice" 0 true]
-             [2 :player/team 1 0 true]])]]))))
+
+  (d/q
+    '[:find ?e
+      ;:in $ ?team-name
+      :where
+      [?e :player/team ?t]
+      [?e :player/city "NY"]
+      [?t :team/name "A"]
+      [?t :team/color "red"]
+      ]
+    @conn
+    ;?team-name
+    )
+
+  (let [index-state-1 (atom {})
+        index-state-2 (atom {})]
+    (into []
+      (comp
+        (xf/mapcat-zset-tx)
+        (xf/join-xf
+          ;TODO how do we handle the case when the index k is not present in all cases
+          [#(:player/team %)] :player/team index-state-1
+          [#(= (:team/name %) "A") #_#(= (:team/color %) "red")] :db/id index-state-2)
+        #_(map (fn [zset-delta]
+               (into #{}
+                 (map (fn [v]
+                        (with-meta (vector (-> v first :db/id)) (meta v))))
+                 zset-delta))))
+      [[(tx-datoms->zset
+          [[1 :team/name "A" 0 true]])
+        (tx-datoms->zset
+          [[2 :player/name "Alice" 0 true]
+           [2 :player/team 1 0 true]
+           [2 :player/city "NY" 0 true]])
+        (tx-datoms->zset
+          [[1 :team/color "red" 0 true]])]]))
+  )

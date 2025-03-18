@@ -49,8 +49,17 @@
   (xforms/for
     [x % y a-set] [x y]))
 
+(defn ensure-preds-satisfied [preds index-k index-state]
+  (let [new-delta (get index-state index-k)
+        preds-satisfied? (= (count (filter (apply some-fn preds) new-delta))
+                           (count preds))]
+    (timbre/spy new-delta)
+    (if preds-satisfied?
+      {index-k new-delta}
+      {})))
+
 (defn join-xf
-  [cond-pred-1 index-k-1 index-state-1 cond-pred-2 index-k-2 index-state-2]
+  [preds-1 index-k-1 index-state-1 preds-2 index-k-2 index-state-2]
   (let [index-state-1-prev @index-state-1
         index-state-2-prev @index-state-2]
     (comp
@@ -61,16 +70,18 @@
         ;join branch 1
         (comp
           (pxf/cond-branch
-            cond-pred-1
+            (apply some-fn preds-1)
             (comp
               (map (fn [m] (timbre/spy #{m})))              ;put each map back into a set so we can zset+ it
               (xforms/reduce zs/zset+)                      ;zset+ all the items
-              (map (fn [zset] (zs/index zset index-k-1))))))
+              (map (fn [zset]
+                     (timbre/spy zset)
+                     (zs/index zset index-k-1))))))
         ;join branch 2
         (comp
           ;:player/team
           (pxf/cond-branch
-            cond-pred-2
+            (apply some-fn preds-2)
             (comp
               (map (fn [m] #{m}))                           ;put each map back into a set so we can zset+ it
               (xforms/reduce zs/zset+)                      ;zset+ all the items
@@ -78,9 +89,14 @@
       (partition-all 2)
       (map (fn [[delta-1 delta-2 :as v]]
              ;advance player and team indices
-             (swap! index-state-1 (fn [m] (zs/indexed-zset-pos+ m delta-1)))
-             (swap! index-state-2 (fn [m] (zs/indexed-zset-pos+ m delta-2)))
-             v))
+             (swap! index-state-1 (fn [m] (timbre/spy (zs/indexed-zset-pos+ m delta-1))))
+             (swap! index-state-2 (fn [m] (timbre/spy (zs/indexed-zset-pos+ m delta-2))))
+             [(if-let [k (ffirst delta-1)]
+                (ensure-preds-satisfied preds-1 k @index-state-1)
+                {})
+              (if-let [k (ffirst delta-2)]
+                (ensure-preds-satisfied preds-2 k @index-state-2)
+                {})]))
       (map (fn [[delta-1 delta-2]]
              (timbre/spy delta-1)
              (timbre/spy delta-2)

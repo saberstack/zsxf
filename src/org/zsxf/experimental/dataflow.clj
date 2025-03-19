@@ -2,7 +2,9 @@
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.jdbc.postgres :as postgres]
+            [org.zsxf.xf :as xf]
             [org.zsxf.xf :as dbsp-xf]
+            [org.zsxf.zset :as zset]
             [org.zsxf.zset :as zs]
             [pangloss.transducers :as pxf]
             [taoensso.timbre :as timbre]))
@@ -16,7 +18,7 @@
 (defonce *grouped-by-state-team-3 (agent {}))
 (defonce *grouped-by-state-player-3 (agent {}))
 
-(defonce *result-set-state (atom {}))
+(defonce *result-set-state (atom #{}))
 (defonce *index-state-1 (atom {}))
 (defonce *index-state-2 (atom {}))
 
@@ -72,6 +74,17 @@
     ;(xforms/reduce conj [])
     ))
 
+(defn datom->attr [[_e a _v]]
+  a)
+
+(defn datom->eid [[e]]
+  e)
+
+(defn datom->value [[_e _a v]]
+  v)
+
+
+
 (defn incremental-computation-xf-2
   [index-state-1 index-state-2]
   (let [index-state-1-prev @index-state-1
@@ -114,18 +127,24 @@
                (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
                ;ΔTeams ⋈ ΔPlayers
                (timbre/spy (zs/join-indexed* delta-1 delta-2)))))
-      (map (fn [final-delta] (zs/indexed-zset->zset final-delta)))
+      (map (fn [final-delta]
+             (timbre/spy final-delta)
+             (timbre/spy (zs/indexed-zset->zset final-delta))))
       )))
+
+(defn incremental-computation-xf-3
+  [index-state-1 index-state-2]
+  )
 
 (defn reset-index-state! []
   (reset! *index-state-1 {})
   (reset! *index-state-2 {})
-  (reset! *result-set-state {}))
+  (reset! *result-set-state #{}))
 
 (defn query-result-set-xf [result-set-state]
   (map (fn [delta]
          (swap! result-set-state
-           (fn [m] (zs/zset-pos+ m delta))))))
+           (fn [s] (zs/zset-pos+ s delta))))))
 
 (comment
   (reset-index-state!)
@@ -169,6 +188,15 @@
     [
      [(zs/zset-negative
         [{:team/id 1 :team/name "T1"}])]])
+
+  (into []
+    (comp
+      (incremental-computation-xf-2 *index-state-1 *index-state-2)
+      (query-result-set-xf *result-set-state))
+    ;trivial
+    [
+     [(zs/zset-negative
+        [{:player/team 2 :player/name "P2"}])]])
   (do
     (timbre/spy @*index-state-1)
     (timbre/spy @*index-state-2)
@@ -221,6 +249,21 @@
     (reset! *state [from to])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn tx-datoms->zset [datoms]
+  (transduce
+    (map (fn [[e a v t add-or-retract]]
+           (let [weight (condp = add-or-retract true 1 false -1)]
+             (zset/zset-item {:db/id e a v} weight))))
+    conj
+    #{}
+    datoms))
+
+(comment
+  (tx-datoms->zset
+    [[4 :person/name "Alice" 536870917 true]
+     [4 :person/team 1 536870917 true]
+     [5 :person/name "Bob" 536870917 true]]))
 
 #_(defn init-from-memory []
     (let [[from to] @*state]

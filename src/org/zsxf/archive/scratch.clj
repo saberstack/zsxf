@@ -2,9 +2,50 @@
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
             [tech.v3.dataset :as ds]
-            [datascript.core :as d]))
+            [datascript.core :as d]
+            [datascript.db :as ddb]))
 
 (defonce *conn (atom nil))
+
+(comment
+  (let [
+        schema {:team/name   {:db/cardinality :db.cardinality/one
+                              :db/unique      :db.unique/identity}
+                :person/name {:db/cardinality :db.cardinality/one
+                              :db/unique      :db.unique/identity}
+                :person/team {:db/cardinality :db.cardinality/many
+                              :db/valueType   :db.type/ref}}
+        ;schema {}
+        conn   (d/create-conn schema)]
+    ;(d/transact! conn
+    ;  [{:team/name "T1-1" :team/id 1}])
+    ;(d/transact! conn
+    ;  [{:team/name "T1" :team/id 1}])
+    ;(d/transact! conn
+    ;  [{:team/name "T2" :team/id 2}])
+    ;(d/transact! conn
+    ;  [{:person/name "Bob" :person/team 1}])
+    ;
+    (d/transact! conn
+      [{:team/name "A"}])
+
+    (d/transact! conn
+      [{:team/name "B"}])
+
+    (d/transact! conn
+      [{:club/name "C"}])
+
+    (d/transact! conn
+      [{:person/name "Alice" :person/team [:team/name "A"]}
+       {:person/name "Alice" :person/team [:team/name "A"]}])
+
+    (d/q
+      '[:find (pull ?e [*])
+        ;:in $ ?e
+        :where
+        [?e :person/team ?t]
+        [?t :team/name "A"]]
+      @conn)))
 
 (def schema
   {:person/uuid  {:db/cardinality :db.cardinality/one

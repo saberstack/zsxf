@@ -58,56 +58,69 @@
       {index-k new-delta}
       {})))
 
+(defn eid-index-xf [eid-index-state]
+  (map (fn [datom-zset]
+         (swap! eid-index-state
+           (fn [m] (zs/indexed-zset-pos+ m (zs/index datom-zset first)))))))
+
 (defn join-xf
-  [preds-1 index-k-1 index-state-1 preds-2 index-k-2 index-state-2]
-  (let [index-state-1-prev @index-state-1
-        index-state-2-prev @index-state-2]
-    (comp
-      ;receives a zset of maps
-      (mapcat identity)
-      ;receives a map (with zset weight)
-      (pxf/branch
-        ;join branch 1
+  [pred-1 index-k-1 index-state-1 pred-2 index-k-2 index-state-2]
+  (comp
+    ;receives a zset of items
+    (mapcat identity)
+    ;receives a zset item (with zset weight)
+    (pxf/branch
+      ;join branch 1
+      (pxf/cond-branch
+        pred-1
         (comp
-          (pxf/cond-branch
-            (apply some-fn preds-1)
-            (comp
-              (map (fn [m] (timbre/spy #{m})))              ;put each map back into a set so we can zset+ it
-              (xforms/reduce zs/zset+)                      ;zset+ all the items
-              (map (fn [zset]
-                     (timbre/spy zset)
-                     (zs/index zset index-k-1))))))
-        ;join branch 2
+          (map (fn [zset-item] (timbre/spy #{zset-item})))  ;put each map back into a set so we can zset+ it
+          (xforms/reduce zs/zset+)                          ;zset+ all the items
+          (map (fn [zset]
+                 (timbre/spy zset)
+                 (zs/index zset index-k-1)))))
+      ;join branch 2
+      (pxf/cond-branch
+        pred-2
         (comp
-          ;:player/team
-          (pxf/cond-branch
-            (apply some-fn preds-2)
-            (comp
-              (map (fn [m] #{m}))                           ;put each map back into a set so we can zset+ it
-              (xforms/reduce zs/zset+)                      ;zset+ all the items
-              (map (fn [zset] (zs/index zset index-k-2)))))))
-      (partition-all 2)
-      (map (fn [[delta-1 delta-2 :as v]]
-             ;advance player and team indices
-             (swap! index-state-1 (fn [m] (timbre/spy (zs/indexed-zset-pos+ m delta-1))))
-             (swap! index-state-2 (fn [m] (timbre/spy (zs/indexed-zset-pos+ m delta-2))))
-             [(if-let [k (ffirst delta-1)]
-                (ensure-preds-satisfied preds-1 k @index-state-1)
-                {})
-              (if-let [k (ffirst delta-2)]
-                (ensure-preds-satisfied preds-2 k @index-state-2)
-                {})]))
-      (map (fn [[delta-1 delta-2]]
-             (timbre/spy delta-1)
-             (timbre/spy delta-2)
-             (zs/indexed-zset+
-               ;ΔTeam ⋈ Players
-               (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev))
-               ;Teams ⋈ ΔPlayers
-               (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
-               ;ΔTeams ⋈ ΔPlayers
-               (timbre/spy (zs/join-indexed* delta-1 delta-2)))))
-      (map (fn [final-delta] (zs/indexed-zset->zset final-delta))))))
+          (map (fn [zset-item] (timbre/spy #{zset-item})))  ;put each map back into a set so we can zset+ it
+          (xforms/reduce zs/zset+)                          ;zset+ all the items
+          (map (fn [zset] (zs/index zset index-k-2)))))
+      ;pass through tx
+      (comp
+        (map (fn [zset-item] (timbre/spy #{zset-item})))
+        (xforms/reduce zs/zset+)))
+    (partition-all 3)
+    (map (fn [partition-all-result] (timbre/spy partition-all-result)))
+    (pxf/cond-branch
+      ;does this xf care about the current item?
+      (fn [[delta-1 delta-2 _zset]]
+        (and (empty? delta-1) (empty? delta-2)))
+      (map (fn [[_delta-1 _delta-2 zset]] zset))
+      ;else, proceed to join
+      any?
+      (comp
+        (map (fn [[delta-1 delta-2 :as v]]
+               (let [index-state-1-prev @index-state-1
+                     index-state-2-prev @index-state-2]
+                 ;advance player and team indices
+                 (swap! index-state-1 (fn [m] (timbre/spy (zs/indexed-zset-pos+ m delta-1))))
+                 (swap! index-state-2 (fn [m] (timbre/spy (zs/indexed-zset-pos+ m delta-2))))
+                 ;return delta
+                 [index-state-1-prev index-state-2-prev [delta-1 delta-2]])))
+        (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2]]]
+               (timbre/spy index-state-1-prev)
+               (timbre/spy index-state-2-prev)
+               (timbre/spy delta-1)
+               (timbre/spy delta-2)
+               (zs/indexed-zset+
+                 ;ΔTeam ⋈ Players
+                 (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev))
+                 ;Teams ⋈ ΔPlayers
+                 (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
+                 ;ΔTeams ⋈ ΔPlayers
+                 (timbre/spy (zs/join-indexed* delta-1 delta-2)))))
+        (map (fn [final-delta] (zs/indexed-zset->zset final-delta)))))))
 
 (defn mapcat-zset-tx
   "Receives a transaction represented by a vectors of zsets.

@@ -44,10 +44,8 @@
 
 (defn zset+
   "Same as zset+ but does not maintain items with negative weight after +"
-  ([]
-   (zset #{}))
-  ([zset-1]
-   (zset+ zset-1 (zset #{})))
+  ([] (zset #{}))
+  ([zset-1] zset-1)
   ([zset-1 zset-2]
    ;{:pre [(zset? zset-1) (zset? zset-2)]}
    (let []

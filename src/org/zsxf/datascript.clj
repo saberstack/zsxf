@@ -58,28 +58,30 @@
     (reset! index-state-4 {})
     (reset! input (a/chan)))
 
-  (let [xf      (comp
-                  (xf/mapcat-zset-tx)
-                  (xf/join-xf
-                    #(= (:team/name %) "A") :db/id index-state-1
-                    #(= (:team/color %) "red") :db/id index-state-2)
-                  (xf/join-xf
-                    #(:player/team %) :player/team index-state-3
-                    #(= (-> % first :team/name) "A") #(-> % first :db/id) index-state-4))
-        tx-data [(tx-datoms->zset
-                   [[1 :team/name "A" 0 true]
-                    ;[1 :team/color "red" 0 true]
-                    ])
-                 #_(tx-datoms->zset
-                     [[2 :player/name "Alice" 0 true]
-                      [2 :player/team 1 0 true]
-                      [2 :player/city "NY" 0 true]])
-                 #_(tx-datoms->zset
-                     [[1 :team/color "red" 0 true]])]]
+  (let [xf (comp
+             (xf/mapcat-zset-tx)
+             (let [pred-1 #(= (:team/name %) "A")
+                   pred-2 #(= (:team/color %) "red")
+                   pred-3 #(:player/team %)
+                   pred-4 #(= (-> % first :team/name) "A")]
+               (comp
+                 ;ignore datoms irrelevant to the query
+                 (filter #(some (some-fn pred-1 pred-2 pred-3 pred-4) %))
+                 (xf/join-xf
+                   pred-1 :db/id index-state-1
+                   pred-2 :db/id index-state-2)
+                 (xf/join-xf
+                   pred-3 :player/team index-state-3
+                   pred-4 #(-> % first :db/id) index-state-4))))]
     (let [output-ch (a/chan (a/sliding-buffer 1)
                       (map (fn [final-delta] (timbre/spy final-delta))))
           to        (a/pipeline 1 output-ch xf @input)]
-      (a/>!! @input tx-data)))
+      @input))
+
+  (a/>!!
+    @input
+    [(tx-datoms->zset
+       [[1 :team/name "A" 0 true]])])
 
   (a/>!!
     @input
@@ -107,7 +109,22 @@
        [[11 :team/color "red" 0 false]])])
 
   (a/>!!
-    input
+    @input
+    [(tx-datoms->zset
+       [[4242 :abc "..." 0 true]])])
+
+  (a/>!!
+    @input
+    [(tx-datoms->zset
+       [[3 :player/team 11 0 true]])])
+
+  (a/>!!
+    @input
+    [(tx-datoms->zset
+       [[11 :team/color "red" 0 false]])])
+
+  (a/>!!
+    @input
     [(tx-datoms->zset
        [[1 :team/color "red" 0 false]])])
   )

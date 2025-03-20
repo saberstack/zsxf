@@ -124,8 +124,7 @@
    (transduce
      xf
      (fn
-       ([accum]
-        (timbre/spy accum))
+       ([accum] accum)
        ([accum m]
         (timbre/spy accum)
         (timbre/spy m)

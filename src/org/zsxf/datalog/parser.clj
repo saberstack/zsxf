@@ -91,8 +91,9 @@
 ; Usage example
 (comment
   (where-clauses-to-graph
-    '[[?team-eid :team/name ?team-name]
-      [?player-eid :player/team ?team-eid]])
+    '[[?p :player/team ?t]
+      [?t :team/name ?team-name]
+      [?t :team/color ?color]])
 
   (where-clauses-to-graph
     '[[?team-eid :team/name ?team-name]

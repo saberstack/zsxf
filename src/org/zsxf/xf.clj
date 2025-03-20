@@ -106,3 +106,10 @@
          (timbre/spy result-set-delta)
          (swap! result-set-state
            (fn [m] (zs/zset-pos+ m result-set-delta))))))
+
+(defn disj-irrelevant-items [zset & preds]
+  (transduce
+    (filter (apply some-fn preds))
+    conj
+    #{}
+    zset))

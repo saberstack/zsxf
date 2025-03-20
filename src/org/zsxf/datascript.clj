@@ -1,5 +1,6 @@
 (ns org.zsxf.datascript
   (:require [clojure.core.async :as a]
+            [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zset]
             [org.zsxf.xf :as xf]
             [datascript.core :as d]
@@ -105,6 +106,12 @@
 (defonce index-state-4 (atom {}))
 (defonce result-set (atom #{}))
 
+(comment
+  ;transform result set to datascript form
+  (into #{}
+    (map (fn [result-set-item] [(:db/id (first result-set-item))]))
+    @result-set))
+
 (defonce input (atom (a/chan)))
 
 (defn print-index-state []
@@ -118,16 +125,13 @@
 
   (print-index-state)
 
-
   (d/q
     '[:find ?p                                            ;wip
       :where
       [?p :player/team ?t]
       [?t :team/name "A"]
       [?t :team/color "red"]]
-    @conn
-    ;?team-name
-    )
+    @conn)
 
   (do (reset! index-state-1 {})
     (reset! index-state-2 {})
@@ -137,7 +141,7 @@
     (reset! input (a/chan))
 
     (let [xf (comp
-               (xf/mapcat-zset-tx)
+               (xf/mapcat-zset-transaction-xf)
                (let [pred-1 #(= (:team/name %) "A")
                      pred-2 #(= (:team/color %) "red")
                      pred-3 #(:player/team %)
@@ -152,49 +156,21 @@
                    (map (fn [zset-in-between] (timbre/spy zset-in-between)))
                    (xf/join-xf
                      pred-3 :player/team index-state-3
-                     pred-4 #(-> % first :db/id) index-state-4))))]
+                     pred-4 #(-> % first :db/id) index-state-4)
+                   (xforms/reduce zs/zset+))))]
       (let [output-ch (a/chan (a/sliding-buffer 1)
-                        (map (fn [final-delta]
-                               (swap! result-set
-                                 (fn [m] (zs/zset-pos+ m final-delta)))
-                               (timbre/spy final-delta))))
+                        (xf/query-result-set-xf result-set))
             to        (a/pipeline 1 output-ch xf @input)]
         @input)))
 
-  ;rewrite WIP
-  #_(do (reset! index-state-1 {})
-    (reset! index-state-2 {})
-    (reset! index-state-3 {})
-    (reset! index-state-4 {})
-    (reset! input (a/chan))
-
-    (let [xf (comp
-               (xf/mapcat-zset-tx)
-               (let [pred-1 #(= (:team/name %) "A")
-                     pred-2 #(= (:team/color %) "red")
-                     pred-3 #(:player/team %)
-                     pred-4 #(= (-> % first :team/name) "A")]
-                 (comp
-                   ;ignore datoms irrelevant to the query
-                   ;(filter #(some (some-fn pred-1 pred-2 pred-3 pred-4) %))
-                   (map (fn [tx-current-item] (timbre/spy tx-current-item)))
-                   (xf/join-xf-2
-                     pred-1 :db/id index-state-1
-                     pred-2 :db/id index-state-2)
-                   (xf/join-xf-2
-                     pred-3 :player/team index-state-3
-                     pred-4 #(-> % first :db/id) index-state-4))))]
-      (let [output-ch (a/chan (a/sliding-buffer 1)
-                        (map (fn [final-delta] (timbre/spy final-delta))))
-            to        (a/pipeline 1 output-ch xf @input)]
-        @input)))
-
-  #_(a/>!!
+  (a/>!!
     @input
     [(tx-datoms->zset
        [[1 :team/name "A" 0 true]
-        [1 :team/color "red" 0 true]
-        [2 :player/team  1 0 true]])])
+        [1 :team/color "red" 0 true]])
+
+     (tx-datoms->zset
+       [[2 :player/team  1 0 true]])])
 
   (a/>!!
     @input

@@ -88,22 +88,21 @@
     ))
 
 (comment
+  ;case 1
   (let [schema {:person/friend {:db/cardinality :db.cardinality/many
                                 :db/valueType   :db.type/ref}}
         conn   (d/create-conn schema)]
 
-    [
-     (d/transact! conn
+    [(d/transact! conn
        [{:person/name "Alice"}])
      (d/transact! conn
        [{:person/name "Bob"}])
-
      (d/transact! conn
        [{:db/id 1 :person/friend 2}])
-
      (d/transact! conn
        [{:db/id 1 :person/friend 1}])
 
+     ;query
      (d/q
        '[:find ?v2
          :where
@@ -111,8 +110,35 @@
          [?p :person/friend ?p2]
          [?p2 :person/name ?v2]]
        @conn)]
+    ;query returns:
+    ;=> #{["Alice"] ["Bob"]}
     )
-  )
+
+  ;case 2 (notice the change in query)
+  (let [schema {:person/friend {:db/cardinality :db.cardinality/many
+                                :db/valueType   :db.type/ref}}
+        conn   (d/create-conn schema)]
+
+    [(d/transact! conn
+       [{:person/name "Alice"}])
+     (d/transact! conn
+       [{:person/name "Bob"}])
+     (d/transact! conn
+       [{:db/id 1 :person/friend 2}])
+     (d/transact! conn
+       [{:db/id 1 :person/friend 1}])
+
+     ;query
+     (d/q
+       '[:find ?v
+         :where
+         [?p :person/name ?v]
+         [?p :person/friend ?p2]
+         [?p2 :person/name ?v]]
+       @conn)]
+    ;query returns:
+    ;=> #{["Alice"]}
+    ))
 
 (comment
 

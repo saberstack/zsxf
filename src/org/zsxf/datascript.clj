@@ -123,14 +123,7 @@
     ;?team-name
     ))
 
-(defonce index-state-1 (atom {}))
-(defonce index-state-2 (atom {}))
-(defonce index-state-3 (atom {}))
-(defonce index-state-4 (atom {}))
-(defonce index-state-5 (atom {}))
-(defonce index-state-6 (atom {}))
-(defonce index-state-7 (atom {}))
-(defonce index-state-8 (atom {}))
+(defonce index-state-all (atom {}))
 (defonce result-set (atom #{}))
 
 (comment
@@ -142,14 +135,7 @@
 (defonce input (atom (a/chan)))
 
 (defn print-index-state []
-  (timbre/spy @index-state-1)
-  (timbre/spy @index-state-2)
-  (timbre/spy @index-state-3)
-  (timbre/spy @index-state-4)
-  (timbre/spy @index-state-5)
-  (timbre/spy @index-state-6)
-  (timbre/spy @index-state-7)
-  (timbre/spy @index-state-8)
+  (timbre/spy @index-state-all)
   nil)
 
 (comment
@@ -157,14 +143,7 @@
   (print-index-state)
 
   (do
-    (reset! index-state-1 {})
-    (reset! index-state-2 {})
-    (reset! index-state-3 {})
-    (reset! index-state-4 {})
-    (reset! index-state-5 {})
-    (reset! index-state-6 {})
-    (reset! index-state-7 {})
-    (reset! index-state-8 {})
+    (reset! index-state-all {})
     (reset! result-set #{})
     (reset! input (a/chan))
 
@@ -195,20 +174,24 @@
                                      zset pred-1 pred-2 pred-3 pred-4 pred-5 pred-6 pred-7 pred-8)))
                             (map (fn [tx-current-item] (timbre/spy tx-current-item)))
                             (xf/join-xf
-                              pred-1 :db/id index-state-1
-                              pred-2 :db/id index-state-2)
+                              pred-1 :db/id
+                              pred-2 :db/id
+                              index-state-all)
                             (map (fn [zset-in-between] (timbre/spy zset-in-between)))
                             (xf/join-xf
-                              pred-3 :player/team index-state-3
-                              pred-4 #(-> % first :db/id) index-state-4)
+                              pred-3 :player/team
+                              pred-4 #(-> % first :db/id)
+                              index-state-all)
                             (map (fn [zset-in-between-2] (timbre/spy zset-in-between-2)))
                             (xf/join-xf
-                              pred-5 :db/id index-state-5
-                              pred-6 #(-> % first :db/id) index-state-6)
+                              pred-5 :db/id
+                              pred-6 #(-> % first :db/id)
+                              index-state-all)
                             (map (fn [zset-in-between-3] (timbre/spy zset-in-between-3)))
                             (xf/join-xf
-                              pred-7 :db/id index-state-7
-                              pred-8 #(-> % first :player/city) index-state-8)
+                              pred-7 :db/id
+                              pred-8 #(-> % first :player/city)
+                              index-state-all)
                             (xforms/reduce zs/zset+))))
             output-ch (a/chan (a/sliding-buffer 1)
                         (xf/query-result-set-xf result-set))
@@ -235,12 +218,14 @@
                                    zset pred-1 pred-2 pred-3 pred-4)))
                           (map (fn [tx-current-item] (timbre/spy tx-current-item)))
                           (xf/join-xf
-                            pred-1 datom->eid index-state-1
-                            pred-2 datom->eid index-state-2)
+                            pred-1 datom->eid
+                            pred-2 datom->eid
+                            index-state-all)
                           (map (fn [zset-in-between] (timbre/spy zset-in-between)))
                           (xf/join-xf
-                            pred-3 datom->val index-state-3
-                            pred-4 #(-> % first datom->eid) index-state-4)
+                            pred-3 datom->val
+                            pred-4 #(-> % first datom->eid)
+                            index-state-all)
                           (map (fn [zset-in-between-2] (timbre/spy zset-in-between-2)))
                           (xforms/reduce zs/zset+))))
           output-ch (a/chan (a/sliding-buffer 1)

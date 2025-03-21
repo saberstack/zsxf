@@ -38,6 +38,9 @@
   (if (vector? datom)
     (nth datom 1 nil)))
 
+(defn datom-attr= [datom attr]
+  (= (datom->attr datom) attr))
+
 (defn datom->val [datom]
   (if (vector? datom)
     (nth datom 2 nil)))
@@ -339,10 +342,10 @@
 
     (let [xf        (comp
                       (xf/mapcat-zset-transaction-xf)
-                      (let [pred-1 #(= (datom->attr %) :person/name)
-                            pred-2 #(= (datom->attr %) :person/friend)
-                            pred-3 #(= (-> % second datom->attr) :person/friend)
-                            pred-4 #(= (datom->attr %) :person/name)
+                      (let [pred-1 #(datom-attr= % :person/name)
+                            pred-2 #(datom-attr= % :person/friend)
+                            pred-3 #(datom-attr= (second %) :person/friend)
+                            pred-4 #(datom-attr= % :person/name)
                             ]
                         (comp
                           ;ignore datoms irrelevant to the query

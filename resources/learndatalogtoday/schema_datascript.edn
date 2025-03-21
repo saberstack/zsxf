@@ -1,0 +1,25 @@
+{
+ ;; Movie attributes
+ :movie/title {:db/cardinality :db.cardinality/one}
+               
+ :movie/year {:db/cardinality :db.cardinality/one}
+              
+ :movie/director {:db/valueType :db.type/ref
+                  :db/cardinality :db.cardinality/many}
+                  
+ :movie/sequel {:db/valueType :db.type/ref
+                :db/cardinality :db.cardinality/one}
+                
+ :movie/cast {:db/valueType :db.type/ref
+              :db/cardinality :db.cardinality/many}
+              
+ ;; Person attributes
+ :person/name {:db/cardinality :db.cardinality/one}
+               
+ :person/born {:db/cardinality :db.cardinality/one}
+               
+ :person/death {:db/cardinality :db.cardinality/one}
+                
+ ;; Trivia attribute
+ :trivia {:db/cardinality :db.cardinality/many}
+}

@@ -205,12 +205,52 @@
       [?t :team/name "A"]
       [?t :team/color "red"]]
 
+    #_(let [xf        (comp
+                        (xf/mapcat-zset-transaction-xf)
+                        (let [pred-1 #(and (= (datom->attr %) :team/name) (= (datom->val %) "A"))
+                              pred-2 #(and (= (datom->attr %) :team/color) (= (datom->val %) "red"))
+                              pred-3 #(= (datom->attr %) :player/team)
+                              pred-4 #(and (= (-> % first datom->attr) :team/name) (= (-> % first datom->val) "A"))]
+                          (comp
+                            ;ignore datoms irrelevant to the query
+                            (map (fn [zset]
+                                   (xf/disj-irrelevant-items
+                                     zset pred-1 pred-2 pred-3 pred-4)))
+                            (map (fn [tx-current-item] (timbre/spy tx-current-item)))
+                            (xf/join-xf
+                              pred-1 datom->eid
+                              pred-2 datom->eid
+                              index-state-all)
+                            (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+                            (xf/join-xf
+                              pred-3 datom->val
+                              pred-4 #(-> % first datom->eid)
+                              index-state-all)
+                            (map (fn [zset-in-between-2] (timbre/spy zset-in-between-2)))
+                            ;TODO track :find variables
+                            (xforms/reduce zs/zset+))))
+            output-ch (a/chan (a/sliding-buffer 1)
+                        (xf/query-result-set-xf result-set))
+            to        (a/pipeline 1 output-ch xf @input)]
+        @input)
+
+    ; equivalent query
+    '[:find ?p                                              ;find is wip
+      :where
+      [?p :person/name ?v]
+      [?p :person/friend ?p2]
+      [?p2 :person/name ?v2]]
+
+    '[[?p :person/name ?v] [?p :person/friend ?p2]]
+    '[?p :person/friend [?p2 :person/name ?v2]]
+
     (let [xf        (comp
                       (xf/mapcat-zset-transaction-xf)
-                      (let [pred-1 #(and (= (datom->attr %) :team/name) (= (datom->val %) "A"))
-                            pred-2 #(and (= (datom->attr %) :team/color) (= (datom->val %) "red"))
-                            pred-3 #(= (datom->attr %) :player/team)
-                            pred-4 #(and (= (-> % first datom->attr) :team/name) (= (-> % first datom->val) "A"))]
+                      (let [pred-1 #(= (datom->attr %) :person/name)
+                            pred-2 #(= (datom->attr %) :person/friend)
+                            pred-3 #(= (-> % second datom->attr) :person/friend)
+                            pred-4 #(= (datom->attr %) :person/name)
+                            ]
                         (comp
                           ;ignore datoms irrelevant to the query
                           (map (fn [zset]
@@ -223,15 +263,34 @@
                             index-state-all)
                           (map (fn [zset-in-between] (timbre/spy zset-in-between)))
                           (xf/join-xf
-                            pred-3 datom->val
-                            pred-4 #(-> % first datom->eid)
-                            index-state-all)
-                          (map (fn [zset-in-between-2] (timbre/spy zset-in-between-2)))
+                            pred-3 #(-> % second datom->val)
+                            pred-4 datom->eid
+                            index-state-all
+                            :last? true)
+                          (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
                           (xforms/reduce zs/zset+))))
           output-ch (a/chan (a/sliding-buffer 1)
                       (xf/query-result-set-xf result-set))
           to        (a/pipeline 1 output-ch xf @input)]
       @input))
+
+
+  (a/>!!
+    @input
+    [(tx-datoms->zset-2
+       [[1 :person/name "Alice" :t true]])])
+
+  (a/>!!
+    @input
+    [(tx-datoms->zset-2
+       [[2 :person/name "Bob" :t true]])])
+
+  (a/>!!
+    @input
+    [(tx-datoms->zset-2
+       [[1 :person/friend 2 :t true]])])
+
+
 
   (a/>!!
     @input

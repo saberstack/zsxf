@@ -88,6 +88,33 @@
     ))
 
 (comment
+  (let [schema {:person/friend {:db/cardinality :db.cardinality/many
+                                :db/valueType   :db.type/ref}}
+        conn   (d/create-conn schema)]
+
+    [
+     (d/transact! conn
+       [{:person/name "Alice"}])
+     (d/transact! conn
+       [{:person/name "Bob"}])
+
+     (d/transact! conn
+       [{:db/id 1 :person/friend 2}])
+
+     (d/transact! conn
+       [{:db/id 1 :person/friend 1}])
+
+     (d/q
+       '[:find ?v2
+         :where
+         [?p :person/name ?v]
+         [?p :person/friend ?p2]
+         [?p2 :person/name ?v2]]
+       @conn)]
+    )
+  )
+
+(comment
 
   (d/q
     '[:find ?e ?t
@@ -280,8 +307,8 @@
       [?p2 :person/name ?v]]
 
     '[[?p :person/name ?v] [?p :person/friend ?p2]]
-    '[?p :person/friend [?p2 :person/name ?v2]]
-    '[[?p2 :person/name ?v] [?p :person/name ?v]]
+    '[?p :person/friend [?p2 :person/name ?v]]
+    '[[?p :person/name ?v] [?p2 :person/name ?v]]
 
 
     (let [xf        (comp
@@ -308,6 +335,7 @@
                             index-state-all
                             :last? true)
                           (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
+                          ;TODO explore where filters
                           (xforms/reduce zs/zset+))))
           output-ch (a/chan (a/sliding-buffer 1)
                       (xf/query-result-set-xf result-set))
@@ -333,7 +361,7 @@
       (a/>!!
         @input
         [(tx-datoms->zset-2
-           [[1 :person/friend 1 :t true]])])ff
+           [[1 :person/friend 1 :t true]])])
 
       (a/>!!
         @input

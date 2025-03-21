@@ -420,6 +420,18 @@
      [?m :movie/title "RoboCop"]
      [?m :movie/director ?p]]
 
+    (comment
+      #{
+        [
+         ;[?p :person/name ?name] -> [?m :movie/director ?p], joining them returns a joined pair like:
+         [[1 :person/name "Alice"]
+          [2 :movie/director 1]]
+
+         ;[?m :movie/director ?p] -> ^^^^^^^^^^^^^^^^^^^^^^^ pred-3 looking for the second item from the joined pair)
+         [2 :movie/title "RoboCop"]
+         ]}
+      )
+
     (let [xf        (comp
                       (xf/mapcat-zset-transaction-xf)
                       (let [pred-1 #(datom-attr= % :person/name)

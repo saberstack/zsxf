@@ -138,14 +138,19 @@
   (timbre/spy @index-state-all)
   nil)
 
+
+(defn reset-state! []
+  (do
+    (reset! index-state-all {})
+    (reset! result-set #{})
+    (reset! input (a/chan)))
+  )
+
 (comment
 
   (print-index-state)
 
   (do
-    (reset! index-state-all {})
-    (reset! result-set #{})
-    (reset! input (a/chan))
 
     ;with map-datoms
     ;equivalent query
@@ -156,8 +161,9 @@
       [?t :team/color "red"]
       [?p :player/city ?c]
       [?c :city/name "NY"]]
-    ;
-    #_(let [xf        (comp
+
+    (comment
+      (let [xf        (comp
                         (xf/mapcat-zset-transaction-xf)
                         (let [pred-1 #(= (:team/name %) "A")
                               pred-2 #(= (:team/color %) "red")
@@ -191,12 +197,14 @@
                             (xf/join-xf
                               pred-7 :db/id
                               pred-8 #(-> % first :player/city)
-                              index-state-all)
+                              index-state-all
+                              :last? true)
                             (xforms/reduce zs/zset+))))
             output-ch (a/chan (a/sliding-buffer 1)
                         (xf/query-result-set-xf result-set))
             to        (a/pipeline 1 output-ch xf @input)]
-        @input)
+        @input))
+
 
     ;with vector-datoms
     '[:find ?p                                              ;find is wip
@@ -205,7 +213,8 @@
       [?t :team/name "A"]
       [?t :team/color "red"]]
 
-    #_(let [xf        (comp
+    (comment
+      (let [xf        (comp
                         (xf/mapcat-zset-transaction-xf)
                         (let [pred-1 #(and (= (datom->attr %) :team/name) (= (datom->val %) "A"))
                               pred-2 #(and (= (datom->attr %) :team/color) (= (datom->val %) "red"))
@@ -225,14 +234,33 @@
                             (xf/join-xf
                               pred-3 datom->val
                               pred-4 #(-> % first datom->eid)
-                              index-state-all)
+                              index-state-all
+                              :last? true)
                             (map (fn [zset-in-between-2] (timbre/spy zset-in-between-2)))
                             ;TODO track :find variables
                             (xforms/reduce zs/zset+))))
             output-ch (a/chan (a/sliding-buffer 1)
                         (xf/query-result-set-xf result-set))
             to        (a/pipeline 1 output-ch xf @input)]
-        @input)
+        @input))
+
+    (comment
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[1 :team/name "A" 0 true]
+            [1 :team/color "red" 0 true]])
+         (tx-datoms->zset-2
+           [[2 :player/team 1 0 true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[1 :team/name "A" 0 false]
+            [1 :team/color "red" 0 false]])
+         (tx-datoms->zset-2
+           [[2 :player/team 1 0 false]])]))
+
 
     ; equivalent query
     '[:find ?p                                              ;find is wip
@@ -243,6 +271,18 @@
 
     '[[?p :person/name ?v] [?p :person/friend ?p2]]
     '[?p :person/friend [?p2 :person/name ?v2]]
+
+    ; equivalent query
+    '[:find ?p                                              ;find is wip
+      :where
+      [?p :person/name ?v]
+      [?p :person/friend ?p2]
+      [?p2 :person/name ?v]]
+
+    '[[?p :person/name ?v] [?p :person/friend ?p2]]
+    '[?p :person/friend [?p2 :person/name ?v2]]
+    '[[?p2 :person/name ?v] [?p :person/name ?v]]
+
 
     (let [xf        (comp
                       (xf/mapcat-zset-transaction-xf)
@@ -272,43 +312,48 @@
           output-ch (a/chan (a/sliding-buffer 1)
                       (xf/query-result-set-xf result-set))
           to        (a/pipeline 1 output-ch xf @input)]
-      @input))
+      @input)
+
+    (comment
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[1 :person/name "Alice" :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[2 :person/name "Bob" :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[1 :person/friend 2 :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[1 :person/friend 1 :t true]])])ff
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[3 :person/name "Clark" :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[1 :person/friend 3 :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[1 :person/name "Alice" :t true]
+            [2 :person/name "Bob" :t true]
+            [1 :person/friend 2 :t true]])])))
 
 
-  (a/>!!
-    @input
-    [(tx-datoms->zset-2
-       [[1 :person/name "Alice" :t true]])])
 
-  (a/>!!
-    @input
-    [(tx-datoms->zset-2
-       [[2 :person/name "Bob" :t true]])])
-
-  (a/>!!
-    @input
-    [(tx-datoms->zset-2
-       [[1 :person/friend 2 :t true]])])
-
-
-
-  (a/>!!
-    @input
-    [(tx-datoms->zset-2
-       [[1 :team/name "A" 0 true]
-        [1 :team/color "red" 0 true]])
-     #_(tx-datoms->zset-2
-         [[3 :city/name "NY" 0 true]])
-     (tx-datoms->zset-2
-       [[2 :player/team 1 0 true]])])
-
-  (a/>!!
-    @input
-    [(tx-datoms->zset-2
-       [[1 :team/name "A" 0 false]
-        [1 :team/color "red" 0 false]])
-     (tx-datoms->zset-2
-       [[2 :player/team 1 0 false]])])
 
   (a/>!!
     @input

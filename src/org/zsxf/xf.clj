@@ -63,7 +63,7 @@
       (map (fn [zset-item]
              (let [delta-1 (if (pred-1 zset-item) (zs/index #{zset-item} index-k-1) {})
                    delta-2 (if (pred-2 zset-item) (zs/index #{zset-item} index-k-2) {})
-                   zset    #{zset-item}]
+                   zset    (if last? #{} #{zset-item})]
                ;return
                [delta-1 delta-2 zset])))
       (pxf/cond-branch
@@ -74,6 +74,7 @@
           (and (empty? delta-1) (empty? delta-2)))
         (map (fn [[_delta-1 _delta-2 zset]]
                (timbre/info "passing through...")
+               (timbre/spy last?)
                (timbre/spy zset)))
         ;else, proceed to join
         any?
@@ -105,10 +106,7 @@
                        (timbre/spy (zs/join-indexed* delta-1 delta-2))))
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]
-                    (timbre/spy last?)
-                    (if last?
-                      [join-xf-delta]
-                      [join-xf-delta zset]))))))))
+                    [join-xf-delta zset])))))))
 
 (defn mapcat-zset-transaction-xf
   "Receives a transaction represented by a vectors of zsets.

@@ -214,7 +214,6 @@
    ; https://github.com/bsless/clj-fast
    (merge-with zset-pos+ indexed-zset-1 indexed-zset-2))
   ([indexed-zset-1 indexed-zset-2 & args]
-   (zset-pos+)
    (apply merge-with zset-pos+ indexed-zset-1 indexed-zset-2 args)))
 
 (defn join

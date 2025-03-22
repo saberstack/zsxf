@@ -351,9 +351,7 @@
                       (let [pred-1 #(datom-attr= % :person/name)
                             pred-2 #(datom-attr= % :person/friend)
                             pred-3 #(datom-attr= (second %) :person/friend)
-                            pred-4 #(datom-attr= % :person/name)
-
-                            ]
+                            pred-4 #(datom-attr= % :person/name)]
                         (comp
                           ;ignore datoms irrelevant to the query
                           (map (fn [zset]
@@ -409,7 +407,23 @@
       (a/>!!
         @input
         [(tx-datoms->zset-2
+           [[3 :person/name "Clark" :t false]
+            [3 :person/name "Kent" :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
            [[1 :person/friend 3 :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[3 :person/friend 3 :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset-2
+           [[3 :person/friend 3 :t false]])])
 
       (a/>!!
         @input

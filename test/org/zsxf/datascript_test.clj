@@ -44,7 +44,7 @@
             (let [pred-1 #(ds/datom-attr= % :person/name)
                   pred-2 #(ds/datom-attr= % :movie/director)
                   pred-3 #(ds/datom-attr= (second %) :movie/director)
-                  pred-4 #(and (ds/datom-attr= % :movie/title) (ds/datom-val= % "RoboCop"))]
+                  pred-4 #(ds/datom-attr-val= % :movie/title "RoboCop")]
               (comp
                (map (fn [zset]
                       (xf/disj-irrelevant-items
@@ -78,7 +78,7 @@
              (let [pred-1 #(ds/datom-attr= % :person/name)
                    pred-2 #(ds/datom-attr= % :movie/director)
                    pred-3 #(ds/datom-attr= (second %) :movie/director)
-                   pred-4 #(and (ds/datom-attr= % :movie/title) (ds/datom-val= % "RoboCop"))]
+                   pred-4 #(ds/datom-attr-val= % :movie/title "RoboCop")]
                (comp
                  (map (fn [zset]
                         (xf/disj-irrelevant-items

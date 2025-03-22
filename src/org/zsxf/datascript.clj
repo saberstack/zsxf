@@ -48,6 +48,9 @@
 (defn datom-val= [datom value]
   (= (datom->val datom) value))
 
+(defn datom-attr-val= [datom attr value]
+  (and (datom-attr= datom attr) (datom-val= datom value)))
+
 (defonce *conn (atom nil))
 
 (comment
@@ -437,7 +440,7 @@
                       (let [pred-1 #(datom-attr= % :person/name)
                             pred-2 #(datom-attr= % :movie/director)
                             pred-3 #(datom-attr= (second %) :movie/director)
-                            pred-4 #(and (datom-attr= % :movie/title) (datom-val= % "RoboCop"))
+                            pred-4 #(datom-attr-val= % :movie/title "RoboCop")
                             ]
                         (comp
                           ;ignore datoms irrelevant to the query

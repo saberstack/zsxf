@@ -216,7 +216,9 @@
        (fn [indexed-zset-1-accum [k-2 zset-2]]
          (if (contains? indexed-zset-1-accum k-2)
            (let [new-zset (zset-pos+ (get indexed-zset-1-accum k-2) zset-2)]
-             (assoc indexed-zset-1-accum k-2 new-zset))
+             (if (= #{} new-zset)
+               (dissoc indexed-zset-1-accum k-2)
+               (assoc indexed-zset-1-accum k-2 new-zset)))
            ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
            (let [new-zset (zset-pos+ #{} zset-2)]
              (if (= #{} new-zset)

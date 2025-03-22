@@ -69,6 +69,40 @@
     (timbre/info "done with tx"))
   (is true))
 
+(deftest test-robocop-transduce "basic datalog query"
+  (let [index-state-all (atom {})
+        txn-atom (atom [])
+        _conn (load-learn-db txn-atom)
+        xf (comp
+             (xf/mapcat-zset-transaction-xf)
+             (let [pred-1 #(ds/datom-attr= % :person/name)
+                   pred-2 #(ds/datom-attr= % :movie/director)
+                   pred-3 #(ds/datom-attr= (second %) :movie/director)
+                   pred-4 #(and (ds/datom-attr= % :movie/title) (ds/datom-val= % "RoboCop"))]
+               (comp
+                 (map (fn [zset]
+                        (xf/disj-irrelevant-items
+                          zset pred-1 pred-2 pred-3 pred-4)))
+                 (map (fn [tx-current-item] (timbre/spy tx-current-item)))
+                 (xf/join-xf
+                   pred-1 ds/datom->eid
+                   pred-2 ds/datom->val
+                   index-state-all)
+                 (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+                 (xf/join-xf
+                   pred-3 #(-> % second (ds/datom->eid))
+                   pred-4 ds/datom->eid
+                   index-state-all
+                   :last? true)
+                 (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
+                 (xforms/reduce zs/zset+))))]
+    (transduce
+      xf
+      zs/zset+
+      #{}
+      [@txn-atom]))
+  (is true))
+
 (comment [:find ?name
    :where
    [?p :person/name ?name] ;c1

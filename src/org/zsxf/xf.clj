@@ -89,6 +89,12 @@
                    (swap! index-state
                      (fn [state]
                        (-> state
+                         ;TODO If deltas contain negative weights under a key that does not already exist in the index,
+                         ; the delta will get written to the index with a negative weight.
+                         ; Can happen if a delete appears for a datom that doesn't exist.
+                         ; Can possibly be handled at the database level.
+                         ; Nevertheless, index should not contain negative weights.
+                         ; Fix indexed-zset-pos+
                          (update index-uuid-1 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-1))))
                          (update index-uuid-2 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-2)))))))
                    ;return

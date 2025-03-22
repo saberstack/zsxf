@@ -210,11 +210,22 @@
   ([indexed-zset]
    (indexed-zset-pos+ indexed-zset {}))
   ([indexed-zset-1 indexed-zset-2]
-   ;TODO merge-with is likely slow and needs optimization
-   ; https://github.com/bsless/clj-fast
-   (merge-with zset-pos+ indexed-zset-1 indexed-zset-2))
-  ([indexed-zset-1 indexed-zset-2 & args]
-   (apply merge-with zset-pos+ indexed-zset-1 indexed-zset-2 args)))
+   (transduce
+     (map identity)
+     (completing
+       (fn [indexed-zset-1-accum [k-2 zset-2]]
+         (if (contains? indexed-zset-1-accum k-2)
+           (let [new-zset (zset-pos+ (get indexed-zset-1-accum k-2) zset-2)]
+             (assoc indexed-zset-1-accum k-2 new-zset))
+           ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
+           (let [new-zset (zset-pos+ #{} zset-2)]
+             (if (= #{} new-zset)
+               ;return unchanged
+               indexed-zset-1-accum
+               ;else, add new zset-pos
+               (assoc indexed-zset-1-accum k-2 new-zset))))))
+     indexed-zset-1
+     indexed-zset-2)))
 
 (defn join
   "Join two indexed zsets as a map relation. Does not multiply zsets."

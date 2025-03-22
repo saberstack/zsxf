@@ -43,7 +43,7 @@
     result))
 
 (defn zset+
-  "Same as zset+ but does not maintain items with negative weight after +"
+  "Adds two zsets"
   ([] (zset #{}))
   ([zset-1] zset-1)
   ([zset-1 zset-2]
@@ -214,6 +214,7 @@
    ; https://github.com/bsless/clj-fast
    (merge-with zset-pos+ indexed-zset-1 indexed-zset-2))
   ([indexed-zset-1 indexed-zset-2 & args]
+   (zset-pos+)
    (apply merge-with zset-pos+ indexed-zset-1 indexed-zset-2 args)))
 
 (defn join

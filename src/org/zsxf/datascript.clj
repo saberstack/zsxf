@@ -38,9 +38,15 @@
   (if (vector? datom)
     (nth datom 1 nil)))
 
+(defn datom-attr= [datom attr]
+  (= (datom->attr datom) attr))
+
 (defn datom->val [datom]
   (if (vector? datom)
     (nth datom 2 nil)))
+
+(defn datom-val= [datom value]
+  (= (datom->val datom) value))
 
 (defonce *conn (atom nil))
 
@@ -88,22 +94,21 @@
     ))
 
 (comment
+  ;case 1
   (let [schema {:person/friend {:db/cardinality :db.cardinality/many
                                 :db/valueType   :db.type/ref}}
         conn   (d/create-conn schema)]
 
-    [
-     (d/transact! conn
+    [(d/transact! conn
        [{:person/name "Alice"}])
      (d/transact! conn
        [{:person/name "Bob"}])
-
      (d/transact! conn
        [{:db/id 1 :person/friend 2}])
-
      (d/transact! conn
        [{:db/id 1 :person/friend 1}])
 
+     ;query
      (d/q
        '[:find ?v2
          :where
@@ -111,8 +116,35 @@
          [?p :person/friend ?p2]
          [?p2 :person/name ?v2]]
        @conn)]
+    ;query returns:
+    ;=> #{["Alice"] ["Bob"]}
     )
-  )
+
+  ;case 2 (notice the change in query)
+  (let [schema {:person/friend {:db/cardinality :db.cardinality/many
+                                :db/valueType   :db.type/ref}}
+        conn   (d/create-conn schema)]
+
+    [(d/transact! conn
+       [{:person/name "Alice"}])
+     (d/transact! conn
+       [{:person/name "Bob"}])
+     (d/transact! conn
+       [{:db/id 1 :person/friend 2}])
+     (d/transact! conn
+       [{:db/id 1 :person/friend 1}])
+
+     ;query
+     (d/q
+       '[:find ?v
+         :where
+         [?p :person/name ?v]
+         [?p :person/friend ?p2]
+         [?p2 :person/name ?v]]
+       @conn)]
+    ;query returns:
+    ;=> #{["Alice"]}
+    ))
 
 (comment
 
@@ -311,36 +343,37 @@
     '[[?p :person/name ?v] [?p2 :person/name ?v]]
 
 
-    (let [xf        (comp
-                      (xf/mapcat-zset-transaction-xf)
-                      (let [pred-1 #(= (datom->attr %) :person/name)
-                            pred-2 #(= (datom->attr %) :person/friend)
-                            pred-3 #(= (-> % second datom->attr) :person/friend)
-                            pred-4 #(= (datom->attr %) :person/name)
-                            ]
-                        (comp
-                          ;ignore datoms irrelevant to the query
-                          (map (fn [zset]
-                                 (xf/disj-irrelevant-items
-                                   zset pred-1 pred-2 pred-3 pred-4)))
-                          (map (fn [tx-current-item] (timbre/spy tx-current-item)))
-                          (xf/join-xf
-                            pred-1 datom->eid
-                            pred-2 datom->eid
-                            index-state-all)
-                          (map (fn [zset-in-between] (timbre/spy zset-in-between)))
-                          (xf/join-xf
-                            pred-3 #(-> % second datom->val)
-                            pred-4 datom->eid
-                            index-state-all
-                            :last? true)
-                          (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
-                          ;TODO explore where filters
-                          (xforms/reduce zs/zset+))))
-          output-ch (a/chan (a/sliding-buffer 1)
-                      (xf/query-result-set-xf result-set))
-          to        (a/pipeline 1 output-ch xf @input)]
-      @input)
+    (comment
+      (let [xf        (comp
+                        (xf/mapcat-zset-transaction-xf)
+                        (let [pred-1 #(datom-attr= % :person/name)
+                              pred-2 #(datom-attr= % :person/friend)
+                              pred-3 #(datom-attr= (second %) :person/friend)
+                              pred-4 #(datom-attr= % :person/name)
+                              ]
+                          (comp
+                            ;ignore datoms irrelevant to the query
+                            (map (fn [zset]
+                                   (xf/disj-irrelevant-items
+                                     zset pred-1 pred-2 pred-3 pred-4)))
+                            (map (fn [tx-current-item] (timbre/spy tx-current-item)))
+                            (xf/join-xf
+                              pred-1 datom->eid
+                              pred-2 datom->eid
+                              index-state-all)
+                            (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+                            (xf/join-xf
+                              pred-3 #(-> % second datom->val)
+                              pred-4 datom->eid
+                              index-state-all
+                              :last? true)
+                            (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
+                            ;TODO explore where filters
+                            (xforms/reduce zs/zset+))))
+            output-ch (a/chan (a/sliding-buffer 1)
+                        (xf/query-result-set-xf result-set))
+            to        (a/pipeline 1 output-ch xf @input)]
+        @input))
 
     (comment
       (a/>!!
@@ -378,7 +411,74 @@
         [(tx-datoms->zset-2
            [[1 :person/name "Alice" :t true]
             [2 :person/name "Bob" :t true]
-            [1 :person/friend 2 :t true]])])))
+            [1 :person/friend 2 :t true]])]))
+
+    ;query
+    '[:find ?name
+     :where
+     [?p :person/name ?name]
+     [?m :movie/title "RoboCop"]
+     [?m :movie/director ?p]]
+
+    (comment
+      #{
+        [
+         ;[?p :person/name ?name] -> [?m :movie/director ?p], joining them returns a joined pair like:
+         [[1 :person/name "Alice"]
+          [2 :movie/director 1]]
+
+         ;[?m :movie/director ?p] -> ^^^^^^^^^^^^^^^^^^^^^^^ pred-3 looking for the second item from the joined pair)
+         [2 :movie/title "RoboCop"]
+         ]}
+      )
+
+    (let [xf        (comp
+                      (xf/mapcat-zset-transaction-xf)
+                      (let [pred-1 #(datom-attr= % :person/name)
+                            pred-2 #(datom-attr= % :movie/director)
+                            pred-3 #(datom-attr= (second %) :movie/director)
+                            pred-4 #(and (datom-attr= % :movie/title) (datom-val= % "RoboCop"))
+                            ]
+                        (comp
+                          ;ignore datoms irrelevant to the query
+                          (map (fn [zset]
+                                 (xf/disj-irrelevant-items
+                                   zset pred-1 pred-2 pred-3 pred-4)))
+                          (map (fn [tx-current-item] (timbre/spy tx-current-item)))
+                          (xf/join-xf
+                            pred-1 datom->eid
+                            pred-2 datom->val
+                            index-state-all)
+                          (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+                          (xf/join-xf
+                            pred-3 #(-> % second datom->eid)
+                            pred-4 datom->eid
+                            index-state-all
+                            :last? true)
+                          (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
+                          ;TODO explore where filters
+                          (xforms/reduce zs/zset+))))
+          output-ch (a/chan (a/sliding-buffer 1)
+                      (xf/query-result-set-xf result-set))
+          to        (a/pipeline 1 output-ch xf @input)]
+      @input)
+
+    (a/>!!
+      @input
+      [(tx-datoms->zset-2
+         [[1 :person/name "Alice" :t true]])])
+
+    (a/>!!
+      @input
+      [(tx-datoms->zset-2
+         [[2 :movie/director 1 :t true]])])
+
+    (a/>!!
+      @input
+      [(tx-datoms->zset-2
+         [[2 :movie/title "RoboCop" :t true]])])
+
+    )
 
 
 

@@ -346,37 +346,39 @@
     '[[?p :person/name ?v] [?p2 :person/name ?v]]
 
 
-    (comment
-      (let [xf        (comp
-                        (xf/mapcat-zset-transaction-xf)
-                        (let [pred-1 #(datom-attr= % :person/name)
-                              pred-2 #(datom-attr= % :person/friend)
-                              pred-3 #(datom-attr= (second %) :person/friend)
-                              pred-4 #(datom-attr= % :person/name)
-                              ]
-                          (comp
-                            ;ignore datoms irrelevant to the query
-                            (map (fn [zset]
-                                   (xf/disj-irrelevant-items
-                                     zset pred-1 pred-2 pred-3 pred-4)))
-                            (map (fn [tx-current-item] (timbre/spy tx-current-item)))
-                            (xf/join-xf
-                              pred-1 datom->eid
-                              pred-2 datom->eid
-                              index-state-all)
-                            (map (fn [zset-in-between] (timbre/spy zset-in-between)))
-                            (xf/join-xf
-                              pred-3 #(-> % second datom->val)
-                              pred-4 datom->eid
-                              index-state-all
-                              :last? true)
-                            (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
-                            ;TODO explore where filters
-                            (xforms/reduce zs/zset+))))
-            output-ch (a/chan (a/sliding-buffer 1)
-                        (xf/query-result-set-xf result-set))
-            to        (a/pipeline 1 output-ch xf @input)]
-        @input))
+    (let [xf        (comp
+                      (xf/mapcat-zset-transaction-xf)
+                      (let [pred-1 #(datom-attr= % :person/name)
+                            pred-2 #(datom-attr= % :person/friend)
+                            pred-3 #(datom-attr= (second %) :person/friend)
+                            pred-4 #(datom-attr= % :person/name)
+
+                            ]
+                        (comp
+                          ;ignore datoms irrelevant to the query
+                          (map (fn [zset]
+                                 (xf/disj-irrelevant-items
+                                   zset pred-1 pred-2 pred-3 pred-4)))
+                          (map (fn [tx-current-item] (timbre/spy tx-current-item)))
+                          (xf/join-xf
+                            pred-1 datom->eid
+                            pred-2 datom->eid
+                            index-state-all)
+                          (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+                          (xf/join-xf
+                            pred-3 #(-> % second datom->val)
+                            pred-4 datom->eid
+                            index-state-all
+                            :last? true
+                            ;TODO make this simpler _and_ easier?
+                            :return-zset-item-xf (filter #(= (timbre/spy (-> % first first datom->val))
+                                                            (timbre/spy (-> % second datom->val)))))
+                          (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
+                          (xforms/reduce zs/zset+))))
+          output-ch (a/chan (a/sliding-buffer 1)
+                      (xf/query-result-set-xf result-set))
+          to        (a/pipeline 1 output-ch xf @input)]
+      @input)
 
     (comment
       (a/>!!
@@ -435,36 +437,37 @@
          ]}
       )
 
-    (let [xf        (comp
-                      (xf/mapcat-zset-transaction-xf)
-                      (let [pred-1 #(datom-attr= % :person/name)
-                            pred-2 #(datom-attr= % :movie/director)
-                            pred-3 #(datom-attr= (second %) :movie/director)
-                            pred-4 #(datom-attr-val= % :movie/title "RoboCop")
-                            ]
-                        (comp
-                          ;ignore datoms irrelevant to the query
-                          (map (fn [zset]
-                                 (xf/disj-irrelevant-items
-                                   zset pred-1 pred-2 pred-3 pred-4)))
-                          (map (fn [tx-current-item] (timbre/spy tx-current-item)))
-                          (xf/join-xf
-                            pred-1 datom->eid
-                            pred-2 datom->val
-                            index-state-all)
-                          (map (fn [zset-in-between] (timbre/spy zset-in-between)))
-                          (xf/join-xf
-                            pred-3 #(-> % second datom->eid)
-                            pred-4 datom->eid
-                            index-state-all
-                            :last? true)
-                          (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
-                          ;TODO explore where filters
-                          (xforms/reduce zs/zset+))))
-          output-ch (a/chan (a/sliding-buffer 1)
-                      (xf/query-result-set-xf result-set))
-          to        (a/pipeline 1 output-ch xf @input)]
-      @input)
+    (comment
+      (let [xf        (comp
+                        (xf/mapcat-zset-transaction-xf)
+                        (let [pred-1 #(datom-attr= % :person/name)
+                              pred-2 #(datom-attr= % :movie/director)
+                              pred-3 #(datom-attr= (second %) :movie/director)
+                              pred-4 #(datom-attr-val= % :movie/title "RoboCop")
+                              ]
+                          (comp
+                            ;ignore datoms irrelevant to the query
+                            (map (fn [zset]
+                                   (xf/disj-irrelevant-items
+                                     zset pred-1 pred-2 pred-3 pred-4)))
+                            (map (fn [tx-current-item] (timbre/spy tx-current-item)))
+                            (xf/join-xf
+                              pred-1 datom->eid
+                              pred-2 datom->val
+                              index-state-all)
+                            (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+                            (xf/join-xf
+                              pred-3 #(-> % second datom->eid)
+                              pred-4 datom->eid
+                              index-state-all
+                              :last? true)
+                            (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
+                            ;TODO explore where filters
+                            (xforms/reduce zs/zset+))))
+            output-ch (a/chan (a/sliding-buffer 1)
+                        (xf/query-result-set-xf result-set))
+            to        (a/pipeline 1 output-ch xf @input)]
+        @input))
 
     (a/>!!
       @input

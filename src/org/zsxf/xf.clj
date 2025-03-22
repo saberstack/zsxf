@@ -51,7 +51,10 @@
 
 
 (defn join-xf
-  [pred-1 index-k-1 pred-2 index-k-2 index-state & {:keys [last?] :or {last? false}}]
+  [pred-1 index-k-1 pred-2 index-k-2 index-state
+   & {:keys [last? return-zset-item-xf]
+      :or   {last? false
+             return-zset-item-xf (map identity)}}]
   (let [index-uuid-1 (random-uuid)
         index-uuid-2 (random-uuid)]
     (timbre/spy index-uuid-1)
@@ -103,7 +106,8 @@
                        ;Teams ⋈ ΔPlayers
                        (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
                        ;ΔTeams ⋈ ΔPlayers
-                       (timbre/spy (zs/join-indexed* delta-1 delta-2))))
+                       (timbre/spy (zs/join-indexed* delta-1 delta-2)))
+                     return-zset-item-xf)
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]
                     [join-xf-delta zset])))))))

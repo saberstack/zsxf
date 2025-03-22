@@ -181,12 +181,16 @@
 
 (defn indexed-zset->zset
   "Convert an indexed zset back into a zset"
-  [indexed-zset]
-  (transduce
-    (mapcat (fn [[_k v]] v))
-    conj
-    #{}
-    indexed-zset))
+  ([indexed-zset]
+   (indexed-zset->zset indexed-zset (map identity)))
+  ([indexed-zset xf]
+   (transduce
+     (comp
+       (mapcat (fn [[_k v]] v))
+       xf)
+     conj
+     #{}
+     indexed-zset)))
 
 (defn indexed-zset+
   ([]

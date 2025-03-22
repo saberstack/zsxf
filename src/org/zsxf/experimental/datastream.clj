@@ -44,7 +44,9 @@
 
   Note that other ways of interacting with the database, such as db-with,
   will evade this listening mechanism."
-  [conn atom]
-  (d/listen! conn (fn [tx-report]
-                    (swap! atom conj
-                           (tx->zset (:tx-data tx-report))))))
+  ([conn atom]
+   (listen-datom-stream conn atom tx->zset))
+  ([conn atom tx-data-f]
+   (d/listen! conn (fn [tx-report]
+                     (swap! atom conj
+                       (tx-data-f (:tx-data tx-report)))))))

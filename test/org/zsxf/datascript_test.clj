@@ -28,17 +28,17 @@
          data (load-edn-file   "resources/learndatalogtoday/data_datascript.edn")
          conn (d/create-conn schema)]
      (when listen-atom
-       (data-stream/listen-datom-stream conn listen-atom))
+       (data-stream/listen-datom-stream conn listen-atom ds/tx-datoms->zset-2))
      (d/transact! conn data)
      conn)))
 
+(defonce result-set (atom #{}))
 
 (deftest test-robocop "basic datalog query"
   (let [input (a/chan)
         txn-atom (atom [])
-        index-state-all (atom [])
+        index-state-all (atom {})
         conn (load-learn-db txn-atom)
-        result-set (atom [])
         xf (comp
             (xf/mapcat-zset-transaction-xf)
             (let [pred-1 #(ds/datom-attr= % :person/name)
@@ -65,9 +65,8 @@
           output-ch (a/chan (a/sliding-buffer 1)
                       (xf/query-result-set-xf result-set))
           _        (a/pipeline 1 output-ch xf input)]
-    (a/>!!
-     input
-     @txn-atom))
+    (a/>!! input @txn-atom)
+    (timbre/info "done with tx"))
   (is true))
 
 (comment [:find ?name

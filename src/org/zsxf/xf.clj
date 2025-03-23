@@ -110,7 +110,15 @@
                      return-zset-item-xf)
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]
-                    [join-xf-delta zset])))))))
+                    [(timbre/spy join-xf-delta) zset])))))))
+
+(defn with-meta-f
+  "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
+  [f]
+  (fn [data]
+    (with-meta
+      (f data)
+      (meta data))))
 
 (defn mapcat-zset-transaction-xf
   "Receives a transaction represented by a vectors of zsets.

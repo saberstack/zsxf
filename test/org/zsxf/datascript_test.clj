@@ -28,7 +28,7 @@
          data (load-edn-file   "resources/learndatalogtoday/data_datascript.edn")
          conn (d/create-conn schema)]
      (when listen-atom
-       (data-stream/listen-datom-stream conn listen-atom ds/tx-datoms->zset-2))
+       (data-stream/listen-datom-stream conn listen-atom ds/tx-datoms->zset))
      (d/transact! conn data)
      conn)))
 
@@ -96,12 +96,17 @@
                    :last? true)
                  (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
                  (xforms/reduce zs/zset+))))]
-    (transduce
-      xf
-      zs/zset+
-      #{}
-      [@txn-atom]))
-  (is true))
+    (is
+      (=
+        (transduce
+          xf
+          zs/zset+
+          #{}
+          [@txn-atom])
+        #{^#:zset{:w 1}
+          [^#:zset{:w 1} [^#:zset{:w 1} [16 :person/name "Paul Verhoeven"]
+                          ^#:zset{:w 1} [59 :movie/director 16]]
+           ^#:zset{:w 1} [59 :movie/title "RoboCop"]]}))))
 
 (comment [:find ?name
    :where

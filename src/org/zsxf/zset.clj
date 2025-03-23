@@ -47,28 +47,38 @@
   ([] (zset #{}))
   ([zset-1] zset-1)
   ([zset-1 zset-2]
-   ;{:pre [(zset? zset-1) (zset? zset-2)]}
-   (let []
-     (transduce
-       ;get set items one by one
-       (comp cat)
-       (completing
-         (fn [s new-zset-item]
-           (if-let [zset-item (s new-zset-item)]
-             (let [meta-1     (meta zset-item)
-                   meta-2     (meta new-zset-item)
-                   new-weight (+ (:zset/w meta-1) (:zset/w meta-2))]
-               (if (zero? new-weight)
-                 (disj s zset-item)
-                 (conj (disj s zset-item) (vary-meta new-zset-item
-                                            (fn [meta-map] (assoc meta-map :zset/w new-weight))))))
-             (if (not= 0 (:zset/w (meta new-zset-item)))
-               (conj s new-zset-item)
-               s)))
-         (fn [accum]
-           accum))
-       zset-1
-       [zset-2]))))
+   (zset+ zset-1 zset-2 (map identity)))
+  ([zset-1 zset-2 xf]
+   (transduce
+     ;get set items one by one
+     (comp cat xf)
+     (completing
+       (fn [s new-zset-item]
+         (if-let [zset-item (s new-zset-item)]
+           (let [meta-1     (meta zset-item)
+                 meta-2     (meta new-zset-item)
+                 new-weight (+ (:zset/w meta-1) (:zset/w meta-2))]
+             (if (zero? new-weight)
+               (disj s zset-item)
+               (conj (disj s zset-item) (vary-meta new-zset-item
+                                          (fn [meta-map] (assoc meta-map :zset/w new-weight))))))
+           (if (not= 0 (:zset/w (meta new-zset-item)))
+             (conj s new-zset-item)
+             s)))
+       (fn [accum]
+         accum))
+     zset-1
+     [zset-2])))
+
+(defn zset-xf+
+  "Takes a transducers and returns a function with the same signature as zset+.
+  The transducer is applied to each new zset item from the second zset before adding it to the first zset."
+  [xf]
+  (fn
+    ([] (zset #{}))
+    ([zset-1] zset-1)
+    ([zset-1 zset-2]
+     (zset+ zset-1 zset-2 xf))))
 
 (defn zset-pos+
   "Same as zset+ but does not maintain items with negative weight after +"

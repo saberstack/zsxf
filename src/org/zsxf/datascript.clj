@@ -307,9 +307,8 @@
                         (xf/mapcat-zset-transaction-xf)
                         (let [pred-1 #(datom-attr= % :person/name)
                               pred-2 #(datom-attr= % :movie/director)
-                              pred-3 #(datom-attr= (second %) :movie/director)
-                              pred-4 #(datom-attr-val= % :movie/title "RoboCop")
-                              ]
+                              pred-3 #(datom-attr= % :movie/director)
+                              pred-4 #(datom-attr-val= % :movie/title "RoboCop")]
                           (comp
                             ;ignore datoms irrelevant to the query
                             (map (fn [zset]
@@ -321,8 +320,8 @@
                               pred-2 datom->val
                               index-state-all)
                             (map (fn [zset-in-between] (timbre/spy zset-in-between)))
-                            (xf/join-xf
-                              pred-3 #(-> % second datom->eid)
+                            (xf/join-right-pred-1-xf
+                              pred-3 datom->eid
                               pred-4 datom->eid
                               index-state-all
                               :last? true)
@@ -332,7 +331,16 @@
             output-ch (a/chan (a/sliding-buffer 1)
                         (xf/query-result-set-xf result-set))
             to        (a/pipeline 1 output-ch xf @input)]
-        @input))
+        @input)
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[1 :person/name "Alice" :t true]
+            [2 :movie/director 1 :t true]
+            [2 :movie/title "RoboCop" :t true]])])
+
+      )
 
 
     (comment

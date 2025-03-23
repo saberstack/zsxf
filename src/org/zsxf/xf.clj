@@ -51,6 +51,9 @@
 
 
 (defn join-xf
+  "Joins two relations (represented by zsets)
+  based on predicates pred-1 and pred-2 and index key functions index-k-1 and index-k-2.
+  index-state is an atom containing a map of index UUIDs (one for each of the two relations) to indexed zsets."
   [pred-1 index-k-1 pred-2 index-k-2 index-state
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
@@ -112,6 +115,7 @@
           (mapcat (fn [[join-xf-delta zset]]
                     [(timbre/spy join-xf-delta) zset])))))))
 
+
 (defn join-right-pred-1-xf
   "Joins already joined relations with a new relation.
   Modifies pred-1 and index-k-1 to point to the joined relations' second relation."
@@ -121,6 +125,7 @@
              return-zset-item-xf (map identity)}
       :as params-map}]
   (join-xf (comp pred-1 second) (comp index-k-1 second) pred-2 index-k-2 index-state params-map))
+
 
 (defn join-left-pred-1-xf
   "Joins already joined relations with a new relation.
@@ -132,6 +137,7 @@
       :as   params-map}]
   (join-xf (comp pred-1 first) (comp index-k-1 first) pred-2 index-k-2 index-state params-map))
 
+
 (defn join-right-pred-2-xf
   "Joins already joined relations with a new relation.
   Modifies pred-2 and index-k-2 to point to the joined relations' second relation."
@@ -141,6 +147,7 @@
              return-zset-item-xf (map identity)}
       :as params-map}]
   (join-xf pred-1 index-k-1 (comp pred-2 second) (comp index-k-2 second) index-state params-map))
+
 
 (defn join-left-pred-2-xf
   "Joins already joined relations with a new relation.
@@ -153,7 +160,6 @@
   (join-xf pred-1 index-k-1 (comp pred-2 first) (comp index-k-2 first) index-state params-map))
 
 
-
 (defn with-meta-f
   "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
   [f]
@@ -162,17 +168,20 @@
       (f data)
       (meta data))))
 
+
 (defn mapcat-zset-transaction-xf
   "Receives a transaction represented by a vectors of zsets.
   Returns zsets one by one"
   []
   (mapcat (fn [tx-v] (timbre/spy tx-v))))
 
+
 (defn query-result-set-xf [result-set-state]
   (map (fn [result-set-delta]
          (timbre/spy result-set-delta)
          (swap! result-set-state
            (fn [m] (zs/zset-pos+ m result-set-delta))))))
+
 
 (defn disj-irrelevant-items [zset & preds]
   (transduce

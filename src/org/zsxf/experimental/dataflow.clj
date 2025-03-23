@@ -18,6 +18,16 @@
 (defonce *grouped-by-state-team-3 (agent {}))
 (defonce *grouped-by-state-player-3 (agent {}))
 
+(defn join
+  "Join two indexed zsets as a map relation. Does not multiply zsets."
+  [indexed-zset-1 indexed-zset-2]
+  (let [commons (clojure.set/intersection (set (keys indexed-zset-1)) (set (keys indexed-zset-2)))]
+    (transduce
+      (map (fn [common] [(indexed-zset-1 common) (indexed-zset-2 common)]))
+      conj
+      {}
+      commons)))
+
 (defn incremental-computation-xf
   "Equivalent SQL join:
 
@@ -78,14 +88,14 @@
 
 (comment
   ;Delete poc
-  (let [tx-1 (zs/join
+  (let [tx-1 (join
                (zs/index
                  (zs/zset [{:team/name "T1" :team/id 1}])
                  :team/id)
                (zs/index
                  (zs/zset [{:player/name "P1" :player/team 1}])
                  :player/team))
-        tx-2 (zs/join
+        tx-2 (join
                (zs/index
                  (zs/zset [{:team/name "T1" :team/id 1}])
                  :team/id)
@@ -214,27 +224,11 @@
   (init-from-memory)
   @*grouped-by-state-team
   @*grouped-by-state-player
-  (zs/join @*grouped-by-state-team @*grouped-by-state-player)
+  (join @*grouped-by-state-team @*grouped-by-state-player)
 
   @*grouped-by-state-team-2
   @*grouped-by-state-player-2
 
-  (zs/join @*grouped-by-state-team-2 @*grouped-by-state-player-2)
-
-  )
-
-
-; Scratch
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(comment
-
-  (zs/indexed-zset*
-    (zs/index
-      (zs/zset [{:team "A" :id 1} {:team "Aa" :id 1} {:team "B" :id 2}])
-      :id)
-    (zs/index
-      (zs/zset [{:player "R" :team 1} {:player "S" :team 2} {:player "T" :team 3}])
-      :team))
+  (join @*grouped-by-state-team-2 @*grouped-by-state-player-2)
 
   )

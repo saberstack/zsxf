@@ -57,13 +57,13 @@
 
 (defn count-final-result []
   (update-vals
-    (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player)
+    (xp-dataflow/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player)
     count))
 
 (defn final-result []
   (let [[k v]
         (first
-          (zs/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player))]
+          (xp-dataflow/join @xp-dataflow/*grouped-by-state-team @xp-dataflow/*grouped-by-state-player))]
     (ds/sort-by-column
       (ds/->dataset
         (sequence

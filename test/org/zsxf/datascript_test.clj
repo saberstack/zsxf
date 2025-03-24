@@ -70,7 +70,15 @@
   (is true))
 
 (deftest test-robocop-transduce "basic datalog query"
-  (let [index-state-all (atom {})
+  ; join c1 to c3 via ?p
+  ; join [c1 c3] to c2 via ?m
+  (let [datalog-query '[:find ?name
+                        :where
+                        [?p :person/name ?name] ;c1
+                        [?m :movie/title "RoboCop"] ;c2
+                        [?m :movie/director ?p] ;c3
+                        ]
+        index-state-all (atom {})
         txn-atom (atom [])
         _conn (load-learn-db txn-atom)
         xf (comp
@@ -85,8 +93,8 @@
                           zset pred-1 pred-2 pred-3 pred-4)))
                  (map (fn [tx-current-item] (timbre/spy tx-current-item)))
                  (xf/join-xf
-                   pred-1 ds/datom->eid
-                   pred-2 ds/datom->val
+                    pred-1 ds/datom->eid
+                    pred-2 ds/datom->val
                    index-state-all)
                  (map (fn [zset-in-between] (timbre/spy zset-in-between)))
                  (xf/join-xf
@@ -108,12 +116,83 @@
                           ^#:zset{:w 1} [59 :movie/director 16]]
            ^#:zset{:w 1} [59 :movie/title "RoboCop"]]}))))
 
-(comment [:find ?name
-   :where
-   [?p :person/name ?name] ;c1
-   [?m :movie/title "RoboCop"] ;c2
-   [?m :movie/director ?p] ;c3
-   ]
+
+(deftest test-ahhnold "Another basic query"
+  (let [query '[:find ?name
+                :where
+                [?m :movie/cast ?p] ;c1
+                [?p :person/name "Arnold Schwarzenegger"] ;c2
+                [?m :movie/director ?d] ;c3
+                [?d :person/name ?name] ;c4
+                ]
+        index-state-all (atom {})
+        txn-atom (atom [])
+        _conn (load-learn-db txn-atom)
+        xf (comp
+            (xf/mapcat-zset-transaction-xf)
+            (let [;; join c1 to c3 via ?m
+                  pred-1 #(ds/datom-attr= % :movie/cast)
+                  pred-2 #(ds/datom-attr= % :movie/director)
+
+                  ;; join [c1 c3] to c2 via ?p
+                  pred-3 #(ds/datom-attr= (first %) :movie/cast)
+                  pred-4 #(ds/datom-attr-val= % :person/name "Arnold Schwarzenegger")
+
+                  ;; join [[c1 c3] c2] to c4 via ?d
+                  pred-5 #(ds/datom-attr= (-> % first second) :movie/director)
+                  pred-6 #(ds/datom-attr= % :person/name)]
+              (comp
+               (map (fn [zset]
+                      (xf/disj-irrelevant-items
+                       zset pred-1 pred-2 pred-3 pred-4 pred-5 pred-6)))
+               ;; join c1 to c3 via ?m
+               (xf/join-xf pred-1 ds/datom->eid pred-2 ds/datom->eid index-state-all)
+               ;; join [c1 c3] to c2 via ?p
+               (xf/join-xf pred-3 #(-> % first (ds/datom->val))  pred-4 ds/datom->eid index-state-all)
+
+               ;; join [[c1 c3] c2] to c4 via ?d
+               (xf/join-xf pred-5 #(-> % first second ds/datom->val) pred-6 ds/datom->eid
+                           index-state-all :last? true)
+               (xforms/reduce zs/zset+))))
+        query-results   (transduce
+                         xf
+                         zs/zset+
+                         #{}
+                         [@txn-atom])]
+    (def chicken query-results)
+    (is true)))
+
+(comment
+
+
+  ((some-fn pred-1 pred-2 pred-3 pred-4 pred-5 pred-6) matey)
+
+  (let [])
+
+
+
+         )
+
+
+(comment (def q )
+
+         (defn query->where-clauses [q]
+           (->> q
+                (drop-while #(not= :where %))
+                (drop  1)))
+
+         (defn all-where-variables [q]
+           (->> q
+                query->where-clauses
+                (mapcat identity)
+                (filter symbol?)
+                set))
+         (mapcat identity ())
+         (all-where-variables q)
+
+         (query->where-clauses q)
+
+         (set! *print-meta* false)
 
 ;c1 unifies to c3 by ?p
 ;c2 unifies to c3 by ?p

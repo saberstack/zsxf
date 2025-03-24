@@ -125,6 +125,12 @@
                 [?m :movie/director ?d] ;c3
                 [?d :person/name ?name] ;c4
                 ]
+        safe-first (fn [thing]
+                     (when (vector? thing)
+                       (first thing)))
+        safe-second (fn [thing]
+                     (when (vector? thing)
+                       (second thing)))
         index-state-all (atom {})
         txn-atom (atom [])
         _conn (load-learn-db txn-atom)
@@ -135,11 +141,11 @@
                   pred-2 #(ds/datom-attr= % :movie/director)
 
                   ;; join [c1 c3] to c2 via ?p
-                  pred-3 #(ds/datom-attr= (first %) :movie/cast)
+                  pred-3 #(ds/datom-attr= (safe-first %) :movie/cast)
                   pred-4 #(ds/datom-attr-val= % :person/name "Arnold Schwarzenegger")
 
                   ;; join [[c1 c3] c2] to c4 via ?d
-                  pred-5 #(ds/datom-attr= (-> % first second) :movie/director)
+                  pred-5 #(ds/datom-attr= (-> % safe-first safe-second) :movie/director)
                   pred-6 #(ds/datom-attr= % :person/name)]
               (comp
                (map (fn [zset]
@@ -148,10 +154,10 @@
                ;; join c1 to c3 via ?m
                (xf/join-xf pred-1 ds/datom->eid pred-2 ds/datom->eid index-state-all)
                ;; join [c1 c3] to c2 via ?p
-               (xf/join-xf pred-3 #(-> % first (ds/datom->val))  pred-4 ds/datom->eid index-state-all)
+               (xf/join-xf pred-3 #(-> % safe-first (ds/datom->val))  pred-4 ds/datom->eid index-state-all)
 
                ;; join [[c1 c3] c2] to c4 via ?d
-               (xf/join-xf pred-5 #(-> % first second ds/datom->val) pred-6 ds/datom->eid
+               (xf/join-xf pred-5 #(-> % safe-first safe-second ds/datom->val) pred-6 ds/datom->eid
                            index-state-all :last? true)
                (xforms/reduce zs/zset+))))
         query-results   (transduce

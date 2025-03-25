@@ -14,9 +14,9 @@
 (timbre/set-ns-min-level! :trace)
 
 (defn zset-weight
-  "Get the weight of a zset item, typically a map"
-  [m]
-  (:zset/w (meta m)))
+  "Get the weight of a zset item, typically a Clojure collection"
+  [x]
+  (:zset/w (meta x)))
 
 (defn zset-item
   ([x]

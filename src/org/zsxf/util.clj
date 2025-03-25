@@ -22,3 +22,29 @@
     (a/close! ch))
   ;return channel
   ch)
+
+(defn fpred
+  "Like fnil, but with a custom predicate"
+  ([f pred x]
+   (fn
+     ([a] (f (if (pred a) x a)))
+     ([a b] (f (if (pred a) x a) b))
+     ([a b c] (f (if (pred a) x a) b c))
+     ([a b c & ds] (apply f (if (pred a) x a) b c ds))))
+  ([f pred x y]
+   (fn
+     ([a b] (f (if (pred a) x a) (if (pred b) y b)))
+     ([a b c] (f (if (pred a) x a) (if (pred b) y b) c))
+     ([a b c & ds] (apply f (if (pred a) x a) (if (pred b) y b) c ds))))
+  ([f pred x y z]
+   (fn
+     ([a b] (f (if (pred a) x a) (if (pred b) y b)))
+     ([a b c] (f (if (pred a) x a) (if (pred b) y b) (if (pred c) z c)))
+     ([a b c & ds] (apply f (if (pred a) x a) (if (pred b) y b) (if (pred c) z c) ds)))))
+
+(defn nth2
+  "Like nth but doesn't throw"
+  ([coll index]
+   (nth2 coll index nil))
+  ([coll index not-found]
+   ((fpred nth (comp not coll?) nil) coll index not-found)))

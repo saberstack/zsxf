@@ -67,7 +67,7 @@
       (mapcat identity)
       ;receives a zset item (with zset weight)
       (map (fn [zset-item]
-             (let [delta-1 (if (pred-1 zset-item) (zs/index #{zset-item} index-k-1) {})
+             (let [delta-1 (if (pred-1 zset-item) (zs/index (timbre/spy #{zset-item}) index-k-1) {})
                    delta-2 (if (pred-2 zset-item) (zs/index #{zset-item} index-k-2) {})
                    zset    (if last? #{} #{zset-item})]
                ;return

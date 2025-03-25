@@ -5,8 +5,8 @@
             [org.zsxf.zset :as zset]
             [org.zsxf.xf :as xf]
             [datascript.core :as d]
+            [org.zsxf.util :as util :refer [nth2]]
             [taoensso.timbre :as timbre]))
-
 
 (defn tx-datoms->zset-of-maps
   "Transforms datoms into a zset of maps. Each map represents a datom with a weight."
@@ -42,8 +42,14 @@
   (= (datom->attr datom) attr))
 
 (defn datom->val [datom]
+  (timbre/spy (meta datom))
   (if (vector? datom)
     (nth datom 2 nil)))
+
+(defn datom->val-meta [datom]
+  (with-meta
+    (vector (datom->val datom))
+    (meta datom)))
 
 (defn datom-val= [datom value]
   (= (datom->val datom) value))
@@ -52,6 +58,51 @@
   (and (datom-attr= datom attr) (datom-val= datom value)))
 
 (defonce *conn (atom nil))
+
+
+(comment
+  ;movie example
+  (let [schema {}
+        conn   (d/create-conn schema)]
+
+    [(d/transact! conn
+       [{:person/name "Alice"}])
+
+     (d/transact! conn
+       [{:movie/director 1
+         :movie/title    "RoboCop 1"}])
+
+     (d/transact! conn
+       [{:movie/director 1
+         :movie/title    "RoboCop 2"}])
+
+     (d/transact! conn
+       [{:person/name "Bob"}])
+
+     (d/transact! conn
+       [{:movie/director 4
+         :movie/title    "LOTR 1"}])
+
+     (d/transact! conn
+       [{:movie/director 4
+         :movie/title    "LOTR 2"}])
+
+     (d/transact! conn
+       [{:movie/director 4
+         :movie/title    "LOTR 3"}])
+
+     ]
+
+    ;query
+    (d/q
+      '[:find ?name (count ?m)
+        :where
+        [?p :person/name ?name]
+        [?m :movie/title]
+        [?m :movie/director ?p]]
+      @conn)
+    )
+  )
 
 (comment
   (let [schema {:team/name   {:db/cardinality :db.cardinality/one
@@ -211,6 +262,7 @@
     ))
 
 (defonce index-state-all (atom {}))
+(defonce result-set-deltas (atom []))
 (defonce result-set (atom #{}))
 
 (comment
@@ -229,12 +281,12 @@
 (defn reset-state! []
   (do
     (reset! index-state-all {})
+    (reset! result-set-deltas [])
     (reset! result-set #{})
     (reset! input (a/chan)))
   )
 
 (comment
-
   (print-index-state)
   (do
     (comment
@@ -303,17 +355,27 @@
 
 
     (comment
+      '(d/q
+         '[:find ?name (count ?m)
+           :where
+           [?p :person/name ?name]
+           [?m :movie/title]
+           [?m :movie/director ?p]
+           [?p :person/born "USA"]]
+         @conn)
       (let [xf        (comp
                         (xf/mapcat-zset-transaction-xf)
                         (let [pred-1 #(datom-attr= % :person/name)
                               pred-2 #(datom-attr= % :movie/director)
                               pred-3 #(datom-attr= % :movie/director)
-                              pred-4 #(datom-attr-val= % :movie/title "RoboCop")]
+                              pred-4 #(datom-attr= % :movie/title)
+                              pred-5 #(datom-attr= (-> % (nth2 0) (nth2 0)) :person/name)
+                              pred-6 #(datom-attr-val= % :person/born "USA")]
                           (comp
                             ;ignore datoms irrelevant to the query
                             (map (fn [zset]
                                    (xf/disj-irrelevant-items
-                                     zset pred-1 pred-2 pred-3 pred-4)))
+                                     zset pred-1 pred-2 pred-3 pred-4 pred-5 pred-6)))
                             (map (fn [tx-current-item] (timbre/spy tx-current-item)))
                             (xf/join-xf
                               pred-1 datom->eid
@@ -323,22 +385,238 @@
                             (xf/join-right-pred-1-xf
                               pred-3 datom->eid
                               pred-4 datom->eid
+                              index-state-all)
+                            (xf/join-xf
+                              pred-5 #(-> % (nth2 0) (nth2 0) datom->eid)
+                              pred-6 datom->eid
                               index-state-all
                               :last? true)
                             (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
-                            ;TODO explore where filters
-                            (xforms/reduce zs/zset+))))
+                            ;find
+                            (xforms/reduce zs/zset+
+                              #_(zs/zset-xf+
+                                  (map (xf/with-meta-f
+                                         (fn [zset-pairs]
+                                           (timbre/spy zset-pairs)
+                                           zset-pairs
+                                           [(datom->val (first (first zset-pairs)))
+                                            (datom->val (second zset-pairs))])))))
+                            (map (fn [post-reduce] (timbre/spy post-reduce)))
+                            #_(comp
+                                (mapcat identity)
+                                (xforms/by-key
+                                  (fn [k]
+                                    (timbre/spy k)
+                                    ((xf/with-meta-f (comp vector first)) k))
+                                  (fn [zset-item] (timbre/spy zset-item))
+                                  (fn [grouped-by-k aggregates]
+                                    (let [cnt        (first aggregates)
+                                          w          (zs/zset-weight grouped-by-k)
+                                          pos-or-neg (cond
+                                                       (pos? w) 1
+                                                       (neg? w) -1
+                                                       :else (throw (ex-info "weights should not be zero" {:w w})))
+                                          cnt-weight (* cnt pos-or-neg)]
+
+                                      (timbre/spy grouped-by-k)
+                                      (timbre/spy aggregates)
+                                      (if grouped-by-k
+                                        {grouped-by-k #{(zs/zset-item [:count] cnt-weight)}} {})))
+                                  (comp
+                                    (map (fn [pre-count] (timbre/spy pre-count)))
+                                    (xforms/transjuxt [xforms/count])))
+                                (map (fn [post-by-key] (timbre/spy post-by-key)))
+                                (xforms/into {})
+                                (map (fn [post-into] (timbre/spy post-into))))
+                            )))
             output-ch (a/chan (a/sliding-buffer 1)
-                        (xf/query-result-set-xf result-set))
+                        (comp
+                          (map (fn [delta]
+                                 (swap! result-set-deltas conj delta)
+                                 delta))                    ;debug
+                          (xf/query-result-set-xf result-set)
+                          ))
             to        (a/pipeline 1 output-ch xf @input)]
         @input)
+
+      (transduce
+        (xforms/by-key
+          first
+          (fn [k] (timbre/spy k))
+          (fn [x y]
+            (timbre/spy y)
+            (timbre/spy [x (:count y)]))
+          (xforms/transjuxt {:count xforms/count}))
+        conj
+        []
+        [["Bob" "LOTR"]
+         ["Bob" "Matrix"]
+         ["Alice" "RoboCop"]
+         ["Bob" "Home Alone"]])
+
+
 
       (a/>!!
         @input
         [(tx-datoms->zset
            [[1 :person/name "Alice" :t true]
             [2 :movie/director 1 :t true]
-            [2 :movie/title "RoboCop" :t true]])])
+            [2 :movie/title "RoboCop" :t true]
+            [1 :person/born "USA" :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :person/name "Bob" :t true]
+            [4 :movie/director 3 :t true]
+            [4 :movie/title "RoboCop" :t true]])])
+
+      (comment
+        (/ 8 2)
+        (/ 27 3)
+        (/ 64 4)
+        (/ 125 5)
+        )
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[4 :movie/title "RoboCop" :t true]])])
+
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :person/name "Bob" :t false]
+            [4 :movie/director 3 :t false]
+            [4 :movie/title "RoboCop" :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[4 :movie/title "RoboCop" :t true]])])
+
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[2 :movie/director 1 :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[2 :movie/director 1 :t false]])
+         (tx-datoms->zset
+           [[2 :movie/director 1 :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[1 :person/name "Alice" :t true]
+            [2 :movie/director 1 :t true]
+            [2 :movie/title "RoboCop" :t true]])
+         (tx-datoms->zset
+           [[3 :movie/title "Matrix" :t true]
+            [3 :movie/director 1 :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[1 :person/name "Alice" :t false]
+            [2 :movie/director 1 :t false]
+            [2 :movie/title "RoboCop" :t false]])
+         (tx-datoms->zset
+           [[1 :person/name "Alice" :t false]
+            [2 :movie/director 1 :t false]
+            [2 :movie/title "RoboCop" :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :movie/title "Matrix" :t true]
+            [3 :movie/director 1 :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :movie/title "Matrix" :t false]
+            [3 :movie/director 1 :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[1 :person/name "Alice" :t false]
+            [2 :movie/director 1 :t false]
+            [2 :movie/title "RoboCop" :t false]])
+         (tx-datoms->zset
+           [[3 :person/name "Bob" :t false]
+            [2 :movie/director 3 :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[1 :person/name "Alice" :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[2 :movie/director 1 :t false]
+            [2 :movie/title "RoboCop" :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :person/name "Bob" :t true]
+            [2 :movie/director 3 :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :person/name "Bob" :t false]
+            [2 :movie/director 3 :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[5 :movie/director 3 :t true]
+            [5 :movie/title "RoboCop" :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :person/name "Bob" :t false]
+            [4 :movie/director 3 :t false]
+            [4 :movie/title "RoboCop" :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[4 :movie/title "RoboCop" :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :person/name "Bob" :t false]])])
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[4 :movie/director 3 :t true]])])
+
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :person/name "Bob" :t false]
+            [4 :movie/director 3 :t false]
+            [4 :movie/title "RoboCop" :t false]
+            ])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[1 :person/name "Alice" :t false]
+            [2 :movie/director 1 :t false]
+            [2 :movie/title "RoboCop" :t false]])])
 
       )
 
@@ -380,7 +658,6 @@
                                     (not=
                                       (timbre/spy (datom->eid (first rel1+rel2)))
                                       (timbre/spy (datom->eid (second rel1+rel2))))))))
-                            (map (fn [zset-in-between] (timbre/spy zset-in-between)))
                             (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
                             (xforms/reduce (zs/zset-xf+ find-xf)))))
             output-ch (a/chan (a/sliding-buffer 1)

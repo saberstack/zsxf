@@ -14,7 +14,8 @@
 (timbre/set-ns-min-level! :trace)
 
 (defn zset-weight
-  "Get the weight of a zset item, typically a Clojure collection"
+  "Get the weight of a zset item.
+  x must have metadata with :zset/w integer value"
   [x]
   (:zset/w (meta x)))
 

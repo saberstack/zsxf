@@ -189,16 +189,30 @@
          (swap! result-set-state
            (fn [m] (zs/zset-pos+ m result-set-delta))))))
 
+(defn- init-result [result result-delta]
+  (if (nil? result)
+    ;init
+    (cond
+      (map? result-delta) [{} zs/indexed-zset-pos+]
+      (set? result-delta) [#{} zs/zset-pos+]
+      :else (throw (ex-info "result-delta must be either map or set"
+                     {:result-delta result})))
+    ;else, existing result
+    (cond
+      (and (map? result) (map? result-delta)) [result zs/indexed-zset-pos+]
+      (and (set? result) (set? result-delta)) [result zs/zset-pos+]
+      :else (throw (ex-info "result and result-delta together must be either maps or sets"
+                     {:result result :result-delta result})))))
 
-(defn query-result-state-xf [result-state]
+(defn query-result-state-xf
+  "Saves query results to atom. Works for both zsets and indexed-zset results."
+  [result-state]
   (map (fn [result-delta]
          (timbre/spy result-delta)
          (swap! result-state
            (fn [result]
-             (cond
-               (map? result) (zs/indexed-zset-pos+ result result-delta)
-               (set? result) (zs/zset-pos+ result result-delta)
-               :else (throw (ex-info "result must be either map or set" {:result result}))))))))
+             (let [[result result+] (init-result result result-delta)]
+               (result+ result result-delta)))))))
 
 
 (defn disj-irrelevant-items [zset & preds]

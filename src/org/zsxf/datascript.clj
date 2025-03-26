@@ -89,49 +89,43 @@
   (let [schema {}
         conn   (d/create-conn schema)]
 
-    #_[(d/transact! conn
-         [{:person/name "Alice"}])
-
-       (d/transact! conn
-         [{:movie/director 1
-           :movie/title    "RoboCop 1"}])
-
-       (d/transact! conn
-         [{:movie/director 1
-           :movie/title    "RoboCop 2"}])
-
-       (d/transact! conn
-         [{:person/name "Bob"}])
-
-       (d/transact! conn
-         [{:movie/director 4
-           :movie/title    "LOTR 1"}])
-
-       (d/transact! conn
-         [{:movie/director 4
-           :movie/title    "LOTR 2"}])
-
-       (d/transact! conn
-         [{:movie/director 4
-           :movie/title    "LOTR 3"}])
-
-       ]
-
-    [(d/transact!
-       conn
+    [(d/transact! conn
        [{:person/name "Alice"}])
 
      (d/transact! conn
-       [[:db/add 1 :person/name "Alice"]])]
+       [{:movie/director 1
+         :movie/title    "RoboCop 1"}])
+
+     (d/transact! conn
+       [{:movie/director 1
+         :movie/title    "RoboCop 2"}])
+
+     (d/transact! conn
+       [{:person/name "Bob"}])
+
+     (d/transact! conn
+       [{:movie/director 4
+         :movie/title    "LOTR 1"}])
+
+     (d/transact! conn
+       [{:movie/director 4
+         :movie/title    "LOTR 2"}])
+
+     (d/transact! conn
+       [{:movie/director 4
+         :movie/title    "LOTR 3"}])
+
+     ]
 
     ;query
-    #_(d/q
+    (into {}
+      (d/q
         '[:find ?name (count ?m)
           :where
           [?p :person/name ?name]
           [?m :movie/title]
           [?m :movie/director ?p]]
-        @conn)
+        @conn))
     )
   )
 
@@ -295,7 +289,7 @@
 (defonce index-state-all (atom {}))
 (defonce result-deltas (atom []))
 (defonce result-set (atom #{}))
-(defonce result-state (atom {}))
+(defonce result-state (atom nil))
 
 (comment
   ;transform result set to datascript form
@@ -315,6 +309,7 @@
     (reset! index-state-all {})
     (reset! result-deltas [])
     (reset! result-set #{})
+    (reset! result-state nil)
     (reset! input (a/chan)))
   )
 
@@ -427,7 +422,7 @@
                             ;find
                             (xforms/reduce zs/zset+)
                             (map (fn [post-reduce] (timbre/spy post-reduce)))
-                            (xf/group-by-count-xf
+                            #_(xf/group-by-count-xf
                               (fn [zset-item]
                                 (-> zset-item (nth2 0) (nth2 0) (nth2 0) datom->val))))))
             output-ch (a/chan (a/sliding-buffer 1)
@@ -439,23 +434,6 @@
                           ))
             to        (a/pipeline 1 output-ch xf @input)]
         @input)
-
-      (transduce
-        (xforms/by-key
-          first
-          (fn [k] (timbre/spy k))
-          (fn [x y]
-            (timbre/spy y)
-            (timbre/spy [x (:count y)]))
-          (xforms/transjuxt {:count xforms/count}))
-        conj
-        []
-        [["Bob" "LOTR"]
-         ["Bob" "Matrix"]
-         ["Alice" "RoboCop"]
-         ["Bob" "Home Alone"]])
-
-
 
       (a/>!!
         @input
@@ -470,7 +448,19 @@
         [(tx-datoms->zset
            [[3 :person/name "Bob" :t true]
             [4 :movie/director 3 :t true]
-            [4 :movie/title "RoboCop" :t true]])])
+            [4 :movie/title "RoboCop" :t true]
+            [3 :person/born "USA" :t true]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[4 :movie/director 3 :t false]])])
+
+      (a/>!!
+        @input
+        [(tx-datoms->zset
+           [[3 :person/name "Bob" :t false]
+            [4 :movie/title "RoboCop" :t false]])])
 
       (comment
         (/ 8 2)

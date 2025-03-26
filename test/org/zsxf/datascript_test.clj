@@ -5,7 +5,9 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [datascript.core :as d]
+   [medley.core :as medley]
    [org.zsxf.datascript :as ds]
+   [org.zsxf.datalog.parser :as parser]
    [org.zsxf.zset :as zs]
    [org.zsxf.xf :as xf]
    [org.zsxf.experimental.datastream :as data-stream]
@@ -180,7 +182,14 @@
          )
 
 
-(comment (def q )
+(comment (def q '[:find ?name
+                :where
+                [?m :movie/cast ?p] ;c1
+                [?p :person/name "Arnold Schwarzenegger"] ;c2
+                [?m :movie/director ?d] ;c3
+                [?d :person/name ?name] ;c4
+                ])
+
 
          (defn query->where-clauses [q]
            (->> q
@@ -193,13 +202,64 @@
                 (mapcat identity)
                 (filter symbol?)
                 set))
-         (mapcat identity ())
          (all-where-variables q)
 
-         (query->where-clauses q)
+         (def where-clauses (query->where-clauses q))
 
          (set! *print-meta* false)
 
+         (defn name-clauses [where-clauses]
+           (second
+            (reduce
+             (fn [[n acc] clause]
+               [(inc n) (assoc acc (keyword (format "c%s" n)) clause)])
+             [1 {}]
+             where-clauses)))
+         (name-clauses where-clauses)
+
+
+         (defn index-variables [named-clauses]
+           (reduce
+            (fn [acc [clause-name [e _ v]]]
+              (cond-> acc
+                   (parser/variable? e)
+                   (update e (fnil assoc {}) clause-name :entity)
+                   (parser/variable? v)
+                   (update v (fnil assoc {}) clause-name :value)))
+            {}
+            named-clauses))
+         (index-variables (name-clauses where-clauses))
+
+
+         (defn build-adjacency-list [where-clauses]
+           (let [named-clauses (name-clauses where-clauses)
+                 variable-index (index-variables named-clauses)]
+             (reduce
+              (fn [acc [clause-name [e _ v]]]
+                (assoc acc clause-name
+                       (concat
+                        (when (parser/variable? e)
+                           (->> variable-index e keys (filter (partial not= clause-name))))
+
+                         (when (parser/variable? v)
+                           (->> variable-index v keys (filter (partial not= clause-name)))))))
+              {}
+              named-clauses)))
+
+         (build-adjacency-list where-clauses)
+         (concat [:c3] [])
+         clause-name
+         (->> variable-index e keys (filter (partial not= clause-name)))
+         (apply concat )
+         (update {} :a (fnil conj []) 3)
+
+         (name-clauses where-clauses)
+         (reduce
+          (fn [ el]
+            )
+          {:n 1 }
+          where-clauses)
+         (with-meta :c2 {:a 3})
 ;c1 unifies to c3 by ?p
 ;c2 unifies to c3 by ?p
 

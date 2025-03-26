@@ -61,46 +61,77 @@
 
 
 (comment
+  (let [conn (d/create-conn {})]
+    [
+     (:tx-data
+      (d/transact!
+        conn
+        [{:person/name "Alice"}]))
+     ;=> [#datascript/Datom[1 :person/name "Alice" 536870913 true]]
+     ; Add initial fact
+
+     (:tx-data
+      (d/transact! conn
+        [[:db/add 1 :person/name "Alice"]]))
+     ;=> []
+     ; ... empty because the fact already exists
+
+     (:tx-data
+      (d/transact! conn
+        [[:db/add 1 :person/born "USA"]]))
+     ;=> [#datascript/Datom[1 :person/born "USA" 536870915 true]]
+     ; ... :tx-data contains the new facts
+     ])
+  )
+
+(comment
   ;movie example
   (let [schema {}
         conn   (d/create-conn schema)]
 
-    [(d/transact! conn
+    #_[(d/transact! conn
+         [{:person/name "Alice"}])
+
+       (d/transact! conn
+         [{:movie/director 1
+           :movie/title    "RoboCop 1"}])
+
+       (d/transact! conn
+         [{:movie/director 1
+           :movie/title    "RoboCop 2"}])
+
+       (d/transact! conn
+         [{:person/name "Bob"}])
+
+       (d/transact! conn
+         [{:movie/director 4
+           :movie/title    "LOTR 1"}])
+
+       (d/transact! conn
+         [{:movie/director 4
+           :movie/title    "LOTR 2"}])
+
+       (d/transact! conn
+         [{:movie/director 4
+           :movie/title    "LOTR 3"}])
+
+       ]
+
+    [(d/transact!
+       conn
        [{:person/name "Alice"}])
 
      (d/transact! conn
-       [{:movie/director 1
-         :movie/title    "RoboCop 1"}])
-
-     (d/transact! conn
-       [{:movie/director 1
-         :movie/title    "RoboCop 2"}])
-
-     (d/transact! conn
-       [{:person/name "Bob"}])
-
-     (d/transact! conn
-       [{:movie/director 4
-         :movie/title    "LOTR 1"}])
-
-     (d/transact! conn
-       [{:movie/director 4
-         :movie/title    "LOTR 2"}])
-
-     (d/transact! conn
-       [{:movie/director 4
-         :movie/title    "LOTR 3"}])
-
-     ]
+       [[:db/add 1 :person/name "Alice"]])]
 
     ;query
-    (d/q
-      '[:find ?name (count ?m)
-        :where
-        [?p :person/name ?name]
-        [?m :movie/title]
-        [?m :movie/director ?p]]
-      @conn)
+    #_(d/q
+        '[:find ?name (count ?m)
+          :where
+          [?p :person/name ?name]
+          [?m :movie/title]
+          [?m :movie/director ?p]]
+        @conn)
     )
   )
 
@@ -262,8 +293,9 @@
     ))
 
 (defonce index-state-all (atom {}))
-(defonce result-set-deltas (atom []))
+(defonce result-deltas (atom []))
 (defonce result-set (atom #{}))
+(defonce result-state (atom {}))
 
 (comment
   ;transform result set to datascript form
@@ -281,7 +313,7 @@
 (defn reset-state! []
   (do
     (reset! index-state-all {})
-    (reset! result-set-deltas [])
+    (reset! result-deltas [])
     (reset! result-set #{})
     (reset! input (a/chan)))
   )
@@ -393,48 +425,17 @@
                               :last? true)
                             (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
                             ;find
-                            (xforms/reduce zs/zset+
-                              #_(zs/zset-xf+
-                                  (map (xf/with-meta-f
-                                         (fn [zset-pairs]
-                                           (timbre/spy zset-pairs)
-                                           zset-pairs
-                                           [(datom->val (first (first zset-pairs)))
-                                            (datom->val (second zset-pairs))])))))
+                            (xforms/reduce zs/zset+)
                             (map (fn [post-reduce] (timbre/spy post-reduce)))
-                            #_(comp
-                                (mapcat identity)
-                                (xforms/by-key
-                                  (fn [k]
-                                    (timbre/spy k)
-                                    ((xf/with-meta-f (comp vector first)) k))
-                                  (fn [zset-item] (timbre/spy zset-item))
-                                  (fn [grouped-by-k aggregates]
-                                    (let [cnt        (first aggregates)
-                                          w          (zs/zset-weight grouped-by-k)
-                                          pos-or-neg (cond
-                                                       (pos? w) 1
-                                                       (neg? w) -1
-                                                       :else (throw (ex-info "weights should not be zero" {:w w})))
-                                          cnt-weight (* cnt pos-or-neg)]
-
-                                      (timbre/spy grouped-by-k)
-                                      (timbre/spy aggregates)
-                                      (if grouped-by-k
-                                        {grouped-by-k #{(zs/zset-item [:count] cnt-weight)}} {})))
-                                  (comp
-                                    (map (fn [pre-count] (timbre/spy pre-count)))
-                                    (xforms/transjuxt [xforms/count])))
-                                (map (fn [post-by-key] (timbre/spy post-by-key)))
-                                (xforms/into {})
-                                (map (fn [post-into] (timbre/spy post-into))))
-                            )))
+                            (xf/group-by-count-xf
+                              (fn [zset-item]
+                                (-> zset-item (nth2 0) (nth2 0) (nth2 0) datom->val))))))
             output-ch (a/chan (a/sliding-buffer 1)
                         (comp
                           (map (fn [delta]
-                                 (swap! result-set-deltas conj delta)
+                                 (swap! result-deltas conj delta)
                                  delta))                    ;debug
-                          (xf/query-result-set-xf result-set)
+                          (xf/query-result-state-xf result-state)
                           ))
             to        (a/pipeline 1 output-ch xf @input)]
         @input)

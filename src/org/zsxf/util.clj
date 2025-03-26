@@ -47,4 +47,4 @@
   ([coll index]
    (nth2 coll index nil))
   ([coll index not-found]
-   ((fpred nth (comp not coll?) nil) coll index not-found)))
+   ((fpred nth (comp not vector?) nil) coll index not-found)))

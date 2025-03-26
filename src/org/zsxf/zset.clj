@@ -24,6 +24,22 @@
   ([x weight]
    (with-meta x {:zset/w weight})))
 
+(defn zset-count
+  "zset representing a count"
+  [n]
+  #{(zset-item 'zset/count n)})
+
+(defn zset-count-zero?
+  [zset]
+  (= zset #{^#:zset{:w 0} 'zset/count}))
+
+(comment
+  (zset+
+    (zset-count 42)
+    (zset-count 42))
+  ;#{^#:zset{:w 84} zset/count}
+  )
+
 (defn eligible-coll?
   "Check if a collection is eligible to be a zset item.
   All collections are eligible except map entries."
@@ -33,7 +49,7 @@
     (coll? coll)))
 
 (s/def ::zset (s/and
-                (s/coll-of coll?)
+                (s/coll-of (fn [x] (or (coll? x) (symbol? x))))
                 (s/every (fn [set-item-map]
                            (some? (zset-weight set-item-map))))))
 

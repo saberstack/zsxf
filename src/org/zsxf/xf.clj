@@ -34,16 +34,6 @@
       (if k {k ms} {}))
     (xforms/into #{})))
 
-(defn count-xf
-  "DBSP SQL COUNT"
-  ([rf]
-   (let [n (atom 0)]
-     (fn
-       ([] (rf))
-       ([acc] (rf (unreduced (rf acc @n))))
-       ([acc item]
-        (timbre/spy item)
-        (rf acc (swap! n (fn [prev-n] (+ prev-n (zset-w item))))) acc)))))
 
 (defn for-xf [a-set]
   (xforms/for
@@ -115,6 +105,23 @@
           (mapcat (fn [[join-xf-delta zset]]
                     [(timbre/spy join-xf-delta) zset])))))))
 
+(defn group-by-count-xf
+  "Takes a group-by-style function f and returns a transducer which
+
+  1. indexes the zset by f
+  2. counts the number of items in each group
+  3. returns an indexed zset (a map) where the keys the result of f and the values are the counts
+
+  Counts are represented as special zsets containing only one item with the count as the weight"
+  [f]
+  (comp
+    (map (fn [zset] (zs/index zset f)))
+    (map (fn [indexed-zset]
+           (update-vals indexed-zset
+             (fn [indexed-zset-item]
+               (zs/zset-count
+                 (transduce (map zs/zset-weight) + indexed-zset-item))))))))
+
 
 (defn join-right-pred-1-xf
   "Joins already joined relations with a new relation.
@@ -123,7 +130,7 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}
-      :as params-map}]
+      :as   params-map}]
   (join-xf (comp pred-1 second) (comp index-k-1 second) pred-2 index-k-2 index-state params-map))
 
 
@@ -145,7 +152,7 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}
-      :as params-map}]
+      :as   params-map}]
   (join-xf pred-1 index-k-1 (comp pred-2 second) (comp index-k-2 second) index-state params-map))
 
 
@@ -156,7 +163,7 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}
-      :as params-map}]
+      :as   params-map}]
   (join-xf pred-1 index-k-1 (comp pred-2 first) (comp index-k-2 first) index-state params-map))
 
 
@@ -181,6 +188,17 @@
          (timbre/spy result-set-delta)
          (swap! result-set-state
            (fn [m] (zs/zset-pos+ m result-set-delta))))))
+
+
+(defn query-result-state-xf [result-state]
+  (map (fn [result-delta]
+         (timbre/spy result-delta)
+         (swap! result-state
+           (fn [result]
+             (cond
+               (map? result) (zs/indexed-zset-pos+ result result-delta)
+               (set? result) (zs/zset-pos+ result result-delta)
+               :else (throw (ex-info "result must be either map or set" {:result result}))))))))
 
 
 (defn disj-irrelevant-items [zset & preds]

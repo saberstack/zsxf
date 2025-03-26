@@ -110,7 +110,7 @@
 
   1. indexes the zset by f
   2. counts the number of items in each group
-  3. returns an indexed zset (a map) where the keys the result of f and the values are the counts
+  3. returns an indexed zset (a map) where the keys are the result of f and the values are the counts
 
   Counts are represented as special zsets containing only one item with the count as the weight"
   [f]

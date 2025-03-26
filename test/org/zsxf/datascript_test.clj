@@ -211,3 +211,39 @@
   (is (= true
          (subject/foo))))
 #_(load-learn-db)
+; take all where clauses
+;
+; give each a name
+;
+; make an adjacency list graph of sorts: for each clause, say which other clauses it points to
+; and/or to invert this: for each variable, note the clauses in which it is found
+;
+; The nodes/vertices in the graph are clauses, and the edges are shared variables
+;
+; it's not even graph traversal, because we don't need to go in order
+; we don't need a vertex cover either - we do need to use every edge, but actually at the end we will just use up the leftovers
+;
+; Traversing an edge means writing a join along that variable between the two nodes
+;
+; I think it's edge cover: we need a set of joins/edges that touches every clause
+;
+; I'm not sure if these are necessarily connected or not - probably not
+;
+; Also, we only want to do joins based on [E linking E] or [V linking E], with [V linking V] as a last resort.
+; I think we can implement this by weighing the "good" kinds of edges at 0 and the [V linking V] edges at 1, and using a minimum edge cover algorithm
+;
+; Maybe I shouldn't worry about the proper graph term so much, because our problem space is pretty constrained:
+;
+; - there is a max of two edges per vertex
+; - we have to pick at least one edge per vertex
+;
+; There will be a single connected acyclic component here, because we have to join to what is in the query so far. It's not strict traversal though because if we first go A->B, we don't have to go from B next, but we could also go A->C.
+;
+; I'm thinking an algorithm like:
+;  - start on the node that has the variable in the find clause (assuming just one for first iteration, even though it's not a good assumption)
+;  - pick one of its edges (of minimum cost) A->B
+;  - now you can choose between the other A edge, or the other B edge. Pick one (minimum cost) that brings in a new node
+;    * cycles won't happen because we are always bringing in a new node
+;  - repeat until every vertex is covered
+;
+; then with the leftover edges, we have to filter

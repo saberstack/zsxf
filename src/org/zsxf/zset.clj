@@ -54,7 +54,9 @@
                 (s/every (fn [set-item-map]
                            (some? (zset-weight set-item-map))))))
 
-(defn zset? [x]
+(defn zset?
+  "Check if x conforms to the zset spec"
+  [x]
   (let [result (s/valid? ::zset x)]
     (when-not result (timbre/error (s/explain-data ::zset x)))
     result))
@@ -220,6 +222,8 @@
      indexed-zset)))
 
 (defn indexed-zset+
+  "Adds two indexed zsets.
+  Same as zset+ but for indexed zset which is a map."
   ([]
    {})
   ([indexed-zset]
@@ -232,6 +236,7 @@
    (apply merge-with zset+ indexed-zset-1 indexed-zset-2 args)))
 
 (defn indexed-zset-pos+
+  "Same as zset-pos+ but for indexed zset which is a map."
   ([]
    {})
   ([indexed-zset]

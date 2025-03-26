@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [datascript.core :as d]
    [medley.core :as medley]
    [org.zsxf.datascript :as ds]
@@ -12,7 +13,8 @@
    [org.zsxf.xf :as xf]
    [org.zsxf.experimental.datastream :as data-stream]
    [net.cgrand.xforms :as xforms]
-   [taoensso.timbre :as timbre])
+   [taoensso.timbre :as timbre]
+   [clojure.set :as set])
   (:import
    [java.io PushbackReader]))
 
@@ -215,8 +217,8 @@
                [(inc n) (assoc acc (keyword (format "c%s" n)) clause)])
              [1 {}]
              where-clauses)))
-         (name-clauses where-clauses)
 
+         (clojure.set/map-invert (name-clauses where-clauses))
 
          (defn index-variables [named-clauses]
            (reduce
@@ -231,35 +233,69 @@
          (index-variables (name-clauses where-clauses))
 
 
-         (defn build-adjacency-list [where-clauses]
-           (let [named-clauses (name-clauses where-clauses)
-                 variable-index (index-variables named-clauses)]
-             (reduce
+         (defn build-adjacency-list [named-clauses variable-index]
+           (reduce
               (fn [acc [clause-name [e _ v]]]
                 (assoc acc clause-name
-                       (concat
-                        (when (parser/variable? e)
+                       (set
+                        (concat
+                         (when (parser/variable? e)
                            (->> variable-index e keys (filter (partial not= clause-name))))
 
                          (when (parser/variable? v)
-                           (->> variable-index v keys (filter (partial not= clause-name)))))))
+                           (->> variable-index v keys (filter (partial not= clause-name))))))))
               {}
-              named-clauses)))
+              named-clauses))
 
          (build-adjacency-list where-clauses)
-         (concat [:c3] [])
-         clause-name
-         (->> variable-index e keys (filter (partial not= clause-name)))
-         (apply concat )
-         (update {} :a (fnil conj []) 3)
 
-         (name-clauses where-clauses)
-         (reduce
-          (fn [ el]
-            )
-          {:n 1 }
-          where-clauses)
-         (with-meta :c2 {:a 3})
+         (defn enumerate-edges [adjacency-list named-clauses]
+           (set (for [[clause-1-name connected-clause-names] adjacency-list
+                  clause-2-name connected-clause-names
+                      :let [clause-1 (get named-clauses clause-1-name)
+                            clause-2 (get named-clauses clause-2-name)]]
+              {:nodes #{clause-1-name clause-2-name}
+               :edge-variable (medley/find-first (set (filter parser/variable? clause-1)) clause-2)})))
+
+         (defn where-xf [where-clauses output-var]
+           (let [named-clauses (name-clauses where-clauses)
+                 clause-names (clojure.set/map-invert named-clauses)
+                 variable-index (index-variables named-clauses)
+                 adjacency-list (build-adjacency-list named-clauses variable-index)
+                 edge-set (enumerate-edges adjacency-list named-clauses)
+
+                 first-clause (or (medley/find-first (fn [[_ _ v]] (= v output-var)) where-clauses )
+                                  (medley/find-first (fn [[e _ _]] (= e output-var)) where-clauses ))
+                 remaining-clauses (remove (partial = first-clause) where-clauses)]
+
+             (let [edges-used #{}
+                    remaining-edges edge-set
+                    join-order [first-clause]
+                    remaining-nodes (set remaining-clauses)]
+
+               (if (empty? remaining-nodes)
+                 edges-used
+                 (let [reachable-nodes (reduce clojure.set/union
+                                                (map
+                                                 #(->> clause-name
+                                                      (get clause-names)
+                                                      (get adjacency-list))
+                                                 (fn [clause]
+                                                   (let [clause-name (get clause-names clause)]
+                                                     (get adjacency-list clause-name)))
+                                                 join-order))
+                       next-node (first reachable-nodes)
+
+                       ;;any edge from covered nodes to the next node
+
+                       ])))))
+
+
+         (where-xf where-clauses '?name)
+
+
+
+
 ;c1 unifies to c3 by ?p
 ;c2 unifies to c3 by ?p
 

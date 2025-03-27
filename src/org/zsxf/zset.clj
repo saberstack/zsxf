@@ -44,16 +44,16 @@
 (defn zset-count-item
   "zset representing a count"
   [n]
-  (zset-item 'zset/count n))
+  (zset-item [:zset/count] n))
 
 (defn zset-sum-item
   "zset representing a sum"
   [n]
-  (zset-item 'zset/sum n))
+  (zset-item [:zset/sum] n))
 
 (defn zset-count-zero?
   [zset]
-  (= zset #{^#:zset{:w 0} 'zset/count}))
+  (= zset #{^#:zset{:w 0} [:zset/count]}))
 
 (comment
   (zset+

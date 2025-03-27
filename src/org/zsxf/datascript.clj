@@ -85,6 +85,25 @@
   )
 
 (comment
+  ;aggregates example
+  ;
+  (let [conn (d/create-conn {})]
+    (d/transact! conn
+      [{:team/name "A" :event/country "Japan" :team/points-scored 25}
+       {:team/name "A" :event/country "Japan" :team/points-scored 18}
+       {:team/name "A" :event/country "Australia" :team/points-scored 25}
+       {:team/name "A" :event/country "Australia" :team/points-scored 1}])
+
+    (d/q
+        '[:find ?country (sum ?pts)
+          :where
+          [?e :team/name "A"]
+          [?e :event/country ?country]
+          [?e :team/points-scored ?pts]]
+        @conn))
+  )
+
+(comment
   ;movie example
   (let [schema {}
         conn   (d/create-conn schema)]
@@ -422,9 +441,14 @@
                             ;find
                             (xforms/reduce zs/zset+)
                             (map (fn [post-reduce] (timbre/spy post-reduce)))
+                            ;group by and count by :person/name
                             #_(xf/group-by-count-xf
+                                (fn [zset-item]
+                                  (-> zset-item (nth2 0) (nth2 0) (nth2 0) datom->val)))
+                            ;group by and count by :person/born
+                            (xf/group-by-count-xf
                               (fn [zset-item]
-                                (-> zset-item (nth2 0) (nth2 0) (nth2 0) datom->val))))))
+                                (-> zset-item (nth2 1) datom->val))))))
             output-ch (a/chan (a/sliding-buffer 1)
                         (comp
                           (map (fn [delta]
@@ -676,6 +700,95 @@
         [(tx-datoms->zset
            [[1 :person/name "Alice" :t false]])])
 
-      )
+      )))
 
-    ))
+(defn aggregate-example []
+  (reset-state!)
+  (let [_query    '[:find ?country (sum ?pts)
+                    :where
+                    [?e :team/name "A"]
+                    [?e :event/country ?country]
+                    [?e :team/points-scored ?pts]]
+        xf        (comp
+                    (xf/mapcat-zset-transaction-xf)
+                    (xf/join-xf
+                      #(datom-attr-val= % :team/name "A") datom->eid
+                      #(datom-attr= % :event/country) datom->eid
+                      index-state-all)
+                    (xf/join-right-pred-1-xf
+                      #(datom-attr= % :event/country) datom->eid
+                      #(datom-attr= % :team/points-scored) datom->eid
+                      index-state-all
+                      :last? true)
+                    (xforms/reduce zs/zset+)
+                    ;group by aggregates
+                    (xf/group-by-xf
+                      #(-> % (nth2 0) (nth 1) datom->val)
+                      (comp
+                        (xforms/transjuxt {:sum (xforms/reduce
+                                                  (zs/zset-sum+
+                                                    #(-> % (nth2 1) datom->val)))
+                                           :cnt (xforms/reduce zs/zset-count+)})
+                        (mapcat (fn [{:keys [sum cnt]}]
+                                  (timbre/spy [cnt sum])
+                                  [(zs/zset-sum-item sum)
+                                   (zs/zset-count-item cnt)])))))
+        output-ch (a/chan (a/sliding-buffer 1)
+                    (xf/query-result-state-xf result-state))
+        _to       (a/pipeline 1 output-ch xf @input)])
+
+  (a/>!! @input
+    [(tx-datoms->zset
+       [[1 :team/name "A" 536870913 true]
+        [1 :event/country "Japan" 536870913 true]
+        [1 :team/points-scored 25 536870913 true]
+        [2 :team/name "A" 536870913 true]
+        [2 :event/country "Japan" 536870913 true]
+        [2 :team/points-scored 18 536870913 true]
+        [3 :team/name "A" 536870913 true]
+        [3 :event/country "Australia" 536870913 true]
+        [3 :team/points-scored 25 536870913 true]
+        [4 :team/name "A" 536870913 true]
+        [4 :event/country "Australia" 536870913 true]
+        [4 :team/points-scored 1 536870913 true]])])
+
+  (a/>!! @input
+    [(tx-datoms->zset
+       [[3 :team/points-scored 25 536870913 false]])])
+
+
+  (a/>!! @input
+    [(tx-datoms->zset
+       [[4 :team/points-scored 1 536870913 false]])])
+
+  #_(transduce
+      xf
+      (fn
+        ([] {})
+        ([m-final] (timbre/spy m-final))
+        ([m result-delta]
+         (timbre/spy m)
+         (timbre/spy result-delta)
+         ;side effect
+         (swap! result-state
+           (fn [result]
+             (let [[result result+] (xf/init-result result result-delta)]
+               (result+ result result-delta))))
+         ;pure
+         (timbre/spy (zs/indexed-zset-pos+ m result-delta))))
+      [#_[(tx-datoms->zset
+            [[1 :team/name 1 536870913 true]
+             [1 :event/country "Japan" 536870913 true]
+             [1 :team/points-scored 25 536870913 true]
+             [2 :team/name 1 536870913 true]
+             [2 :event/country "Japan" 536870913 true]
+             [2 :team/points-scored 18 536870913 true]
+             [3 :team/name 1 536870913 true]
+             [3 :event/country "Australia" 536870913 true]
+             [3 :team/points-scored 25 536870913 true]
+             [4 :team/name 1 536870913 true]
+             [4 :event/country "Australia" 536870913 true]
+             [4 :team/points-scored 1 536870913 true]])]
+       [(tx-datoms->zset
+          [[3 :team/points-scored 25 536870913 false]])]])
+  )

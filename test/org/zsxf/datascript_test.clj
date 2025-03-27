@@ -4,13 +4,17 @@
    [clojure.test :refer [deftest is]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [datascript.core :as d]
+   [medley.core :as medley]
    [org.zsxf.datascript :as ds]
+   [org.zsxf.datalog.parser :as parser]
    [org.zsxf.zset :as zs]
    [org.zsxf.xf :as xf]
    [org.zsxf.experimental.datastream :as data-stream]
    [net.cgrand.xforms :as xforms]
-   [taoensso.timbre :as timbre])
+   [taoensso.timbre :as timbre]
+   [clojure.set :as set])
   (:import
    [java.io PushbackReader]))
 
@@ -180,7 +184,14 @@
          )
 
 
-(comment (def q )
+(comment (def q '[:find ?name
+                :where
+                [?m :movie/cast ?p] ;c1
+                [?p :person/name "Arnold Schwarzenegger"] ;c2
+                [?m :movie/director ?d] ;c3
+                [?d :person/name ?name] ;c4
+                ])
+
 
          (defn query->where-clauses [q]
            (->> q
@@ -193,12 +204,97 @@
                 (mapcat identity)
                 (filter symbol?)
                 set))
-         (mapcat identity ())
          (all-where-variables q)
 
-         (query->where-clauses q)
+         (def where-clauses (query->where-clauses q))
 
          (set! *print-meta* false)
+
+         (defn name-clauses [where-clauses]
+           (second
+            (reduce
+             (fn [[n acc] clause]
+               [(inc n) (assoc acc (keyword (format "c%s" n)) clause)])
+             [1 {}]
+             where-clauses)))
+
+         (clojure.set/map-invert (name-clauses where-clauses))
+
+         (defn index-variables [named-clauses]
+           (reduce
+            (fn [acc [clause-name [e _ v]]]
+              (cond-> acc
+                   (parser/variable? e)
+                   (update e (fnil assoc {}) clause-name :entity)
+                   (parser/variable? v)
+                   (update v (fnil assoc {}) clause-name :value)))
+            {}
+            named-clauses))
+         (index-variables (name-clauses where-clauses))
+
+
+         (defn build-adjacency-list [named-clauses variable-index]
+           (reduce
+              (fn [acc [clause-name [e _ v]]]
+                (assoc acc clause-name
+                       (set
+                        (concat
+                         (when (parser/variable? e)
+                           (->> variable-index e keys (filter (partial not= clause-name))))
+
+                         (when (parser/variable? v)
+                           (->> variable-index v keys (filter (partial not= clause-name))))))))
+              {}
+              named-clauses))
+
+         (build-adjacency-list where-clauses)
+
+         (defn enumerate-edges [adjacency-list named-clauses]
+           (set (for [[clause-1-name connected-clause-names] adjacency-list
+                  clause-2-name connected-clause-names
+                      :let [clause-1 (get named-clauses clause-1-name)
+                            clause-2 (get named-clauses clause-2-name)]]
+              {:nodes #{clause-1-name clause-2-name}
+               :edge-variable (medley/find-first (set (filter parser/variable? clause-1)) clause-2)})))
+
+         (defn where-xf [where-clauses output-var]
+           (let [named-clauses (name-clauses where-clauses)
+                 clause-names (clojure.set/map-invert named-clauses)
+                 variable-index (index-variables named-clauses)
+                 adjacency-list (build-adjacency-list named-clauses variable-index)
+                 edge-set (enumerate-edges adjacency-list named-clauses)
+
+                 first-clause (or (medley/find-first (fn [[_ _ v]] (= v output-var)) where-clauses )
+                                  (medley/find-first (fn [[e _ _]] (= e output-var)) where-clauses ))
+                 remaining-clauses (remove (partial = first-clause) where-clauses)]
+
+             (let [edges-used #{}
+                    remaining-edges edge-set
+                    join-order [first-clause]
+                    remaining-nodes (set remaining-clauses)]
+
+               (if (empty? remaining-nodes)
+                 edges-used
+                 (let [reachable-nodes (reduce clojure.set/union
+                                                (map
+                                                 #(->> clause-name
+                                                      (get clause-names)
+                                                      (get adjacency-list))
+                                                 (fn [clause]
+                                                   (let [clause-name (get clause-names clause)]
+                                                     (get adjacency-list clause-name)))
+                                                 join-order))
+                       next-node (first reachable-nodes)
+
+                       ;;any edge from covered nodes to the next node
+
+                       ])))))
+
+
+         (where-xf where-clauses '?name)
+
+
+
 
 ;c1 unifies to c3 by ?p
 ;c2 unifies to c3 by ?p
@@ -211,3 +307,39 @@
   (is (= true
          (subject/foo))))
 #_(load-learn-db)
+; take all where clauses
+;
+; give each a name
+;
+; make an adjacency list graph of sorts: for each clause, say which other clauses it points to
+; and/or to invert this: for each variable, note the clauses in which it is found
+;
+; The nodes/vertices in the graph are clauses, and the edges are shared variables
+;
+; it's not even graph traversal, because we don't need to go in order
+; we don't need a vertex cover either - we do need to use every edge, but actually at the end we will just use up the leftovers
+;
+; Traversing an edge means writing a join along that variable between the two nodes
+;
+; I think it's edge cover: we need a set of joins/edges that touches every clause
+;
+; I'm not sure if these are necessarily connected or not - probably not
+;
+; Also, we only want to do joins based on [E linking E] or [V linking E], with [V linking V] as a last resort.
+; I think we can implement this by weighing the "good" kinds of edges at 0 and the [V linking V] edges at 1, and using a minimum edge cover algorithm
+;
+; Maybe I shouldn't worry about the proper graph term so much, because our problem space is pretty constrained:
+;
+; - there is a max of two edges per vertex
+; - we have to pick at least one edge per vertex
+;
+; There will be a single connected acyclic component here, because we have to join to what is in the query so far. It's not strict traversal though because if we first go A->B, we don't have to go from B next, but we could also go A->C.
+;
+; I'm thinking an algorithm like:
+;  - start on the node that has the variable in the find clause (assuming just one for first iteration, even though it's not a good assumption)
+;  - pick one of its edges (of minimum cost) A->B
+;  - now you can choose between the other A edge, or the other B edge. Pick one (minimum cost) that brings in a new node
+;    * cycles won't happen because we are always bringing in a new node
+;  - repeat until every vertex is covered
+;
+; then with the leftover edges, we have to filter

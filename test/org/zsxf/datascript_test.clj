@@ -13,6 +13,7 @@
    [org.zsxf.xf :as xf]
    [org.zsxf.experimental.datastream :as data-stream]
    [net.cgrand.xforms :as xforms]
+   [org.zsxf.util :as util :refer [nth2]]
    [taoensso.timbre :as timbre]
    [clojure.set :as set])
   (:import
@@ -236,56 +237,104 @@
              (reduce
               (fn [acc [clause-name [e _ v]]]
                 (assoc acc clause-name
-                       (set
-                        (concat
+                       (into {} (concat
                          (when (parser/variable? e)
-                           (->> variable-index e keys (filter (partial not= clause-name))))
+                           (for [dest (->> variable-index e keys (filter (partial not= clause-name)))]
+                             [dest e]))
 
                          (when (parser/variable? v)
-                           (->> variable-index v keys (filter (partial not= clause-name))))))))
+                           (for [dest (->> variable-index v keys (filter (partial not= clause-name)))]
+                             [dest v]))))))
               {}
               named-clauses)))
-         (def adjacency-list (build-adjacency-list (name-clauses where-clauses) ))
+         (def adjacency-list (build-adjacency-list (name-clauses where-clauses)))
 
-         (defn where-xf [where-clauses]
+         (defn clause-pred [[e a v]]
+           (if (parser/variable? v)
+             #(ds/datom-attr= % a)
+             #(ds/datom-attr-val= % a v)))
+         (def pos->getter
+           {:entity ds/datom->eid
+            :value ds/datom->val})
+
+         (defn* where-xf [where-clauses]
            (let [named-clauses (name-clauses where-clauses)
-                 adjacency-tuples (for [[from-node to-nodes] (build-adjacency-list named-clauses)
-                                        to-node to-nodes];
+                 adjacency-list (build-adjacency-list named-clauses)
+                 adjacency-tuples (for [[from-node destinations] adjacency-list
+                                        [to-node _] destinations];
                                     [from-node to-node])
-                 [first-clause & remaining-clauses] (keys named-clauses)]
-             (loop [join-order [first-clause]
-                    remaining-nodes (set remaining-clauses)
-                    n 1]
+                 [first-clause & remaining-clauses] (keys named-clauses)
+                 join-order (loop [join-order [first-clause]
+                                   remaining-nodes (set remaining-clauses)
+                                   n 1]
 
-               (cond (empty? remaining-nodes)
-                     join-order
+                              (cond (empty? remaining-nodes)
+                                    join-order
 
-                     (> n 15)
-                     :oops
+                                    (> n 15)
+                                    :oops
 
-                     :else
-                     (let [covered-nodes (set join-order)
-                           [from to](medley/find-first
-                                     (fn [[from to]]
+                                    :else
+                                    (let [covered-nodes (set join-order)
+                                          [_ to] (medley/find-first
+                                                  (fn [[from to]]
 
-                                       (and (covered-nodes from)
-                                            (remaining-nodes to)))
-                                     adjacency-tuples)]
-                       (recur
-                        (conj join-order to)
-                        (disj remaining-nodes to)
-                        (inc n)))))))
+                                                    (and (covered-nodes from)
+                                                         (remaining-nodes to)))
+                                                  adjacency-tuples)]
+                                      (recur
+                                       (conj join-order to)
+                                       (disj remaining-nodes to)
+                                       (inc n)))))]
+             (loop
+                 [xf-steps []
+                  lh-nodes (take 1 join-order)
+                  next-join (take 2 join-order)
+                  remaining (drop 2 join-order)
+                  n 1]
+               (cond
+                 (empty? remaining)
+                 xf-steps
+
+                 (> n 1)
+                 {:overflow xf-steps}
+
+                 :else
+                 (let [[lhs rhs] next-join
+                       [c1 c2] (map named-clauses [lhs rhs])
+                       common-var (get-in adjacency-list [lhs rhs])
+                       left-pos (get-in variable-index [common-var lhs])
+                       right-pos (get-in variable-index [common-var rhs])
+                       new-join [:join (clause-pred c1) (pos->getter left-pos) (clause-pred c2) (pos->getter right-pos)]]
+                   (recur
+                    (conj xf-steps new-join)
+                    (conj covered lhs rhs)
+                    [[lhs rhs] (first remaining)]
+                    (rest remaining)
+                    (inc 1)
+                    )
+                   ))
+
+               )))
+         adjacency-list
+         (where-xf where-clauses)
 
 
-         (map named-clauses (where-xf where-clauses))
-
-
-
-
-;c1 unifies to c3 by ?p
-;c2 unifies to c3 by ?p
-
-;so that means we are joining c1 to c3 and c2 to c3?2
+; so the pred is always datom-attr= or datom-attr-val=
+; the attr is the attr from the datom
+; if the val is needed it's the val from the datom
+; then you have this getter as the first arg to the pred
+; it's a datom selector: for first level it's just %
+; after that you are finding the datom through combinations of first and second
+;
+;ok but then we have join key
+;it's really just that pred arg composed with the getter
+;
+;so really, this is simple
+;
+;for each var represented in the join, track a selector
+;...to be continued
+;
          )
 
 

@@ -138,7 +138,7 @@
              (let [meta-1     (meta zset-item)
                    meta-2     (meta new-zset-item)
                    new-weight (+ (:zset/w meta-1) (:zset/w meta-2))]
-               (if (zero? new-weight)
+               (if (or (zero? new-weight) (neg-int? new-weight))
                  (disj s zset-item)
                  (conj (disj s zset-item) (vary-meta new-zset-item
                                             (fn [meta-map] (assoc meta-map :zset/w new-weight))))))

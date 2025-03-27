@@ -208,14 +208,14 @@
   [zset-1 zset-2]
   {:pre [(zset? zset-1) (zset? zset-2)]}
   (set
-    (for [m-1 zset-1 m-2 zset-2]
-      (let [w-1        (zset-weight m-1)
-            w-2        (zset-weight m-2)
-            new-weight (* w-1 w-2)]
+    (for [item-1 zset-1 item-2 zset-2]
+      (let [weight-1   (zset-weight item-1)
+            weight-2   (zset-weight item-2)
+            new-weight (* weight-1 weight-2)]
         (zset-item
           ;zset weights of internal items don't serve a purpose after multiplication - remove them
-          [(vary-meta m-1 (fn [_]))                         ;remove weight
-           (vary-meta m-2 (fn [_]))]                        ;remove weight
+          [(vary-meta item-1 (fn [_]))                      ;remove weight
+           (vary-meta item-2 (fn [_]))]                     ;remove weight
           new-weight)))))
 
 (defn index

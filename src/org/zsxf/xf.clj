@@ -119,8 +119,18 @@
     (map (fn [indexed-zset]
            (update-vals indexed-zset
              (fn [indexed-zset-item]
-               (zs/zset-count
+               (zs/zset-count-item
                  (transduce (map zs/zset-weight) + indexed-zset-item))))))))
+
+(defn group-by-xf
+  ;wip
+  [f xform]
+  (comp
+    (map (fn [zset] (zs/index zset f)))
+    (map (fn [indexed-zset]
+           (update-vals indexed-zset
+             (fn [indexed-zset-item]
+               (transduce xform conj #{} indexed-zset-item)))))))
 
 
 (defn join-right-pred-1-xf
@@ -189,7 +199,7 @@
          (swap! result-set-state
            (fn [m] (zs/zset-pos+ m result-set-delta))))))
 
-(defn- init-result [result result-delta]
+(defn init-result [result result-delta]
   (if (nil? result)
     ;init
     (cond

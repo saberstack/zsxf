@@ -1,6 +1,5 @@
 (ns org.zsxf.zset
-  (:require [org.zsxf.zset :as-alias zset]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
@@ -19,16 +18,38 @@
   [x]
   (:zset/w (meta x)))
 
+(defn zset-sum+
+  [f]
+  (fn
+    ([] 0)
+    ([accum] accum)
+    ([accum item]
+     (let [w (zset-weight item)
+           n (f item)]
+       (+ accum (* w n))))))
+
+(defn zset-count+
+  ([] 0)
+  ([accum] accum)
+  ([accum item]
+   (let [w (zset-weight item)]
+     (+ accum w))))
+
 (defn zset-item
   ([x]
    (zset-item x 1))
   ([x weight]
    (with-meta x {:zset/w weight})))
 
-(defn zset-count
+(defn zset-count-item
   "zset representing a count"
   [n]
-  #{(zset-item 'zset/count n)})
+  (zset-item 'zset/count n))
+
+(defn zset-sum-item
+  "zset representing a sum"
+  [n]
+  (zset-item 'zset/sum n))
 
 (defn zset-count-zero?
   [zset]
@@ -36,8 +57,8 @@
 
 (comment
   (zset+
-    (zset-count 42)
-    (zset-count 42))
+    #{(zset-count-item 42)}
+    #{(zset-count-item 42)})
   ;#{^#:zset{:w 84} zset/count}
   )
 

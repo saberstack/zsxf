@@ -119,8 +119,8 @@
     (map (fn [indexed-zset]
            (update-vals indexed-zset
              (fn [indexed-zset-item]
-               (zs/zset-count-item
-                 (transduce (map zs/zset-weight) + indexed-zset-item))))))))
+               #{(zs/zset-count-item
+                   (transduce (map zs/zset-weight) + indexed-zset-item))}))))))
 
 (defn group-by-xf
   ;wip

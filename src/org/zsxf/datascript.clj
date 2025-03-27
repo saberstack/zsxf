@@ -8,17 +8,6 @@
             [org.zsxf.util :as util :refer [nth2]]
             [taoensso.timbre :as timbre]))
 
-(defn tx-datoms->zset-of-maps
-  "Transforms datoms into a zset of maps. Each map represents a datom with a weight."
-  [datoms]
-  (transduce
-    (map (fn [[e a v t add-or-retract]]
-           (let [weight (condp = add-or-retract true 1 false -1)]
-             (zset/zset-item {:db/id e a v} weight))))
-    conj
-    #{}
-    datoms))
-
 (defn tx-datoms->zset
   "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
   [datoms]
@@ -466,6 +455,15 @@
             [2 :movie/director 1 :t true]
             [2 :movie/title "RoboCop" :t true]
             [1 :person/born "USA" :t true]])])
+
+      (a/>!!
+        @input
+        [(zs/zset-negate
+           (tx-datoms->zset
+             [[1 :person/name "Alice" :t true]
+              [2 :movie/director 1 :t true]
+              [2 :movie/title "RoboCop" :t true]
+              [1 :person/born "USA" :t true]]))])
 
       (a/>!!
         @input

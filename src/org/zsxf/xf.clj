@@ -216,13 +216,14 @@
 
 (defn query-result-state-xf
   "Saves query results to atom. Works for both zsets and indexed-zset results."
-  [result-state]
+  [state]
   (map (fn [result-delta]
          (timbre/spy result-delta)
-         (swap! result-state
-           (fn [result]
+         (swap! state
+           (fn [{:keys [result] :as state-m}]
              (let [[result result+] (init-result result result-delta)]
-               (result+ result result-delta)))))))
+               (assoc state-m :result
+                 (result+ result result-delta))))))))
 
 
 (defn disj-irrelevant-items [zset & preds]

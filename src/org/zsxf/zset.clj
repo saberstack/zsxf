@@ -207,11 +207,16 @@
   "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"
   [zset-1 zset-2]
   {:pre [(zset? zset-1) (zset? zset-2)]}
-  (set (for [m-1 zset-1 m-2 zset-2]
-         (with-meta
-           [m-1 m-2]
-           ;{m-1 m-2}
-           {:zset/w (* (zset-weight m-1) (zset-weight m-2))}))))
+  (set
+    (for [m-1 zset-1 m-2 zset-2]
+      (let [w-1        (zset-weight m-1)
+            w-2        (zset-weight m-2)
+            new-weight (* w-1 w-2)]
+        (zset-item
+          ;zset weights of internal items don't serve a purpose after multiplication - remove them
+          [(vary-meta m-1 (fn [_]))                         ;remove weight
+           (vary-meta m-2 (fn [_]))]                        ;remove weight
+          new-weight)))))
 
 (defn index
   "Convert a zset into a map indexed by a key function"

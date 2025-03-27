@@ -259,6 +259,7 @@
 
          (defn* where-xf [where-clauses]
            (let [named-clauses (name-clauses where-clauses)
+                 variable-index (index-variables named-clauses)
                  adjacency-list (build-adjacency-list named-clauses)
                  adjacency-tuples (for [[from-node destinations] adjacency-list
                                         [to-node _] destinations];
@@ -288,7 +289,7 @@
                                        (inc n)))))]
              (loop
                  [xf-steps []
-                  lh-nodes (take 1 join-order)
+                  covered (take 1 join-order)
                   next-join (take 2 join-order)
                   remaining (drop 2 join-order)
                   n 1]

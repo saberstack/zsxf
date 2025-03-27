@@ -247,22 +247,12 @@
               named-clauses)))
          (def adjacency-list (build-adjacency-list (name-clauses where-clauses) ))
 
-         (defn enumerate-edges [adjacency-list named-clauses]
-           (set (for [[clause-1-name connected-clause-names] adjacency-list
-                  clause-2-name connected-clause-names
-                      :let [clause-1 (get named-clauses clause-1-name)
-                            clause-2 (get named-clauses clause-2-name)]]
-              {:nodes #{clause-1-name clause-2-name}
-               :edge-variable (medley/find-first (set (filter parser/variable? clause-1)) clause-2)})))
-
-
-
-         (defn where-xf [where-clauses ]
+         (defn where-xf [where-clauses]
            (let [named-clauses (name-clauses where-clauses)
                  adjacency-tuples (for [[from-node to-nodes] (build-adjacency-list named-clauses)
-                                        to-node to-nodes]
+                                        to-node to-nodes];
                                     [from-node to-node])
-                 [first-clause & remaining-clauses] where-clauses]
+                 [first-clause & remaining-clauses] (keys named-clauses)]
              (loop [join-order [first-clause]
                     remaining-nodes (set remaining-clauses)
                     n 1]
@@ -275,20 +265,19 @@
 
                      :else
                      (let [covered-nodes (set join-order)
-                           edge (medley/find-first
-                                 (fn [[from to]]
+                           [from to](medley/find-first
+                                     (fn [[from to]]
 
-                                   (and (covered-nodes (named-clauses from))
-                                        (remaining-nodes (named-clauses to))))
-                                 adjacency-tuples)
-                           [from to] (map named-clauses edge) ]
+                                       (and (covered-nodes from)
+                                            (remaining-nodes to)))
+                                     adjacency-tuples)]
                        (recur
                         (conj join-order to)
                         (disj remaining-nodes to)
                         (inc n)))))))
 
 
-         (where-xf where-clauses)
+         (map named-clauses (where-xf where-clauses))
 
 
 

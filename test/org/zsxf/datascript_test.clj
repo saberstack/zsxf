@@ -116,9 +116,9 @@
           #{}
           [@txn-atom])
         #{^#:zset{:w 1}
-          [^#:zset{:w 1} [^#:zset{:w 1} [16 :person/name "Paul Verhoeven"]
-                          ^#:zset{:w 1} [59 :movie/director 16]]
-           ^#:zset{:w 1} [59 :movie/title "RoboCop"]]}))))
+          [[[16 :person/name "Paul Verhoeven"]
+            [59 :movie/director 16]]
+           [59 :movie/title "RoboCop"]]}))))
 
 
 (deftest test-ahhnold "Another basic query"

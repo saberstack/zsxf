@@ -218,8 +218,6 @@
              [1 {}]
              where-clauses)))
 
-         (clojure.set/map-invert (name-clauses where-clauses))
-
          (defn index-variables [named-clauses]
            (reduce
             (fn [acc [clause-name [e _ v]]]
@@ -233,8 +231,9 @@
          (index-variables (name-clauses where-clauses))
 
 
-         (defn build-adjacency-list [named-clauses variable-index]
-           (reduce
+         (defn build-adjacency-list [named-clauses]
+           (let [variable-index (index-variables named-clauses)]
+             (reduce
               (fn [acc [clause-name [e _ v]]]
                 (assoc acc clause-name
                        (set
@@ -245,9 +244,8 @@
                          (when (parser/variable? v)
                            (->> variable-index v keys (filter (partial not= clause-name))))))))
               {}
-              named-clauses))
-
-         (build-adjacency-list where-clauses)
+              named-clauses)))
+         (def adjacency-list (build-adjacency-list (name-clauses where-clauses) ))
 
          (defn enumerate-edges [adjacency-list named-clauses]
            (set (for [[clause-1-name connected-clause-names] adjacency-list
@@ -257,41 +255,40 @@
               {:nodes #{clause-1-name clause-2-name}
                :edge-variable (medley/find-first (set (filter parser/variable? clause-1)) clause-2)})))
 
-         (defn where-xf [where-clauses output-var]
+
+
+         (defn where-xf [where-clauses ]
            (let [named-clauses (name-clauses where-clauses)
-                 clause-names (clojure.set/map-invert named-clauses)
-                 variable-index (index-variables named-clauses)
-                 adjacency-list (build-adjacency-list named-clauses variable-index)
-                 edge-set (enumerate-edges adjacency-list named-clauses)
+                 adjacency-tuples (for [[from-node to-nodes] (build-adjacency-list named-clauses)
+                                        to-node to-nodes]
+                                    [from-node to-node])
+                 [first-clause & remaining-clauses] where-clauses]
+             (loop [join-order [first-clause]
+                    remaining-nodes (set remaining-clauses)
+                    n 1]
 
-                 first-clause (or (medley/find-first (fn [[_ _ v]] (= v output-var)) where-clauses )
-                                  (medley/find-first (fn [[e _ _]] (= e output-var)) where-clauses ))
-                 remaining-clauses (remove (partial = first-clause) where-clauses)]
+               (cond (empty? remaining-nodes)
+                     join-order
 
-             (let [edges-used #{}
-                    remaining-edges edge-set
-                    join-order [first-clause]
-                    remaining-nodes (set remaining-clauses)]
+                     (> n 15)
+                     :oops
 
-               (if (empty? remaining-nodes)
-                 edges-used
-                 (let [reachable-nodes (reduce clojure.set/union
-                                                (map
-                                                 #(->> clause-name
-                                                      (get clause-names)
-                                                      (get adjacency-list))
-                                                 (fn [clause]
-                                                   (let [clause-name (get clause-names clause)]
-                                                     (get adjacency-list clause-name)))
-                                                 join-order))
-                       next-node (first reachable-nodes)
+                     :else
+                     (let [covered-nodes (set join-order)
+                           edge (medley/find-first
+                                 (fn [[from to]]
 
-                       ;;any edge from covered nodes to the next node
-
-                       ])))))
+                                   (and (covered-nodes (named-clauses from))
+                                        (remaining-nodes (named-clauses to))))
+                                 adjacency-tuples)
+                           [from to] (map named-clauses edge) ]
+                       (recur
+                        (conj join-order to)
+                        (disj remaining-nodes to)
+                        (inc n)))))))
 
 
-         (where-xf where-clauses '?name)
+         (where-xf where-clauses)
 
 
 

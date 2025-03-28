@@ -113,6 +113,12 @@
            xf-steps []
            covered-nodes #{first-clause}
            remaining-nodes (set remaining-clauses)
+           ;; Locators tell me for a given clause where to find it in the joined tuple
+           ;; So if the current join looks like [[[c1 c2] c3] c4]
+           ;; The locator is~ {c1 (-> % first first first)
+           ;;                  c2 (-> % first first second)
+           ;;                  c3 (-> % first second)
+           ;;                  c4 (-> % second)}
            locators {first-clause identity}
            n 1]
 

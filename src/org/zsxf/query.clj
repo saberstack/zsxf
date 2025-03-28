@@ -38,3 +38,6 @@
   "View the current query result"
   [query]
   (:result @(get query :state)))
+
+(defn get-state [query]
+  @(get query :state))

@@ -218,6 +218,16 @@
            (vary-meta item-2 (fn [_]))]                     ;remove weight
           new-weight)))))
 
+(defn index-xf
+  "Returns a group-by-style transducer. Partitions output based on return value of kfn"
+  [kfn]
+  (xforms/by-key
+    kfn
+    (fn [m] m)
+    (fn [k ms]
+      (if k {k ms} {}))
+    (xforms/into #{})))
+
 (defn index
   "Convert a zset into a map indexed by a key function"
   #_(comment
@@ -225,14 +235,7 @@
         (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
         (fn [m] (first (:name m)))))
   [zset kfn]
-  (into {}
-    (xforms/by-key
-      kfn
-      (fn [m] m)
-      (fn [k ms]
-        (if k {k ms} {}))
-      (xforms/into #{}))
-    zset))
+  (into {} (index-xf kfn) zset))
 
 (defn indexed-zset->zset
   "Convert an indexed zset back into a zset"

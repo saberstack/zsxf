@@ -64,76 +64,12 @@
 ; 2. ...
 ;
 ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-
-(defmacro join-one-level [attribute-1 attribute-2 value]
-  `(pxf/branch
-     ;:team/id (or :team/name, a unique attribute)
-     (comp
-       (map (fn [m#] (if (~attribute-2 m#) m# {})))
-       (pxf/cond-branch
-         empty?
-         (map identity)
-         ~attribute-2
-         (comp
-           (dbsp-xf/->where-xf (fn [m#] (= ~value (~attribute-2 m#))))
-           (dbsp-xf/->index-xf ~attribute-2)
-           ;atoms
-           ; TODO
-           ;(map (fn [grouped-by-result]
-           ;       (swap! *grouped-by-state-team
-           ;         (fn [m] (zs/indexed-zset+ m grouped-by-result)))))
-           )))
-     (comp
-       ;:player/team
-       (map (fn [m#] (if (~attribute-1 m#) m# {})))
-       (pxf/cond-branch
-         empty?
-         (map identity)
-         ~attribute-1
-         (comp
-           (dbsp-xf/->index-xf ~attribute-1)
-           ;atoms
-           ; TODO
-           ;(map (fn [grouped-by-result]
-           ;       (swap! *grouped-by-state-player
-           ;         (fn [m] (zs/indexed-zset+ m grouped-by-result)))))
-           )))))
-
-(defn join-one-level-2 [keyword-1 atom-1 keyword-2 atom-2]
-  (pxf/branch
-    ;:team/id (or :team/name, a unique attribute)
-    (comp
-      (map (fn [m] (if (keyword-2 m) m {})))
-      (pxf/cond-branch
-        empty?
-        (map identity)
-        keyword-2
-        (comp
-          (dbsp-xf/->index-xf keyword-2)
-          ;atoms
-          (map (fn [grouped-by-result]
-                 (swap! atom-1 (fn [m] (zs/indexed-zset+ m grouped-by-result)))))
-          )))
-    (comp
-      ;:player/team
-      (map (fn [m] (if (keyword-1 m) m {})))
-      (pxf/cond-branch
-        empty?
-        (map identity)
-        keyword-1
-        (comp
-          (dbsp-xf/->index-xf keyword-1)
-          ;atoms
-          (map (fn [grouped-by-result]
-                 (swap! atom-2 (fn [m] (zs/indexed-zset+ m grouped-by-result))))))))))
 
 (defn init-atoms! []
   )
 
 (defn graph->zsxf [graph]
-
-  (join-one-level-2 :a (atom nil) :b (atom nil)))
+  )
 
 (defn incrementalize! [query]
   (let [where-clauses (get query :where)]
@@ -142,10 +78,6 @@
 
 
 (comment
-  (macroexpand
-    '(join-one-level :player/team :team-name "Team A"))
-
-  (join-one-level-2 :player/team :team-name "Team A")
 
   (incrementalize!
     '[[?team-eid :team/name ?team-name]

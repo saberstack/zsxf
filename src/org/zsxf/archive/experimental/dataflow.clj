@@ -1,4 +1,4 @@
-(ns org.zsxf.experimental.dataflow
+(ns org.zsxf.archive.experimental.dataflow
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.jdbc.postgres :as postgres]
@@ -28,6 +28,15 @@
       {}
       commons)))
 
+(defn ->index-xf
+  [kfn]
+  (xforms/by-key
+    kfn
+    (fn [m] m)
+    (fn [k ms]
+      (if k {k ms} {}))
+    (xforms/into #{})))
+
 (defn incremental-computation-xf
   "Equivalent SQL join:
 
@@ -51,7 +60,7 @@
           :team/id
           (comp
             ;(dbsp-xf/->where-xf (fn [m] (= 20 (:team/id m))))
-            (dbsp-xf/->index-xf :team/id)
+            (->index-xf :team/id)
             ;atoms
             (map (fn [grouped-by-result]
                    (swap! *grouped-by-state-team
@@ -67,7 +76,7 @@
         (pxf/cond-branch
           :player/team
           (comp
-            (dbsp-xf/->index-xf :player/team)
+            (->index-xf :player/team)
             ;atoms
             (map (fn [grouped-by-result]
                    (swap! *grouped-by-state-player

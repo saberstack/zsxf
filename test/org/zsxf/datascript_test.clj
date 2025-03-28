@@ -97,12 +97,17 @@
 
 (defn where-xf [datalog-query state]
   (let [where-clauses (query->where-clauses datalog-query)
+        ;; Give each clause a shorthand name, eg :c1
         named-clauses (name-clauses where-clauses)
+        ;; For each variable, tell me which clauses it appears in, and in which position.
         variable-index (index-variables named-clauses)
+        ;; For each clause, tell me the other clauses it leads to, and by what variable.
         adjacency-list (build-adjacency-list named-clauses)
+        ;; Process that to just a list of e.g. [c1 c2] connected clauses
         adjacency-tuples (for [[from-node destinations] adjacency-list
                                [to-node _] destinations];
                            [from-node to-node])
+        ;; Just pick any clause to start with
         [first-clause & remaining-clauses] (keys named-clauses)]
     (loop [preds []
            xf-steps []
@@ -112,6 +117,7 @@
            n 1]
 
       (cond (empty? remaining-nodes)
+            ;; We won! Prepend and append the joins with the boilerplate.
             (apply comp (concat
                          [(xf/mapcat-zset-transaction-xf)
                           (fn [zset]
@@ -120,28 +126,39 @@
                          xf-steps
                          [(xforms/reduce zs/zset+)]))
 
+            ;; Stack overflow
             (> n 10)
             n
 
             :else
-            (let [[from to :as edge] (medley/find-first
+            (let [; Find me the first edge from any clause already included
+                  ; to any clause that hasn't been included yet.
+                  [from to :as edge] (medley/find-first
                                       (fn [[from to]]
                                         (and (covered-nodes from)
                                              (remaining-nodes to)))
                                       adjacency-tuples)
+                  ;; Look up what the variable is that links these clauses.
                   common-var (get-in adjacency-list [from to])
+                  ;; Dereference the clause names to the clauses themselves.
                   [c1 c2] (map named-clauses edge)
+                  ;; Generate predicates for checking join conditions.
                   [p1 p2] [(clause-pred (from locators) c1) (clause-pred identity c2)]
                   new-join (xf/join-xf p1
+                                       ;; Index keys are just the clause locator composed with the getter from the datom.
                                        (comp (get-in variable-index [common-var from]) (from locators))
                                        p2
+                                       ;; Look up the getter out of the datom.
                                        (get-in variable-index [common-var to])
                                        state
+                                       ;; It's the last join when this is the last clause.
                                        :last? (= #{to} remaining-nodes))]
               (recur (conj preds p1 p2)
                      (conj xf-steps new-join)
                      (conj covered-nodes to)
                      (disj remaining-nodes to)
+                     ;; As we lift this join to the left hand of the next step,
+                     ;; all of the locators need to be composed with `safe-first`.
                      (-> (medley/map-vals #(comp % safe-first) locators)
                          (assoc to safe-second)
                          )

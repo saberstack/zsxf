@@ -16,7 +16,9 @@
 
 (defn input
   "Takes a query (a map created via create-query) and a vector of zsets representing a transaction.
-  Synchronously executes the transaction and returns the resulting query state."
+  Synchronously executes the transaction, summing the existing query result state with new deltas, if any.
+  Returns the full post-transaction query result.
+  The result can be a set or a map (in the case of aggregations)."
   [{:keys [state xf] :as _query} zsets]
   (transduce
     xf
@@ -24,7 +26,7 @@
       ;query reducing fn
       ; sums existing result with query-computed deltas
       ([] state)
-      ([accum] accum)
+      ([state] (get state :result))
       ([state result-delta]
        ;side effect
        (swap! state

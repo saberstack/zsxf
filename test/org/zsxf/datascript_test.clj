@@ -9,6 +9,7 @@
    [medley.core :as medley]
    [org.zsxf.datascript :as ds]
    [org.zsxf.datalog.parser :as parser]
+   [org.zsxf.query :as q]
    [org.zsxf.zset :as zs]
    [org.zsxf.xf :as xf]
    [org.zsxf.experimental.datastream :as data-stream]
@@ -191,6 +192,27 @@
         [[[16 :person/name "Paul Verhoeven"]
           [59 :movie/director 16]]
          [59 :movie/title "RoboCop"]]}))))
+
+(deftest test-robocop-with-query-api "basic datalog query, with internal query api"
+  (let [datalog-query   '[:find ?name
+                          :where
+                          [?p :person/name ?name]
+                          [?m :movie/title "RoboCop"]
+                          [?m :movie/director ?p]
+                          ]
+        index-state-all (atom nil)
+        txn-atom        (atom [])
+        _conn           (load-learn-db txn-atom)
+        query           (q/create-query
+                          (fn [state] (where-xf datalog-query state))
+                          index-state-all)]
+    (is
+      (=
+        (q/input query @txn-atom)
+        #{^#:zset{:w 1}
+          [[[16 :person/name "Paul Verhoeven"]
+            [59 :movie/director 16]]
+           [59 :movie/title "RoboCop"]]}))))
 
 (deftest test-ahhnold "Another basic query"
   (let [query '[:find ?name

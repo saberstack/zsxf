@@ -200,7 +200,7 @@
                           [?m :movie/title "RoboCop"]
                           [?m :movie/director ?p]
                           ]
-        index-state-all (atom nil)
+        index-state-all (atom {})
         txn-atom        (atom [])
         _conn           (load-learn-db txn-atom)
         query           (q/create-query

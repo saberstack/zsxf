@@ -9,15 +9,8 @@
             [taoensso.timbre :as timbre]))
 
 
-(comment
-  ;query
-  '[:find ?country (sum ?pts)
-    :where
-    [?e :team/name "A"]
-    [?e :event/country ?country]
-    [?e :team/points-scored ?pts]])
-
 (defn aggregate-example-xf [query-state]
+
   ; Aggregates current limitation: retractions (deletes) have to be precise!
   ; An _over-retraction_ by trying to retract a datom that doesn't exist will result in
   ; an incorrect index state.
@@ -26,6 +19,15 @@
   ; Possibly this would require maintaining the entire joined state so attempted
   ; over-retractions can be filtered out when their delta does not result in a change
   ; to the joined stat
+
+  (comment
+    ;equivalent query
+    '[:find ?country (sum ?pts)
+      :where
+      [?e :team/name "A"]
+      [?e :event/country ?country]
+      [?e :team/points-scored ?pts]])
+
   (comp
     (xf/mapcat-zset-transaction-xf)
     (xf/join-xf
@@ -52,36 +54,23 @@
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
 
 (comment
-
-  (zs/zset+
-    #{(zs/zset-sum-item -4)}
-    #{(zs/zset-sum-item -3)}
-    #{(zs/zset-sum-item 0)})
-  (transduce
-    (map identity)
-    (zs/zset-sum+ first)
-    #{}))
-
-(comment
   ;example usage
-
-
   (def query-1 (q/create-query aggregate-example-xf))
 
   (q/input query-1
     [(ds/tx-datoms->zset
        [[1 :team/name "A" 536870913 true]
         [1 :event/country "Japan" 536870913 true]
-        [1 :team/points-scored -25 536870913 true]
+        [1 :team/points-scored 25 536870913 true]
         [2 :team/name "A" 536870913 true]
         [2 :event/country "Japan" 536870913 true]
-        [2 :team/points-scored -18 536870913 true]
+        [2 :team/points-scored 18 536870913 true]
         [3 :team/name "A" 536870913 true]
         [3 :event/country "Australia" 536870913 true]
-        [3 :team/points-scored -25 536870913 true]
+        [3 :team/points-scored 25 536870913 true]
         [4 :team/name "A" 536870913 true]
         [4 :event/country "Australia" 536870913 true]
-        [4 :team/points-scored -4 536870913 true]])])
+        [4 :team/points-scored 4 536870913 true]])])
 
   (q/get-result query-1)
 

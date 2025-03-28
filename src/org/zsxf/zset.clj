@@ -219,14 +219,19 @@
           new-weight)))))
 
 (defn index-xf
-  "Returns a group-by-style transducer. Partitions output based on return value of kfn"
-  [kfn]
-  (xforms/by-key
-    kfn
-    (fn [m] m)
-    (fn [k ms]
-      (if k {k ms} {}))
-    (xforms/into #{})))
+  "Returns a group-by-style transducer.
+  Groups input items based on the return value of kfn.
+  Each group is gathered into-coll (typically a set)."
+  ([kfn]
+   (index-xf kfn #{}))
+  ([kfn into-coll]
+   (xforms/by-key
+     kfn
+     (fn [zset-item] (timbre/spy zset-item))
+     (fn [k zset-of-grouped-items]
+       (if k {k zset-of-grouped-items} {}))
+     ;turn grouped items into a zset
+     (xforms/into into-coll))))
 
 (defn index
   "Convert a zset into a map indexed by a key function"

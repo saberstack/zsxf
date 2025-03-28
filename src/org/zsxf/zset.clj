@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]
+            [org.zsxf.util :as util]
             [taoensso.timbre :as timbre]))
 
 ;How to turn a zset into a proper Clojure collection
@@ -296,9 +297,9 @@
      indexed-zset-2)))
 
 (defn join-indexed*
-  "Join and multiply two indexed zsets"
+  "Join and multiply two indexed zsets (indexed zsets are maps)"
   [indexed-zset-1 indexed-zset-2]
-  (let [commons (clojure.set/intersection (set (keys indexed-zset-1)) (set (keys indexed-zset-2)))]
+  (let [commons (util/key-intersection indexed-zset-1 indexed-zset-2)]
     (transduce
       (map (fn [common] [common (zset* (indexed-zset-1 common) (indexed-zset-2 common))]))
       conj

@@ -48,3 +48,18 @@
    (nth2 coll index nil))
   ([coll index not-found]
    ((fpred nth (comp not vector?) nil) coll index not-found)))
+
+(defn key-intersection
+  "Taken from clojure.set/intersection but adapted to work for maps.
+  Takes maps m1 and m2.
+  Returns a set of common keys."
+  [m1 m2]
+  (if (< (count m2) (count m1))
+    (recur m2 m1)
+    (reduce
+      (fn [result item]
+        (if (contains? m2 item)
+          (conj result item)
+          result))
+      #{}
+      (keys m1))))

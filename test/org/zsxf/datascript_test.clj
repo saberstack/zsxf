@@ -126,9 +126,8 @@
             ;; We won! Prepend and append the joins with the boilerplate.
             (apply comp (concat
                          [(xf/mapcat-zset-transaction-xf)
-                          (fn [zset]
-                            (apply xf/disj-irrelevant-items
-                                   (cons zset preds)))]
+                          (map (fn [zset]
+                                 (apply xf/disj-irrelevant-items (cons zset preds))))]
                          xf-steps
                          [(xforms/reduce zs/zset+)]))
 

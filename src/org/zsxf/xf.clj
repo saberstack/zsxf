@@ -219,8 +219,8 @@
   ; the number of returned items in the result does not change (the query can return a list like
   '([nil] [nil])                                            ; ... if nothing in the pattern is found
   ; or if found (more typically):
-  '([#:person{:born #:country{:name "USA"}}]
-    [#:person{:born #:country{:name "Monaco"}}])
+  '([#:person{:born #:country{:name "USA"} :name "Alice"}]
+    [#:person{:born #:country{:name "Monaco"} :name "Bob"}])
   ;
   ; More important differences likely exist, this is WIP.
   ;

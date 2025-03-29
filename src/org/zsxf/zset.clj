@@ -19,6 +19,17 @@
   [x]
   (:zset/w (meta x)))
 
+(defn update-zset-item-weight
+  [zset-item f]
+  (vary-meta zset-item (fn [meta-map] (update meta-map :zset/w f))))
+
+(defn assoc-zset-item-weight
+  [zset-item w]
+  (vary-meta zset-item (fn [meta-map] (assoc meta-map :zset/w w))))
+
+(defn dissoc-weight [zset-item]
+  (vary-meta zset-item (fn [meta-map] (dissoc meta-map :zset/w))))
+
 (defn zset-sum+
   [f]
   (fn
@@ -96,14 +107,11 @@
      (completing
        (fn [s new-zset-item]
          (if-let [zset-item (s new-zset-item)]
-           (let [meta-1     (meta zset-item)
-                 meta-2     (meta new-zset-item)
-                 new-weight (+ (:zset/w meta-1) (:zset/w meta-2))]
+           (let [new-weight (+ (zset-weight zset-item) (zset-weight new-zset-item))]
              (if (zero? new-weight)
                (disj s zset-item)
-               (conj (disj s zset-item) (vary-meta new-zset-item
-                                          (fn [meta-map] (assoc meta-map :zset/w new-weight))))))
-           (if (not= 0 (:zset/w (meta new-zset-item)))
+               (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
+           (if (not= 0 (zset-weight new-zset-item))
              (conj s new-zset-item)
              s)))
        (fn [accum]
@@ -136,14 +144,11 @@
        (completing
          (fn [s new-zset-item]
            (if-let [zset-item (s new-zset-item)]
-             (let [meta-1     (meta zset-item)
-                   meta-2     (meta new-zset-item)
-                   new-weight (+ (:zset/w meta-1) (:zset/w meta-2))]
+             (let [new-weight (+ (zset-weight zset-item) (zset-weight new-zset-item))]
                (if (or (zero? new-weight) (neg-int? new-weight))
                  (disj s zset-item)
-                 (conj (disj s zset-item) (vary-meta new-zset-item
-                                            (fn [meta-map] (assoc meta-map :zset/w new-weight))))))
-             (if (pos-int? (:zset/w (meta new-zset-item)))
+                 (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
+             (if (pos-int? (zset-weight new-zset-item))
                (conj s new-zset-item)
                s)))
          (fn [accum]
@@ -157,9 +162,9 @@
   {:pre [(zset? zset)]}
   (transduce
     (map (fn [item]
-           (vary-meta item
-             (fn [prev-meta]
-               (update prev-meta :zset/w (fn [prev-w] (* -1 prev-w)))))))
+           (update-zset-item-weight
+             item
+             (fn [prev-w] (* -1 prev-w)))))
     conj
     #{}
     zset))
@@ -176,26 +181,22 @@
      xf
      (fn
        ([accum] accum)
-       ([accum m]
+       ([accum new-item]
         (timbre/spy accum)
-        (timbre/spy m)
-        (if-not (coll? m)
-          m
-          (if-let [existing-m (accum m)]
-            (let [accum'      (disj accum existing-m)
-                  existing-m' (vary-meta existing-m
-                                (fn [prev-meta]
-                                  (update prev-meta :zset/w
-                                    (fn [prev-w]
-                                      ; fnil is used to handle the case where the weight is not present
-                                      ; in the meta, aka it is nil
-                                      ((fnil + 0) (zset-weight m) prev-w)))))
-                  _           (timbre/spy existing-m')
-                  zset-w'     (zset-weight existing-m')]
-              (if (zero? zset-w')
-                accum'
-                (conj accum' existing-m')))
-            (conj accum (with-meta m {:zset/w weight}))))))
+        (timbre/spy new-item)
+        (if-let [existing-item (accum new-item)]
+          (let [accum'      (disj accum existing-item)
+                existing-m' (update-zset-item-weight existing-item
+                              (fn [prev-w]
+                                ; fnil is used to handle the case where the weight is not present
+                                ; in the meta, aka it is nil
+                                ((fnil + 0) (zset-weight new-item) prev-w)))
+                _           (timbre/spy existing-m')
+                zset-w'     (zset-weight existing-m')]
+            (if (zero? zset-w')
+              accum'
+              (conj accum' existing-m')))
+          (conj accum (zset-item new-item weight)))))
      #{}
      coll)))
 
@@ -215,8 +216,8 @@
             new-weight (* weight-1 weight-2)]
         (zset-item
           ;zset weights of internal items don't serve a purpose after multiplication - remove them
-          [(vary-meta item-1 (fn [_]))                      ;remove weight
-           (vary-meta item-2 (fn [_]))]                     ;remove weight
+          [(dissoc-weight item-1)                           ;remove weight
+           (dissoc-weight item-2)]                          ;remove weight
           new-weight)))))
 
 (defn index-xf

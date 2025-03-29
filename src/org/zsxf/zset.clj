@@ -63,15 +63,11 @@
   [n]
   (zset-item [:zset/sum] n))
 
-(defn zset-count-zero?
-  [zset]
-  (= zset #{^#:zset{:w 0} [:zset/count]}))
-
 (comment
   (zset+
     #{(zset-count-item 42)}
     #{(zset-count-item 42)})
-  ;#{^#:zset{:w 84} zset/count}
+  ;#{^#:zset{:w 84} [:zset/count]}
   )
 
 (defn eligible-coll?
@@ -137,24 +133,23 @@
    (zset-pos+ zset-1 (zset #{})))
   ([zset-1 zset-2]
    ;{:pre [(zset? zset-1) (zset? zset-2)]}
-   (let []
-     (transduce
-       ;get set items one by one
-       (comp cat)
-       (completing
-         (fn [s new-zset-item]
-           (if-let [zset-item (s new-zset-item)]
-             (let [new-weight (+ (zset-weight zset-item) (zset-weight new-zset-item))]
-               (if (or (zero? new-weight) (neg-int? new-weight))
-                 (disj s zset-item)
-                 (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
-             (if (pos-int? (zset-weight new-zset-item))
-               (conj s new-zset-item)
-               s)))
-         (fn [accum]
-           accum))
-       zset-1
-       [zset-2]))))
+   (transduce
+     ;get set items one by one
+     (comp cat)
+     (completing
+       (fn [s new-zset-item]
+         (if-let [zset-item (s new-zset-item)]
+           (let [new-weight (+ (zset-weight zset-item) (zset-weight new-zset-item))]
+             (if (or (zero? new-weight) (neg-int? new-weight))
+               (disj s zset-item)
+               (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
+           (if (pos-int? (zset-weight new-zset-item))
+             (conj s new-zset-item)
+             s)))
+       (fn [accum]
+         accum))
+     zset-1
+     [zset-2])))
 
 (defn zset-negate
   "Change the sign of all the weights in a zset"

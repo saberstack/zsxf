@@ -24,3 +24,10 @@
           {1 (zs/zset-negative [[1] [2]])
            2 (zs/zset [[2]])})]
     (is (= indexed-zset {2 #{^#:zset{:w 1} [2]}}))))
+
+(deftest test-4-zset-count
+  (is
+    (= (zs/zset+
+         #{(zs/zset-count-item 42)}
+         #{(zs/zset-count-item 42)})
+      #{(zs/zset-count-item 84)})))

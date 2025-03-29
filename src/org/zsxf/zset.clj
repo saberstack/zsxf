@@ -63,13 +63,6 @@
   [n]
   (zset-item [:zset/sum] n))
 
-(comment
-  (zset+
-    #{(zset-count-item 42)}
-    #{(zset-count-item 42)})
-  ;#{^#:zset{:w 84} [:zset/count]}
-  )
-
 (defn eligible-coll?
   "Check if a collection is eligible to be a zset item.
   All collections are eligible except map entries."

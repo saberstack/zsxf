@@ -63,3 +63,8 @@
           result))
       #{}
       (keys m1))))
+
+(defmacro with-source [xform]
+  `(with-meta
+    ~xform
+    {:source '~xform}))

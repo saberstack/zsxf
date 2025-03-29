@@ -21,21 +21,20 @@
       (mapcat identity)
       ;receives a zset item (with zset weight)
       (map (fn [zset-item]
-             (let [delta-1 (if (pred-1 zset-item) (zs/index (timbre/spy #{zset-item}) index-k-1) {})
+             (let [delta-1 (if (pred-1 zset-item) (zs/index #{zset-item} index-k-1) {})
                    delta-2 (if (pred-2 zset-item) (zs/index #{zset-item} index-k-2) {})
                    zset    (if last? #{} #{zset-item})]
                ;return
                [delta-1 delta-2 zset])))
       (pxf/cond-branch
-        ;does this xf care about the current item?
+        ;does this join-xf care about the current item?
         (fn [[delta-1 delta-2 _zset :as delta-1+delta-2+zset]]
           (timbre/spy delta-1+delta-2+zset)
           ;if none of the predicates were true...
           (and (empty? delta-1) (empty? delta-2)))
         (map (fn [[_delta-1 _delta-2 zset]]
-               (timbre/info "passing through...")
-               (timbre/spy last?)
-               (timbre/spy zset)))
+               (timbre/spy [last? zset])
+               zset))
         ;else, proceed to join
         any?
         (comp
@@ -64,6 +63,7 @@
                        (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
                        ;ΔTeams ⋈ ΔPlayers
                        (timbre/spy (zs/join-indexed* delta-1 delta-2)))
+                     ;transducer to transform zset items during conversion indexed-zset -> zset
                      return-zset-item-xf)
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]

@@ -64,9 +64,7 @@
             true))))))
 
 (defn load-mbrainz [file-path]
-  (reset! cnt 0)
-  (reset! *data [])
-  (reset! *data-grouped {})
+
   (with-open [rdr (io/reader file-path)]
     (let [input (a/chan 1000)
           p     (a/pipeline 7
@@ -78,7 +76,7 @@
                   input)]
       (doall
         (transduce
-          (comp (take 10000000 #_10000000))
+          (comp (take 10000000))
           (completing
             (fn [accum-cnt item]
               (a/>!! input item)
@@ -118,7 +116,14 @@
   (d/transact! @*conn (vec (load-genre-set))))
 
 (defn init-load-all []
+  (reset! cnt 0)
+  (reset! *data [])
+  (reset! *data-grouped {})
   (reset! *conn (d/create-conn schema))
+  (d/listen! @*conn
+    (fn [tx-report]
+      (swap! *data (fn [v]
+                     (apply conj v (:tx-data tx-report))))))
   (pre-load)
   (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist"))
 
@@ -129,6 +134,15 @@
         :where
         [?a :artist/genres ?g]
         [?g :genre/name ?genre-name]]
+      @@*conn)))
+
+(defn query-count-artists-by-country []
+  (time
+    (d/q
+      '[:find ?country-name (count ?a)
+        :where
+        [?c :country/name-alpha-2 ?country-name]
+        [?a :artist/country ?c]]
       @@*conn)))
 
 (comment
@@ -171,11 +185,8 @@
   (mm/measure "Hello, meter!")
 
   (mm/measure *conn)
-
-
-  (mm/measure @*data)
-
-  (mm/measure [@*data @*data-grouped])
+  (mm/measure *data)
+  (mm/measure [*conn *data])
 
   (time
     (do

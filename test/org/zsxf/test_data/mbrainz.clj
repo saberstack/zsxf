@@ -116,26 +116,38 @@
   (d/transact! @*conn (vec (load-country-set)))
   (d/transact! @*conn (vec (load-genre-set))))
 
-(defn query-count-artists-by-country-zsxf [query-state]
-  (let [pred-1 #(ds/datom-attr-val= % :country/name-alpha-2 "US")
+(defn query-count-artists-by-country-zsxf
+  ([query-state]
+   (query-count-artists-by-country-zsxf
+     query-state
+     ;default predicates
+     [#(ds/datom-attr-val= % :country/name-alpha-2 "US")
+      #(ds/datom-attr= % :artist/country)]))
+  ([query-state preds]
+   (let [pred-1 (nth preds 0)
+         pred-2 (nth preds 1)]
+     (comp
+       (xf/mapcat-zset-transaction-xf)
+       (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
+       (xf/join-xf
+         pred-1 ds/datom->eid
+         pred-2 ds/datom->val
+         query-state
+         :last? true)
+       (xforms/reduce zs/zset+)
+       ;group by aggregates
+       (xf/group-by-xf
+         #(-> % (util/nth2 0) ds/datom->val)
+         (comp
+           (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
+           (mapcat (fn [{:keys [cnt]}]
+                     [(zs/zset-count-item cnt)]))))
+       (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))))
+
+(defn query-count-artists-by-country-all-zsxf [query-state]
+  (let [pred-1 #(ds/datom-attr= % :country/name-alpha-2)
         pred-2 #(ds/datom-attr= % :artist/country)]
-    (comp
-      (xf/mapcat-zset-transaction-xf)
-      (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
-      (xf/join-xf
-        pred-1 ds/datom->eid
-        pred-2 ds/datom->val
-        query-state
-        :last? true)
-      (xforms/reduce zs/zset+)
-      ;group by aggregates
-      (xf/group-by-xf
-        #(-> % (util/nth2 0) ds/datom->val)
-        (comp
-          (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
-          (mapcat (fn [{:keys [cnt]}]
-                    [(zs/zset-count-item cnt)]))))
-      (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
+    (query-count-artists-by-country-zsxf query-state [pred-1 pred-2])))
 
 (defn init-load-all []
   (reset! *query-1 (q/create-query query-count-artists-by-country-zsxf))
@@ -150,6 +162,12 @@
         (fn [elapsed-time] (swap! *query-1-times conj elapsed-time)))))
   (pre-load)
   (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000))
+
+(defn init-query []
+  (let [query (q/create-query query-count-artists-by-country-all-zsxf)]
+    (q/input query
+      (ds/tx-datoms->zsets
+        (d/seek-datoms @@*conn :eavt)))))
 
 (defn query-count-artists-by-genre []
   (time
@@ -207,6 +225,8 @@
   (timbre/set-min-level! :info)
 
   (peek @*query-1-times)
+
+  (take 10 (d/seek-datoms @@*conn :eavt))
 
   (do
     (d/transact! @*conn

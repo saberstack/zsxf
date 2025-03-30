@@ -15,7 +15,8 @@
            org.slf4j/slf4j-simple                    {:mvn/version "2.0.7"}
            raspasov/alexandria-clj                   {:git/url "https://github.com/raspasov/alexandria-clj"
                                                       :sha     "f3ae713fc025e8726d5241d9e797c6ea92c80a42"}
-           gigasquid/vsa-clj                         {:git/url "https://github.com/gigasquid/vsa-clj" :sha "4db3de1b8efb33c14ebd1bd60ea91c75e9b79857"}
+           gigasquid/vsa-clj                         {:git/url "https://github.com/gigasquid/vsa-clj"
+                                                      :sha     "4db3de1b8efb33c14ebd1bd60ea91c75e9b79857"}
            com.taoensso/nippy                        {:mvn/version "3.3.0"}
            datascript/datascript                     {:mvn/version "1.6.1"}
            org.clojure/math.combinatorics            {:mvn/version "0.3.0"}
@@ -35,6 +36,64 @@
                                                       :sha     "93fb43e3223bbcfe08c4e37414709021d8a99604"}
            dev.weavejester/medley                    {:mvn/version "1.8.1"}
            io.replikativ/datalog-parser              {:mvn/version "0.2.30"}
+           com.cnuernber/charred                     {:mvn/version "1.036"}
+           com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}
+           com.cnuernber/ham-fisted                  {:mvn/version "2.026"}
 
            }
- :aliases {}}
+ :aliases {:add-opens
+           {:jvm-opts ["-Djdk.attach.allowAttachSelf"
+                       "--add-opens=java.base/java.io=ALL-UNNAMED"
+                       "--add-opens=java.base/java.lang=ALL-UNNAMED"
+                       "--add-opens=java.base/java.lang.annotation=ALL-UNNAMED"
+                       "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED"
+                       "--add-opens=java.base/java.lang.module=ALL-UNNAMED"
+                       "--add-opens=java.base/java.lang.ref=ALL-UNNAMED"
+                       "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED"
+                       "--add-opens=java.base/java.math=ALL-UNNAMED"
+                       "--add-opens=java.base/java.net=ALL-UNNAMED"
+                       "--add-opens=java.base/java.net.spi=ALL-UNNAMED"
+                       "--add-opens=java.base/java.nio=ALL-UNNAMED"
+                       "--add-opens=java.base/java.nio.channels=ALL-UNNAMED"
+                       "--add-opens=java.base/java.nio.channels.spi=ALL-UNNAMED"
+                       "--add-opens=java.base/java.nio.charset=ALL-UNNAMED"
+                       "--add-opens=java.base/java.nio.charset.spi=ALL-UNNAMED"
+                       "--add-opens=java.base/java.nio.file=ALL-UNNAMED"
+                       "--add-opens=java.base/java.nio.file.attribute=ALL-UNNAMED"
+                       "--add-opens=java.base/java.nio.file.spi=ALL-UNNAMED"
+                       "--add-opens=java.base/java.security=ALL-UNNAMED"
+                       "--add-opens=java.base/java.security.cert=ALL-UNNAMED"
+                       "--add-opens=java.base/java.security.interfaces=ALL-UNNAMED"
+                       "--add-opens=java.base/java.security.spec=ALL-UNNAMED"
+                       "--add-opens=java.base/java.text=ALL-UNNAMED"
+                       "--add-opens=java.base/java.text.spi=ALL-UNNAMED"
+                       "--add-opens=java.base/java.time=ALL-UNNAMED"
+                       "--add-opens=java.base/java.time.chrono=ALL-UNNAMED"
+                       "--add-opens=java.base/java.time.format=ALL-UNNAMED"
+                       "--add-opens=java.base/java.time.temporal=ALL-UNNAMED"
+                       "--add-opens=java.base/java.time.zone=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.function=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.jar=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.regex=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.spi=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.stream=ALL-UNNAMED"
+                       "--add-opens=java.base/java.util.zip=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.crypto=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.crypto.interfaces=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.crypto.spec=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.net=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.net.ssl=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.security.auth=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.security.auth.callback=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.security.auth.login=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.security.auth.spi=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.security.auth.x500=ALL-UNNAMED"
+                       "--add-opens=java.base/javax.security.cert=ALL-UNNAMED"
+                       "--add-opens=java.desktop/sun.java2d.marlin=ALL-UNNAMED"
+                       "--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED"
+                       "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+                       "--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED"]}}}

@@ -217,7 +217,7 @@
   ([kfn into-coll]
    (xforms/by-key
      kfn
-     (fn [zset-item] (timbre/spy zset-item))
+     (fn [zset-item] zset-item)
      (fn [k zset-of-grouped-items]
        (if k {k zset-of-grouped-items} {}))
      ;turn grouped items into a zset

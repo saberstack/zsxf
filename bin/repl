@@ -1,1 +1,1 @@
-clj -M -m org.zsxf.core
+clj -M:add-opens -m org.zsxf.core

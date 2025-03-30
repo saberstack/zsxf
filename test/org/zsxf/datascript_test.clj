@@ -2,8 +2,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer [deftest is]]
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
    [clojure.set :as set]
    [datascript.core :as d]
    [medley.core :as medley]
@@ -16,22 +14,15 @@
    [net.cgrand.xforms :as xforms]
    [org.zsxf.util :as util :refer [nth2]]
    [taoensso.timbre :as timbre]
-   [clojure.set :as set])
-  (:import
-   [java.io PushbackReader]))
-
-
-(defn load-edn-file [file-path]
-  (with-open [rdr (io/reader file-path)]
-    (edn/read (PushbackReader. rdr))))
+   [clojure.set :as set]))
 
 (defn load-learn-db
   ([]
    (load-learn-db nil)
    )
   ([listen-atom]
-   (let [schema (load-edn-file "resources/learndatalogtoday/schema_datascript.edn")
-         data (load-edn-file   "resources/learndatalogtoday/data_datascript.edn")
+   (let [schema (util/load-edn-file "resources/learndatalogtoday/schema_datascript.edn")
+         data (util/load-edn-file   "resources/learndatalogtoday/data_datascript.edn")
          conn (d/create-conn schema)]
      (when listen-atom
        (data-stream/listen-datom-stream conn listen-atom ds/tx-datoms->zset))

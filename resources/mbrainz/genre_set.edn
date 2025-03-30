@@ -1,0 +1,1529 @@
+#{#:genre{:name "slacker rock"}
+  #:genre{:name "turkish classical"}
+  #:genre{:name "christian metal"}
+  #:genre{:name "donk"}
+  #:genre{:name "easycore"}
+  #:genre{:name "trap latino"}
+  #:genre{:name "funk rock"}
+  #:genre{:name "speedcore"}
+  #:genre{:name "philly club rap"}
+  #:genre{:name "bluegrass"}
+  #:genre{:name "rumba cubana"}
+  #:genre{:name "speech"}
+  #:genre{:name "bomba"}
+  #:genre{:name "urban cowboy"}
+  #:genre{:name "futurepop"}
+  #:genre{:name "rumba flamenca"}
+  #:genre{:name "slap house"}
+  #:genre{:name "pluggnb"}
+  #:genre{:name "nederpop"}
+  #:genre{:name "shanto"}
+  #:genre{:name "canzone napoletana"}
+  #:genre{:name "fungi"}
+  #:genre{:name "congolese rumba"}
+  #:genre{:name "chillout"}
+  #:genre{:name "bandari"}
+  #:genre{:name "jazz-funk"}
+  #:genre{:name "rasteirinha"}
+  #:genre{:name "cantoria"}
+  #:genre{:name "burger-highlife"}
+  #:genre{:name "garage punk"}
+  #:genre{:name "celtic"}
+  #:genre{:name "soul blues"}
+  #:genre{:name "stride"}
+  #:genre{:name "alpenrock"}
+  #:genre{:name "flamenco"}
+  #:genre{:name "balearic trance"}
+  #:genre{:name "crossover jazz"}
+  #:genre{:name "extratone"}
+  #:genre{:name "experimental electronic"}
+  #:genre{:name "k-pop"}
+  #:genre{:name "atmospheric drum and bass"}
+  #:genre{:name "kwassa kwassa"}
+  #:genre{:name "candombe"}
+  #:genre{:name "boom bap"}
+  #:genre{:name "folktronica"}
+  #:genre{:name "cool jazz"}
+  #:genre{:name "junkanoo"}
+  #:genre{:name "ethio-jazz"}
+  #:genre{:name "jùjú"}
+  #:genre{:name "nova cançó"}
+  #:genre{:name "reductionism"}
+  #:genre{:name "merengue"}
+  #:genre{:name "classical"}
+  #:genre{:name "dub"}
+  #:genre{:name "nyū myūjikku"}
+  #:genre{:name "fado de coimbra"}
+  #:genre{:name "visual kei"}
+  #:genre{:name "alternative folk"}
+  #:genre{:name "indie pop"}
+  #:genre{:name "avant-prog"}
+  #:genre{:name "frevo"}
+  #:genre{:name "serialism"}
+  #:genre{:name "cabaret"}
+  #:genre{:name "choro"}
+  #:genre{:name "dub techno"}
+  #:genre{:name "neofolklore"}
+  #:genre{:name "modern creative"}
+  #:genre{:name "dance-pop"}
+  #:genre{:name "sasscore"}
+  #:genre{:name "mangue beat"}
+  #:genre{:name "zouk love"}
+  #:genre{:name "korean ballad"}
+  #:genre{:name "berlin school"}
+  #:genre{:name "sean-nós"}
+  #:genre{:name "acid techno"}
+  #:genre{:name "samba-joia"}
+  #:genre{:name "koplo"}
+  #:genre{:name "jazzstep"}
+  #:genre{:name "yakousei"}
+  #:genre{:name "dance"}
+  #:genre{:name "production music"}
+  #:genre{:name "fife and drum"}
+  #:genre{:name "slam death metal"}
+  #:genre{:name "birdsong"}
+  #:genre{:name "dhrupad"}
+  #:genre{:name "powerviolence"}
+  #:genre{:name "new jazz"}
+  #:genre{:name "viking rock"}
+  #:genre{:name "electro-industrial"}
+  #:genre{:name "sovietwave"}
+  #:genre{:name "jazz fusion"}
+  #:genre{:name "free improvisation"}
+  #:genre{:name "j-core"}
+  #:genre{:name "klasik"}
+  #:genre{:name "pagodão"}
+  #:genre{:name "psychedelic pop"}
+  #:genre{:name "post-classical"}
+  #:genre{:name "country pop"}
+  #:genre{:name "minimalism"}
+  #:genre{:name "truck driving country"}
+  #:genre{:name "alternative punk"}
+  #:genre{:name "makossa"}
+  #:genre{:name "afro house"}
+  #:genre{:name "samba-exaltação"}
+  #:genre{:name "country gospel"}
+  #:genre{:name "footwork jungle"}
+  #:genre{:name "deep funk"}
+  #:genre{:name "emoviolence"}
+  #:genre{:name "british rhythm & blues"}
+  #:genre{:name "maddahi"}
+  #:genre{:name "alté"}
+  #:genre{:name "industrial musical"}
+  #:genre{:name "sound effects"}
+  #:genre{:name "trova"}
+  #:genre{:name "zouk"}
+  #:genre{:name "folk metal"}
+  #:genre{:name "progressive country"}
+  #:genre{:name "shibuya-kei"}
+  #:genre{:name "smooth soul"}
+  #:genre{:name "bassline"}
+  #:genre{:name "mugham"}
+  #:genre{:name "electronica"}
+  #:genre{:name "urban contemporary gospel"}
+  #:genre{:name "skiffle"}
+  #:genre{:name "baltimore club"}
+  #:genre{:name "swing revival"}
+  #:genre{:name "latin jazz"}
+  #:genre{:name "maracatu"}
+  #:genre{:name "ragtime"}
+  #:genre{:name "country boogie"}
+  #:genre{:name "instrumental jazz"}
+  #:genre{:name "tin pan alley"}
+  #:genre{:name "hardcore punk"}
+  #:genre{:name "cumbia sonidera"}
+  #:genre{:name "hardstyle"}
+  #:genre{:name "hi-nrg"}
+  #:genre{:name "uk drill"}
+  #:genre{:name "country soul"}
+  #:genre{:name "ragga"}
+  #:genre{:name "goa trance"}
+  #:genre{:name "algorave"}
+  #:genre{:name "white voice"}
+  #:genre{:name "sevillanas"}
+  #:genre{:name "detroit techno"}
+  #:genre{:name "burmese classical"}
+  #:genre{:name "acoustic texas blues"}
+  #:genre{:name "pansori"}
+  #:genre{:name "rawstyle"}
+  #:genre{:name "coco"}
+  #:genre{:name "regalia"}
+  #:genre{:name "shidaiqu"}
+  #:genre{:name "turbo-folk"}
+  #:genre{:name "dark electro"}
+  #:genre{:name "revue"}
+  #:genre{:name "concert band"}
+  #:genre{:name "polca criolla"}
+  #:genre{:name "electro house"}
+  #:genre{:name "instrumental"}
+  #:genre{:name "fado"}
+  #:genre{:name "trance"}
+  #:genre{:name "klezmer"}
+  #:genre{:name "marabi"}
+  #:genre{:name "hard rock"}
+  #:genre{:name "timba"}
+  #:genre{:name "techno"}
+  #:genre{:name "lavani"}
+  #:genre{:name "dembow"}
+  #:genre{:name "tizita"}
+  #:genre{:name "onkyo"}
+  #:genre{:name "psybreaks"}
+  #:genre{:name "funk carioca"}
+  #:genre{:name "post-britpop"}
+  #:genre{:name "euro house"}
+  #:genre{:name "power electronics"}
+  #:genre{:name "r&b"}
+  #:genre{:name "alternative pop"}
+  #:genre{:name "hardgroove techno"}
+  #:genre{:name "neo-rockabilly"}
+  #:genre{:name "witch house"}
+  #:genre{:name "deathcore"}
+  #:genre{:name "concerto"}
+  #:genre{:name "madrigal"}
+  #:genre{:name "glam rock"}
+  #:genre{:name "african blues"}
+  #:genre{:name "arena rock"}
+  #:genre{:name "geek rock"}
+  #:genre{:name "electro swing"}
+  #:genre{:name "contra"}
+  #:genre{:name "electroacoustic"}
+  #:genre{:name "cabo zouk"}
+  #:genre{:name "novo dub"}
+  #:genre{:name "future riddim"}
+  #:genre{:name "danmono"}
+  #:genre{:name "blue-eyed soul"}
+  #:genre{:name "future bass"}
+  #:genre{:name "cocktail nation"}
+  #:genre{:name "afoxê"}
+  #:genre{:name "avant-garde jazz"}
+  #:genre{:name "kabarett"}
+  #:genre{:name "plunderphonics"}
+  #:genre{:name "bedroom pop"}
+  #:genre{:name "classical crossover"}
+  #:genre{:name "bongo flava"}
+  #:genre{:name "funk metal"}
+  #:genre{:name "samba-jazz"}
+  #:genre{:name "traditional doom metal"}
+  #:genre{:name "ars subtilior"}
+  #:genre{:name "cape jazz"}
+  #:genre{:name "contemporary classical"}
+  #:genre{:name "gamelan"}
+  #:genre{:name "pilón"}
+  #:genre{:name "us power metal"}
+  #:genre{:name "música llanera"}
+  #:genre{:name "guajira"}
+  #:genre{:name "central asian throat singing"}
+  #:genre{:name "thumri"}
+  #:genre{:name "dark wave"}
+  #:genre{:name "pizzica"}
+  #:genre{:name "neo-psychedelia"}
+  #:genre{:name "lied"}
+  #:genre{:name "screamo"}
+  #:genre{:name "post-punk"}
+  #:genre{:name "tearout"}
+  #:genre{:name "outsider house"}
+  #:genre{:name "florida breaks"}
+  #:genre{:name "abstract hip hop"}
+  #:genre{:name "phonk"}
+  #:genre{:name "steampunk"}
+  #:genre{:name "pimba"}
+  #:genre{:name "swancore"}
+  #:genre{:name "euro-trance"}
+  #:genre{:name "indorock"}
+  #:genre{:name "huapango"}
+  #:genre{:name "cajun"}
+  #:genre{:name "classic blues"}
+  #:genre{:name "comedy"}
+  #:genre{:name "bubbling"}
+  #:genre{:name "copla"}
+  #:genre{:name "porro"}
+  #:genre{:name "merengue típico"}
+  #:genre{:name "freeform hardcore"}
+  #:genre{:name "indietronica"}
+  #:genre{:name "latin ballad"}
+  #:genre{:name "industrial hardcore"}
+  #:genre{:name "outlaw country"}
+  #:genre{:name "joropo"}
+  #:genre{:name "ryūkōka"}
+  #:genre{:name "amapiano"}
+  #:genre{:name "post-metal"}
+  #:genre{:name "unyago"}
+  #:genre{:name "jerk rap"}
+  #:genre{:name "axé"}
+  #:genre{:name "blackened death metal"}
+  #:genre{:name "zoblazo"}
+  #:genre{:name "murga uruguaya"}
+  #:genre{:name "ambient"}
+  #:genre{:name "progressive"}
+  #:genre{:name "power pop"}
+  #:genre{:name "flamenco pop"}
+  #:genre{:name "nueva canción"}
+  #:genre{:name "space ambient"}
+  #:genre{:name "art punk"}
+  #:genre{:name "march"}
+  #:genre{:name "technical thrash metal"}
+  #:genre{:name "g-funk"}
+  #:genre{:name "comedy rock"}
+  #:genre{:name "neoclassical new age"}
+  #:genre{:name "queercore"}
+  #:genre{:name "space rock revival"}
+  #:genre{:name "sexy drill"}
+  #:genre{:name "banda sinaloense"}
+  #:genre{:name "country folk"}
+  #:genre{:name "lolicore"}
+  #:genre{:name "rock musical"}
+  #:genre{:name "space disco"}
+  #:genre{:name "country and irish"}
+  #:genre{:name "speed garage"}
+  #:genre{:name "quiet storm"}
+  #:genre{:name "big band"}
+  #:genre{:name "merecumbé"}
+  #:genre{:name "modern blues"}
+  #:genre{:name "gagaku"}
+  #:genre{:name "dabke"}
+  #:genre{:name "livetronica"}
+  #:genre{:name "manila sound"}
+  #:genre{:name "kleinkunst"}
+  #:genre{:name "samba de breque"}
+  #:genre{:name "bleep techno"}
+  #:genre{:name "serenade"}
+  #:genre{:name "techno bass"}
+  #:genre{:name "wassoulou"}
+  #:genre{:name "post-hardcore"}
+  #:genre{:name "sertanejo universitário"}
+  #:genre{:name "work song"}
+  #:genre{:name "bhangra"}
+  #:genre{:name "melodic metalcore"}
+  #:genre{:name "digital fusion"}
+  #:genre{:name "house"}
+  #:genre{:name "chicago bop"}
+  #:genre{:name "rap metal"}
+  #:genre{:name "laiko"}
+  #:genre{:name "bounce"}
+  #:genre{:name "carnatic classical"}
+  #:genre{:name "futurism"}
+  #:genre{:name "gospel house"}
+  #:genre{:name "frat rock"}
+  #:genre{:name "mariachi"}
+  #:genre{:name "novelty piano"}
+  #:genre{:name "rara"}
+  #:genre{:name "metal"}
+  #:genre{:name "raggacore"}
+  #:genre{:name "marching band"}
+  #:genre{:name "noisecore"}
+  #:genre{:name "avant-garde metal"}
+  #:genre{:name "third stream"}
+  #:genre{:name "tribal guarachero"}
+  #:genre{:name "mashcore"}
+  #:genre{:name "brazilian bass"}
+  #:genre{:name "moombahton"}
+  #:genre{:name "brutal prog"}
+  #:genre{:name "midtempo bass"}
+  #:genre{:name "yé-yé"}
+  #:genre{:name "prelude"}
+  #:genre{:name "asian rock"}
+  #:genre{:name "glitch hop"}
+  #:genre{:name "emocore"}
+  #:genre{:name "beatdown hardcore"}
+  #:genre{:name "symphonic poem"}
+  #:genre{:name "melbourne bounce"}
+  #:genre{:name "chalga"}
+  #:genre{:name "sonata"}
+  #:genre{:name "rebetiko"}
+  #:genre{:name "horror punk"}
+  #:genre{:name "modern classical"}
+  #:genre{:name "power metal"}
+  #:genre{:name "hardcore breaks"}
+  #:genre{:name "cueca"}
+  #:genre{:name "complextro"}
+  #:genre{:name "phonk house"}
+  #:genre{:name "javanese gamelan"}
+  #:genre{:name "mor lam sing"}
+  #:genre{:name "stenchcore"}
+  #:genre{:name "música criolla"}
+  #:genre{:name "anatolian rock"}
+  #:genre{:name "glam punk"}
+  #:genre{:name "candombe beat"}
+  #:genre{:name "bolero-beat"}
+  #:genre{:name "spoken word"}
+  #:genre{:name "riddim dubstep"}
+  #:genre{:name "nueva canción chilena"}
+  #:genre{:name "doomcore"}
+  #:genre{:name "alternative r&b"}
+  #:genre{:name "dansktop"}
+  #:genre{:name "acidcore"}
+  #:genre{:name "gorenoise"}
+  #:genre{:name "spamwave"}
+  #:genre{:name "ambient house"}
+  #:genre{:name "euphoric hardstyle"}
+  #:genre{:name "boogie rock"}
+  #:genre{:name "skate punk"}
+  #:genre{:name "neue deutsche härte"}
+  #:genre{:name "musique concrète instrumentale"}
+  #:genre{:name "waltz"}
+  #:genre{:name "festival trap"}
+  #:genre{:name "nuevo cancionero"}
+  #:genre{:name "dissonant death metal"}
+  #:genre{:name "g-house"}
+  #:genre{:name "microsound"}
+  #:genre{:name "latin pop"}
+  #:genre{:name "garage house"}
+  #:genre{:name "church music"}
+  #:genre{:name "kasékò"}
+  #:genre{:name "cumbia chilena"}
+  #:genre{:name "third wave ska"}
+  #:genre{:name "winter synth"}
+  #:genre{:name "chacarera"}
+  #:genre{:name "pop metal"}
+  #:genre{:name "chamamé"}
+  #:genre{:name "rock andino"}
+  #:genre{:name "persian pop"}
+  #:genre{:name "black noise"}
+  #:genre{:name "guaracha edm"}
+  #:genre{:name "sunshine pop"}
+  #:genre{:name "ambient noise wall"}
+  #:genre{:name "reggaeton"}
+  #:genre{:name "mod"}
+  #:genre{:name "chachachá"}
+  #:genre{:name "electro hop"}
+  #:genre{:name "modinha"}
+  #:genre{:name "lowercase"}
+  #:genre{:name "standup comedy"}
+  #:genre{:name "spiritual jazz"}
+  #:genre{:name "keroncong"}
+  #:genre{:name "bit music"}
+  #:genre{:name "moe song"}
+  #:genre{:name "raggatek"}
+  #:genre{:name "qawwali"}
+  #:genre{:name "deconstructed club"}
+  #:genre{:name "grindcore"}
+  #:genre{:name "thrashcore"}
+  #:genre{:name "experimental rock"}
+  #:genre{:name "soul jazz"}
+  #:genre{:name "acid house"}
+  #:genre{:name "beat poetry"}
+  #:genre{:name "electric blues"}
+  #:genre{:name "pub rock"}
+  #:genre{:name "hands up"}
+  #:genre{:name "banga"}
+  #:genre{:name "contemporary folk"}
+  #:genre{:name "rapso"}
+  #:genre{:name "cumbia santafesina"}
+  #:genre{:name "eai"}
+  #:genre{:name "belgian techno"}
+  #:genre{:name "cantopop"}
+  #:genre{:name "psytrance"}
+  #:genre{:name "experimental big band"}
+  #:genre{:name "tread"}
+  #:genre{:name "medieval metal"}
+  #:genre{:name "proto-punk"}
+  #:genre{:name "tsonga disco"}
+  #:genre{:name "cinematic classical"}
+  #:genre{:name "marrabenta"}
+  #:genre{:name "kundiman"}
+  #:genre{:name "cumbia"}
+  #:genre{:name "maloya élektrik"}
+  #:genre{:name "jump blues"}
+  #:genre{:name "hill country blues"}
+  #:genre{:name "hyphy"}
+  #:genre{:name "electropop"}
+  #:genre{:name "post-bop"}
+  #:genre{:name "classic rock"}
+  #:genre{:name "atmospheric black metal"}
+  #:genre{:name "plena"}
+  #:genre{:name "nueva canción española"}
+  #:genre{:name "jamaican ska"}
+  #:genre{:name "tribal house"}
+  #:genre{:name "rkt"}
+  #:genre{:name "deathgrind"}
+  #:genre{:name "salegy"}
+  #:genre{:name "downtempo deathcore"}
+  #:genre{:name "speed metal"}
+  #:genre{:name "jackin house"}
+  #:genre{:name "kaseko"}
+  #:genre{:name "western swing"}
+  #:genre{:name "deathstep"}
+  #:genre{:name "jazz pop"}
+  #:genre{:name "asmr"}
+  #:genre{:name "conscious hip hop"}
+  #:genre{:name "guided meditation"}
+  #:genre{:name "reggae-pop"}
+  #:genre{:name "breakcore"}
+  #:genre{:name "guaracha"}
+  #:genre{:name "vaportrap"}
+  #:genre{:name "new orleans blues"}
+  #:genre{:name "tech house"}
+  #:genre{:name "opera buffa"}
+  #:genre{:name "vals criollo"}
+  #:genre{:name "mincecore"}
+  #:genre{:name "american primitive guitar"}
+  #:genre{:name "arrocha funk"}
+  #:genre{:name "shoegaze"}
+  #:genre{:name "southern soul"}
+  #:genre{:name "semba"}
+  #:genre{:name "folk rock"}
+  #:genre{:name "swing"}
+  #:genre{:name "bomba del chota"}
+  #:genre{:name "cyberpunk"}
+  #:genre{:name "cloud rap"}
+  #:genre{:name "bhavageethe"}
+  #:genre{:name "guaguancó"}
+  #:genre{:name "filmi"}
+  #:genre{:name "batida"}
+  #:genre{:name "latin"}
+  #:genre{:name "islamic modal music"}
+  #:genre{:name "djent"}
+  #:genre{:name "songo"}
+  #:genre{:name "ytpmv"}
+  #:genre{:name "appalachian folk"}
+  #:genre{:name "funky breaks"}
+  #:genre{:name "pop soul"}
+  #:genre{:name "mandopop"}
+  #:genre{:name "murga"}
+  #:genre{:name "thai classical"}
+  #:genre{:name "idol kayō"}
+  #:genre{:name "britpop"}
+  #:genre{:name "alternative hip hop"}
+  #:genre{:name "joik"}
+  #:genre{:name "highlife"}
+  #:genre{:name "electronicore"}
+  #:genre{:name "dance-rock"}
+  #:genre{:name "country rock"}
+  #:genre{:name "cumbia villera"}
+  #:genre{:name "grand opera"}
+  #:genre{:name "dungeon synth"}
+  #:genre{:name "għana"}
+  #:genre{:name "gypsy jazz"}
+  #:genre{:name "celtic rock"}
+  #:genre{:name "boogaloo"}
+  #:genre{:name "kwela"}
+  #:genre{:name "plugg"}
+  #:genre{:name "sampledelia"}
+  #:genre{:name "loud kei"}
+  #:genre{:name "choral symphony"}
+  #:genre{:name "pacific reggae"}
+  #:genre{:name "alternative rock"}
+  #:genre{:name "nueva cumbia chilena"}
+  #:genre{:name "talking blues"}
+  #:genre{:name "minimal drum and bass"}
+  #:genre{:name "dungeon sound"}
+  #:genre{:name "samba soul"}
+  #:genre{:name "folk"}
+  #:genre{:name "french house"}
+  #:genre{:name "nu disco"}
+  #:genre{:name "glitch pop"}
+  #:genre{:name "medieval"}
+  #:genre{:name "hip house"}
+  #:genre{:name "riot grrrl"}
+  #:genre{:name "tsapiky"}
+  #:genre{:name "rocksteady"}
+  #:genre{:name "digital hardcore"}
+  #:genre{:name "dixieland"}
+  #:genre{:name "dark plugg"}
+  #:genre{:name "rhumba"}
+  #:genre{:name "hopepunk"}
+  #:genre{:name "acoustic rock"}
+  #:genre{:name "ambient pop"}
+  #:genre{:name "progressive breaks"}
+  #:genre{:name "chamber pop"}
+  #:genre{:name "black ambient"}
+  #:genre{:name "slow waltz"}
+  #:genre{:name "palingsound"}
+  #:genre{:name "latin disco"}
+  #:genre{:name "idm"}
+  #:genre{:name "neoclassicism"}
+  #:genre{:name "vocal jazz"}
+  #:genre{:name "overture"}
+  #:genre{:name "chicago drill"}
+  #:genre{:name "funaná"}
+  #:genre{:name "uk82"}
+  #:genre{:name "wonky techno"}
+  #:genre{:name "2 tone"}
+  #:genre{:name "cybergrind"}
+  #:genre{:name "chutney soca"}
+  #:genre{:name "rage"}
+  #:genre{:name "forró"}
+  #:genre{:name "bouncy techno"}
+  #:genre{:name "nerdcore"}
+  #:genre{:name "burmese mono"}
+  #:genre{:name "gqom"}
+  #:genre{:name "natya sangeet"}
+  #:genre{:name "leftfield"}
+  #:genre{:name "new mexico music"}
+  #:genre{:name "punk"}
+  #:genre{:name "séga"}
+  #:genre{:name "post-punk revival"}
+  #:genre{:name "opera"}
+  #:genre{:name "soca"}
+  #:genre{:name "trot"}
+  #:genre{:name "symphonic black metal"}
+  #:genre{:name "falak"}
+  #:genre{:name "no melody trap"}
+  #:genre{:name "delta blues"}
+  #:genre{:name "palm-wine"}
+  #:genre{:name "jazz poetry"}
+  #:genre{:name "ballroom house"}
+  #:genre{:name "dark disco"}
+  #:genre{:name "garba"}
+  #:genre{:name "punk rap"}
+  #:genre{:name "samba"}
+  #:genre{:name "andalusian classical"}
+  #:genre{:name "salsa choke"}
+  #:genre{:name "tecnobrega"}
+  #:genre{:name "celtic punk"}
+  #:genre{:name "brega"}
+  #:genre{:name "miami bass"}
+  #:genre{:name "salsa dura"}
+  #:genre{:name "totalism"}
+  #:genre{:name "sufiana kalam"}
+  #:genre{:name "roots rock"}
+  #:genre{:name "cuplé"}
+  #:genre{:name "red dirt"}
+  #:genre{:name "peak time techno"}
+  #:genre{:name "harsh noise"}
+  #:genre{:name "hard house"}
+  #:genre{:name "gamelan degung"}
+  #:genre{:name "uk funky"}
+  #:genre{:name "swamp rock"}
+  #:genre{:name "celtic electronica"}
+  #:genre{:name "contemporary christian"}
+  #:genre{:name "jazz"}
+  #:genre{:name "jersey club"}
+  #:genre{:name "raw punk"}
+  #:genre{:name "gothic rock"}
+  #:genre{:name "minneapolis sound"}
+  #:genre{:name "township bubblegum"}
+  #:genre{:name "indie surf"}
+  #:genre{:name "mantra"}
+  #:genre{:name "comfy synth"}
+  #:genre{:name "shitgaze"}
+  #:genre{:name "illbient"}
+  #:genre{:name "seggae"}
+  #:genre{:name "bubblegum dance"}
+  #:genre{:name "gaita zuliana"}
+  #:genre{:name "jersey club rap"}
+  #:genre{:name "pop rock"}
+  #:genre{:name "soft rock"}
+  #:genre{:name "dariacore"}
+  #:genre{:name "electro-disco"}
+  #:genre{:name "chap hop"}
+  #:genre{:name "indie folk"}
+  #:genre{:name "moroccan chaabi"}
+  #:genre{:name "stochastic music"}
+  #:genre{:name "industrial"}
+  #:genre{:name "contemporary r&b"}
+  #:genre{:name "psychedelic"}
+  #:genre{:name "neo-traditional country"}
+  #:genre{:name "j-rock"}
+  #:genre{:name "future house"}
+  #:genre{:name "dirty south"}
+  #:genre{:name "beijing opera"}
+  #:genre{:name "nu skool breaks"}
+  #:genre{:name "breakstep"}
+  #:genre{:name "blues rock"}
+  #:genre{:name "mobb music"}
+  #:genre{:name "q-pop"}
+  #:genre{:name "zydeco"}
+  #:genre{:name "seishun punk"}
+  #:genre{:name "happy hardcore"}
+  #:genre{:name "neoperreo"}
+  #:genre{:name "benga"}
+  #:genre{:name "big room trance"}
+  #:genre{:name "surf rock"}
+  #:genre{:name "denpa"}
+  #:genre{:name "children's music"}
+  #:genre{:name "neo-progressive rock"}
+  #:genre{:name "champeta"}
+  #:genre{:name "progressive house"}
+  #:genre{:name "northern soul"}
+  #:genre{:name "pop rap"}
+  #:genre{:name "muzika yehudit mekorit"}
+  #:genre{:name "bubbling house"}
+  #:genre{:name "brass band"}
+  #:genre{:name "iraqi maqam"}
+  #:genre{:name "close harmony"}
+  #:genre{:name "éntekhno"}
+  #:genre{:name "baião"}
+  #:genre{:name "blackened crust"}
+  #:genre{:name "hindustani classical"}
+  #:genre{:name "heavy psych"}
+  #:genre{:name "kayōkyoku"}
+  #:genre{:name "jamgrass"}
+  #:genre{:name "acoustic chicago blues"}
+  #:genre{:name "holy minimalism"}
+  #:genre{:name "jazz rock"}
+  #:genre{:name "harsh noise wall"}
+  #:genre{:name "v-pop"}
+  #:genre{:name "stoner rock"}
+  #:genre{:name "emo"}
+  #:genre{:name "dimotiko"}
+  #:genre{:name "sigilkore"}
+  #:genre{:name "sludge metal"}
+  #:genre{:name "semi-trot"}
+  #:genre{:name "dissonant black metal"}
+  #:genre{:name "reggae"}
+  #:genre{:name "ländlermusik"}
+  #:genre{:name "zhongguo feng"}
+  #:genre{:name "folkhop"}
+  #:genre{:name "jit"}
+  #:genre{:name "brega calypso"}
+  #:genre{:name "enka"}
+  #:genre{:name "pop punk"}
+  #:genre{:name "charanga"}
+  #:genre{:name "mahraganat"}
+  #:genre{:name "minimal wave"}
+  #:genre{:name "electro"}
+  #:genre{:name "russian orthodox liturgical music"}
+  #:genre{:name "cantata"}
+  #:genre{:name "progressive trance"}
+  #:genre{:name "tango"}
+  #:genre{:name "new rave"}
+  #:genre{:name "space age pop"}
+  #:genre{:name "avant-folk"}
+  #:genre{:name "progressive soul"}
+  #:genre{:name "jump up"}
+  #:genre{:name "chopped and screwed"}
+  #:genre{:name "rock"}
+  #:genre{:name "cumbia mexicana"}
+  #:genre{:name "vaudeville"}
+  #:genre{:name "wave"}
+  #:genre{:name "filk"}
+  #:genre{:name "avtorskaya pesnya"}
+  #:genre{:name "rock opera"}
+  #:genre{:name "trance metal"}
+  #:genre{:name "crunkcore"}
+  #:genre{:name "sierreño"}
+  #:genre{:name "funk ostentação"}
+  #:genre{:name "grupera"}
+  #:genre{:name "modal jazz"}
+  #:genre{:name "krushclub"}
+  #:genre{:name "ambient dub"}
+  #:genre{:name "deep soul"}
+  #:genre{:name "indian classical"}
+  #:genre{:name "rock andaluz"}
+  #:genre{:name "sufi rock"}
+  #:genre{:name "industrial rock"}
+  #:genre{:name "jazz blues"}
+  #:genre{:name "tape music"}
+  #:genre{:name "orchestral jazz"}
+  #:genre{:name "chillsynth"}
+  #:genre{:name "chipmunk soul"}
+  #:genre{:name "makina"}
+  #:genre{:name "sound art"}
+  #:genre{:name "samba-enredo"}
+  #:genre{:name "power soca"}
+  #:genre{:name "chinese classical"}
+  #:genre{:name "canción melódica"}
+  #:genre{:name "old school hip hop"}
+  #:genre{:name "drumfunk"}
+  #:genre{:name "skweee"}
+  #:genre{:name "nuevo flamenco"}
+  #:genre{:name "hiplife"}
+  #:genre{:name "frenchcore"}
+  #:genre{:name "nortec"}
+  #:genre{:name "algerian chaabi"}
+  #:genre{:name "splittercore"}
+  #:genre{:name "embolada"}
+  #:genre{:name "gumbe"}
+  #:genre{:name "rock urbano"}
+  #:genre{:name "crossbreed"}
+  #:genre{:name "rumba catalana"}
+  #:genre{:name "bitpop"}
+  #:genre{:name "nhạc đỏ"}
+  #:genre{:name "depressive black metal"}
+  #:genre{:name "afro-cuban jazz"}
+  #:genre{:name "soukous"}
+  #:genre{:name "madchester"}
+  #:genre{:name "pasodoble"}
+  #:genre{:name "valsa brasileira"}
+  #:genre{:name "piano blues"}
+  #:genre{:name "progressive folk"}
+  #:genre{:name "music hall"}
+  #:genre{:name "lovers rock"}
+  #:genre{:name "hardvapour"}
+  #:genre{:name "neo soul"}
+  #:genre{:name "nwobhm"}
+  #:genre{:name "contemporary gospel"}
+  #:genre{:name "turntablism"}
+  #:genre{:name "chicago soul"}
+  #:genre{:name "cape breton fiddling"}
+  #:genre{:name "maxixe"}
+  #:genre{:name "british blues"}
+  #:genre{:name "aquacrunk"}
+  #:genre{:name "ritual ambient"}
+  #:genre{:name "beatboxing"}
+  #:genre{:name "forró eletrônico"}
+  #:genre{:name "zamrock"}
+  #:genre{:name "oratorio"}
+  #:genre{:name "pop"}
+  #:genre{:name "jungle terror"}
+  #:genre{:name "punk rock"}
+  #:genre{:name "nu style gabber"}
+  #:genre{:name "beat music"}
+  #:genre{:name "nueva trova"}
+  #:genre{:name "ska"}
+  #:genre{:name "chutney"}
+  #:genre{:name "chillstep"}
+  #:genre{:name "ars nova"}
+  #:genre{:name "kwaito"}
+  #:genre{:name "ragga jungle"}
+  #:genre{:name "sōkyoku"}
+  #:genre{:name "new romantic"}
+  #:genre{:name "fantasia"}
+  #:genre{:name "field recording"}
+  #:genre{:name "muziki wa dansi"}
+  #:genre{:name "brostep"}
+  #:genre{:name "microtonal classical"}
+  #:genre{:name "mad"}
+  #:genre{:name "integral serialism"}
+  #:genre{:name "d-beat"}
+  #:genre{:name "narcocorrido"}
+  #:genre{:name "sermon"}
+  #:genre{:name "texas blues"}
+  #:genre{:name "darksynth"}
+  #:genre{:name "hard trance"}
+  #:genre{:name "plainchant"}
+  #:genre{:name "vaporwave"}
+  #:genre{:name "heartland rock"}
+  #:genre{:name "new complexity"}
+  #:genre{:name "experimental hip hop"}
+  #:genre{:name "melodic hardcore"}
+  #:genre{:name "funk proibidão"}
+  #:genre{:name "manyao"}
+  #:genre{:name "brega funk"}
+  #:genre{:name "pagan folk"}
+  #:genre{:name "death 'n' roll"}
+  #:genre{:name "neo-acoustic"}
+  #:genre{:name "exotica"}
+  #:genre{:name "tropical rock"}
+  #:genre{:name "synthwave"}
+  #:genre{:name "traditional black gospel"}
+  #:genre{:name "pagode romântico"}
+  #:genre{:name "polka"}
+  #:genre{:name "rave"}
+  #:genre{:name "bachata"}
+  #:genre{:name "balinese gamelan"}
+  #:genre{:name "huayno"}
+  #:genre{:name "metalcore"}
+  #:genre{:name "ballad"}
+  #:genre{:name "chimurenga"}
+  #:genre{:name "sardana"}
+  #:genre{:name "aggrotech"}
+  #:genre{:name "qaraami"}
+  #:genre{:name "go-go"}
+  #:genre{:name "nasheed"}
+  #:genre{:name "chilena"}
+  #:genre{:name "boogie"}
+  #:genre{:name "jerk"}
+  #:genre{:name "british folk rock"}
+  #:genre{:name "southern hip hop"}
+  #:genre{:name "psychobilly"}
+  #:genre{:name "digital cumbia"}
+  #:genre{:name "jam band"}
+  #:genre{:name "morna"}
+  #:genre{:name "country blues"}
+  #:genre{:name "western"}
+  #:genre{:name "burmese stereo"}
+  #:genre{:name "moombahcore"}
+  #:genre{:name "glam metal"}
+  #:genre{:name "electrotango"}
+  #:genre{:name "uk hardcore"}
+  #:genre{:name "sea shanty"}
+  #:genre{:name "chamarrita rioplatense"}
+  #:genre{:name "circus march"}
+  #:genre{:name "juke"}
+  #:genre{:name "slushwave"}
+  #:genre{:name "musique concrète"}
+  #:genre{:name "jovem guarda"}
+  #:genre{:name "garage rock revival"}
+  #:genre{:name "southern metal"}
+  #:genre{:name "lo-fi hip hop"}
+  #:genre{:name "christian rock"}
+  #:genre{:name "heavy metal"}
+  #:genre{:name "kuda lumping"}
+  #:genre{:name "cumbia peruana"}
+  #:genre{:name "big room house"}
+  #:genre{:name "dark ambient"}
+  #:genre{:name "drum and bass"}
+  #:genre{:name "c-pop"}
+  #:genre{:name "alternative country"}
+  #:genre{:name "freestyle"}
+  #:genre{:name "visa"}
+  #:genre{:name "lounge"}
+  #:genre{:name "gothic country"}
+  #:genre{:name "hip hop soul"}
+  #:genre{:name "europop"}
+  #:genre{:name "vocalese"}
+  #:genre{:name "electro-funk"}
+  #:genre{:name "sound poetry"}
+  #:genre{:name "brutal death metal"}
+  #:genre{:name "salsa romántica"}
+  #:genre{:name "zamba"}
+  #:genre{:name "chanson québécoise"}
+  #:genre{:name "chicago blues"}
+  #:genre{:name "mbube"}
+  #:genre{:name "classic country"}
+  #:genre{:name "dream trance"}
+  #:genre{:name "neoclassical metal"}
+  #:genre{:name "marchinha"}
+  #:genre{:name "chicano rap"}
+  #:genre{:name "forest psytrance"}
+  #:genre{:name "neo-medieval folk"}
+  #:genre{:name "oi"}
+  #:genre{:name "nhạc vàng"}
+  #:genre{:name "grebo"}
+  #:genre{:name "britcore"}
+  #:genre{:name "speed house"}
+  #:genre{:name "future funk"}
+  #:genre{:name "ciranda"}
+  #:genre{:name "smooth jazz"}
+  #:genre{:name "broken beat"}
+  #:genre{:name "dark cabaret"}
+  #:genre{:name "cyber metal"}
+  #:genre{:name "punta"}
+  #:genre{:name "emo rap"}
+  #:genre{:name "glam"}
+  #:genre{:name "italo-disco"}
+  #:genre{:name "progressive metal"}
+  #:genre{:name "tsugaru-jamisen"}
+  #:genre{:name "danzón"}
+  #:genre{:name "future core"}
+  #:genre{:name "burning spirits"}
+  #:genre{:name "festejo"}
+  #:genre{:name "honkyoku"}
+  #:genre{:name "hard trap"}
+  #:genre{:name "symphonic metal"}
+  #:genre{:name "comedy hip hop"}
+  #:genre{:name "chiptune"}
+  #:genre{:name "ska punk"}
+  #:genre{:name "hardbag"}
+  #:genre{:name "electronic"}
+  #:genre{:name "future bounce"}
+  #:genre{:name "christmas music"}
+  #:genre{:name "calypso"}
+  #:genre{:name "tecnorumba"}
+  #:genre{:name "diva house"}
+  #:genre{:name "scam rap"}
+  #:genre{:name "vapornoise"}
+  #:genre{:name "dutch house"}
+  #:genre{:name "ambient techno"}
+  #:genre{:name "tex-mex"}
+  #:genre{:name "merseybeat"}
+  #:genre{:name "vocal house"}
+  #:genre{:name "expressionism"}
+  #:genre{:name "techno kayō"}
+  #:genre{:name "latin soul"}
+  #:genre{:name "picopop"}
+  #:genre{:name "piano rock"}
+  #:genre{:name "stoner metal"}
+  #:genre{:name "compas"}
+  #:genre{:name "doomgaze"}
+  #:genre{:name "campursari"}
+  #:genre{:name "baroque"}
+  #:genre{:name "pornogrind"}
+  #:genre{:name "jazz rap"}
+  #:genre{:name "corrido"}
+  #:genre{:name "neocrust"}
+  #:genre{:name "rawphoric"}
+  #:genre{:name "dreampunk"}
+  #:genre{:name "brill building"}
+  #:genre{:name "taarab"}
+  #:genre{:name "dubwise"}
+  #:genre{:name "flashcore"}
+  #:genre{:name "pop raï"}
+  #:genre{:name "jōruri"}
+  #:genre{:name "world fusion"}
+  #:genre{:name "requiem"}
+  #:genre{:name "zarzuela"}
+  #:genre{:name "izvorna bosanska muzika"}
+  #:genre{:name "paisley underground"}
+  #:genre{:name "ratchet music"}
+  #:genre{:name "spectralism"}
+  #:genre{:name "demostyle"}
+  #:genre{:name "al jeel"}
+  #:genre{:name "mor lam"}
+  #:genre{:name "orthodox pop"}
+  #:genre{:name "chamber folk"}
+  #:genre{:name "cuarteto"}
+  #:genre{:name "downtempo"}
+  #:genre{:name "deep tech"}
+  #:genre{:name "afro-zouk"}
+  #:genre{:name "black metal"}
+  #:genre{:name "surf"}
+  #:genre{:name "old school death metal"}
+  #:genre{:name "new jack swing"}
+  #:genre{:name "pachanga"}
+  #:genre{:name "trap metal"}
+  #:genre{:name "assiko"}
+  #:genre{:name "singer-songwriter"}
+  #:genre{:name "thrash metal"}
+  #:genre{:name "bluegrass gospel"}
+  #:genre{:name "desert rock"}
+  #:genre{:name "west coast hip hop"}
+  #:genre{:name "power noise"}
+  #:genre{:name "psycore"}
+  #:genre{:name "anarcho-punk"}
+  #:genre{:name "uk street soul"}
+  #:genre{:name "reggae rock"}
+  #:genre{:name "flamenco jazz"}
+  #:genre{:name "dark psytrance"}
+  #:genre{:name "art song"}
+  #:genre{:name "akishibu-kei"}
+  #:genre{:name "neue deutsche welle"}
+  #:genre{:name "chicago house"}
+  #:genre{:name "texas country"}
+  #:genre{:name "musical"}
+  #:genre{:name "post-grunge"}
+  #:genre{:name "eurobeat"}
+  #:genre{:name "dunedin sound"}
+  #:genre{:name "kankyō ongaku"}
+  #:genre{:name "landó"}
+  #:genre{:name "hard drum"}
+  #:genre{:name "teen pop"}
+  #:genre{:name "neurofunk"}
+  #:genre{:name "batidão romântico"}
+  #:genre{:name "nintendocore"}
+  #:genre{:name "t-pop"}
+  #:genre{:name "acoustic blues"}
+  #:genre{:name "honky tonk"}
+  #:genre{:name "bardcore"}
+  #:genre{:name "new york drill"}
+  #:genre{:name "jumpstyle"}
+  #:genre{:name "free tekno"}
+  #:genre{:name "symphonic rock"}
+  #:genre{:name "breakbeat"}
+  #:genre{:name "trap soul"}
+  #:genre{:name "canterbury scene"}
+  #:genre{:name "easy listening"}
+  #:genre{:name "pagode"}
+  #:genre{:name "crossover thrash"}
+  #:genre{:name "hard bop"}
+  #:genre{:name "haitian vodou drumming"}
+  #:genre{:name "ghetto house"}
+  #:genre{:name "persian classical"}
+  #:genre{:name "melodic black metal"}
+  #:genre{:name "cante alentejano"}
+  #:genre{:name "modern hardtek"}
+  #:genre{:name "epic doom metal"}
+  #:genre{:name "viking metal"}
+  #:genre{:name "cantonese opera"}
+  #:genre{:name "stomp and holler"}
+  #:genre{:name "edm"}
+  #:genre{:name "nuevo tango"}
+  #:genre{:name "technical death metal"}
+  #:genre{:name "deathrock"}
+  #:genre{:name "gwo ka"}
+  #:genre{:name "salsa"}
+  #:genre{:name "dancefloor drum and bass"}
+  #:genre{:name "cadence lypso"}
+  #:genre{:name "coladeira"}
+  #:genre{:name "phleng phuea chiwit"}
+  #:genre{:name "kanto"}
+  #:genre{:name "duranguense"}
+  #:genre{:name "son jarocho"}
+  #:genre{:name "dub poetry"}
+  #:genre{:name "industrial metal"}
+  #:genre{:name "spirituals"}
+  #:genre{:name "crack rock steady"}
+  #:genre{:name "new wave"}
+  #:genre{:name "crime jazz"}
+  #:genre{:name "hamburger schule"}
+  #:genre{:name "broken transmission"}
+  #:genre{:name "maloya"}
+  #:genre{:name "dancehall"}
+  #:genre{:name "british brass band"}
+  #:genre{:name "philly club"}
+  #:genre{:name "noise pop"}
+  #:genre{:name "chinese opera"}
+  #:genre{:name "canzone d'autore"}
+  #:genre{:name "neon pop punk"}
+  #:genre{:name "samba-reggae"}
+  #:genre{:name "ghazal"}
+  #:genre{:name "philly soul"}
+  #:genre{:name "graphical sound"}
+  #:genre{:name "funknejo"}
+  #:genre{:name "hyperpop"}
+  #:genre{:name "disco polo"}
+  #:genre{:name "midwest emo"}
+  #:genre{:name "future garage"}
+  #:genre{:name "trap shaabi"}
+  #:genre{:name "mambo"}
+  #:genre{:name "punk blues"}
+  #:genre{:name "twerk"}
+  #:genre{:name "black 'n' roll"}
+  #:genre{:name "sophisti-pop"}
+  #:genre{:name "political hip hop"}
+  #:genre{:name "electric texas blues"}
+  #:genre{:name "jaipongan"}
+  #:genre{:name "darkcore edm"}
+  #:genre{:name "melodic death metal"}
+  #:genre{:name "jazz house"}
+  #:genre{:name "bandinha"}
+  #:genre{:name "néo-trad"}
+  #:genre{:name "shan'ge"}
+  #:genre{:name "indie rock"}
+  #:genre{:name "opm"}
+  #:genre{:name "doom metal"}
+  #:genre{:name "cumbia pop"}
+  #:genre{:name "alternative metal"}
+  #:genre{:name "art rock"}
+  #:genre{:name "post-dubstep"}
+  #:genre{:name "city pop"}
+  #:genre{:name "traditional country"}
+  #:genre{:name "math pop"}
+  #:genre{:name "stutter house"}
+  #:genre{:name "christian hip hop"}
+  #:genre{:name "hardstep"}
+  #:genre{:name "levenslied"}
+  #:genre{:name "dark jazz"}
+  #:genre{:name "tech trance"}
+  #:genre{:name "skinhead reggae"}
+  #:genre{:name "coldwave"}
+  #:genre{:name "acousmatic"}
+  #:genre{:name "cumbia argentina"}
+  #:genre{:name "japanese classical"}
+  #:genre{:name "gregorian chant"}
+  #:genre{:name "carimbó"}
+  #:genre{:name "pop yeh-yeh"}
+  #:genre{:name "new beat"}
+  #:genre{:name "country yodeling"}
+  #:genre{:name "cumbia norteña mexicana"}
+  #:genre{:name "nature sounds"}
+  #:genre{:name "suomisaundi"}
+  #:genre{:name "twee pop"}
+  #:genre{:name "acid rock"}
+  #:genre{:name "trap edm"}
+  #:genre{:name "motown"}
+  #:genre{:name "memphis rap"}
+  #:genre{:name "dansband"}
+  #:genre{:name "fantezi"}
+  #:genre{:name "rock and roll"}
+  #:genre{:name "big beat"}
+  #:genre{:name "c86"}
+  #:genre{:name "steel band"}
+  #:genre{:name "ranchera"}
+  #:genre{:name "roots reggae"}
+  #:genre{:name "takamba"}
+  #:genre{:name "guggenmusik"}
+  #:genre{:name "byzantine chant"}
+  #:genre{:name "gamelan selunding"}
+  #:genre{:name "liquid funk"}
+  #:genre{:name "mbalax"}
+  #:genre{:name "drone"}
+  #:genre{:name "glitch"}
+  #:genre{:name "samba-choro"}
+  #:genre{:name "soul"}
+  #:genre{:name "utopian virtual"}
+  #:genre{:name "krautrock"}
+  #:genre{:name "bro-country"}
+  #:genre{:name "organic house"}
+  #:genre{:name "progressive electronic"}
+  #:genre{:name "bolero"}
+  #:genre{:name "drumstep"}
+  #:genre{:name "bakersfield sound"}
+  #:genre{:name "schranz"}
+  #:genre{:name "piedmont blues"}
+  #:genre{:name "surf punk"}
+  #:genre{:name "melodic trance"}
+  #:genre{:name "drone metal"}
+  #:genre{:name "mainstream rock"}
+  #:genre{:name "jongo"}
+  #:genre{:name "schottische"}
+  #:genre{:name "audio drama"}
+  #:genre{:name "emo pop"}
+  #:genre{:name "barbershop"}
+  #:genre{:name "hybrid trap"}
+  #:genre{:name "singeli"}
+  #:genre{:name "uyghur muqam"}
+  #:genre{:name "cubatón"}
+  #:genre{:name "funk brasileiro"}
+  #:genre{:name "space rock"}
+  #:genre{:name "hardcore hip hop"}
+  #:genre{:name "drill and bass"}
+  #:genre{:name "italo dance"}
+  #:genre{:name "electronic rock"}
+  #:genre{:name "southern gospel"}
+  #:genre{:name "progressive rock"}
+  #:genre{:name "modern laiko"}
+  #:genre{:name "post-minimalism"}
+  #:genre{:name "ballet"}
+  #:genre{:name "progressive bluegrass"}
+  #:genre{:name "trapfunk"}
+  #:genre{:name "cowpunk"}
+  #:genre{:name "mento"}
+  #:genre{:name "jiangnan sizhu"}
+  #:genre{:name "russian romance"}
+  #:genre{:name "rock rural"}
+  #:genre{:name "chanson à texte"}
+  #:genre{:name "luk thung"}
+  #:genre{:name "gypsy punk"}
+  #:genre{:name "neofolk"}
+  #:genre{:name "drill"}
+  #:genre{:name "anti-folk"}
+  #:genre{:name "snap"}
+  #:genre{:name "non-music"}
+  #:genre{:name "techstep"}
+  #:genre{:name "fuji"}
+  #:genre{:name "kaneka"}
+  #:genre{:name "darkcore"}
+  #:genre{:name "electroclash"}
+  #:genre{:name "nightcore"}
+  #:genre{:name "microhouse"}
+  #:genre{:name "lo-fi house"}
+  #:genre{:name "afrobeats"}
+  #:genre{:name "pagan black metal"}
+  #:genre{:name "blackgaze"}
+  #:genre{:name "tropipop"}
+  #:genre{:name "euro-disco"}
+  #:genre{:name "free jazz"}
+  #:genre{:name "americana"}
+  #:genre{:name "pigfuck"}
+  #:genre{:name "latin rock"}
+  #:genre{:name "tropical house"}
+  #:genre{:name "afrobeat"}
+  #:genre{:name "vocal surf"}
+  #:genre{:name "chillwave"}
+  #:genre{:name "psybient"}
+  #:genre{:name "chanson française"}
+  #:genre{:name "corrido tumbado"}
+  #:genre{:name "bass house"}
+  #:genre{:name "bhajan"}
+  #:genre{:name "west coast swing"}
+  #:genre{:name "ethereal wave"}
+  #:genre{:name "maskanda"}
+  #:genre{:name "milonga"}
+  #:genre{:name "synth-pop"}
+  #:genre{:name "noise rock"}
+  #:genre{:name "rapcore"}
+  #:genre{:name "glitch hop edm"}
+  #:genre{:name "muzika mizrahit"}
+  #:genre{:name "tappa"}
+  #:genre{:name "ghettotech"}
+  #:genre{:name "melodic house"}
+  #:genre{:name "death-doom metal"}
+  #:genre{:name "fm synthesis"}
+  #:genre{:name "ambient trance"}
+  #:genre{:name "bubblegum pop"}
+  #:genre{:name "mallsoft"}
+  #:genre{:name "isicathamiya"}
+  #:genre{:name "psychedelic soul"}
+  #:genre{:name "irish folk"}
+  #:genre{:name "alternative dance"}
+  #:genre{:name "mass"}
+  #:genre{:name "horrorcore"}
+  #:genre{:name "countrypolitan"}
+  #:genre{:name "funk"}
+  #:genre{:name "celtic metal"}
+  #:genre{:name "death industrial"}
+  #:genre{:name "rautalanka"}
+  #:genre{:name "moogsploitation"}
+  #:genre{:name "experimental"}
+  #:genre{:name "electro latino"}
+  #:genre{:name "indeterminacy"}
+  #:genre{:name "fife and drum blues"}
+  #:genre{:name "liedermacher"}
+  #:genre{:name "kizomba"}
+  #:genre{:name "conga"}
+  #:genre{:name "ambient americana"}
+  #:genre{:name "afro-jazz"}
+  #:genre{:name "instrumental hip hop"}
+  #:genre{:name "digicore"}
+  #:genre{:name "ragga hip-hop"}
+  #:genre{:name "aor"}
+  #:genre{:name "french electro"}
+  #:genre{:name "j-pop"}
+  #:genre{:name "classic jazz"}
+  #:genre{:name "korean classical"}
+  #:genre{:name "renaissance"}
+  #:genre{:name "western classical"}
+  #:genre{:name "romantic classical"}
+  #:genre{:name "sundanese pop"}
+  #:genre{:name "darkstep"}
+  #:genre{:name "free folk"}
+  #:genre{:name "horror synth"}
+  #:genre{:name "swamp pop"}
+  #:genre{:name "kawaii future bass"}
+  #:genre{:name "crossover prog"}
+  #:genre{:name "tibetan buddhist chant"}
+  #:genre{:name "vocal trance"}
+  #:genre{:name "singspiel"}
+  #:genre{:name "porn groove"}
+  #:genre{:name "vaudeville blues"}
+  #:genre{:name "deep house"}
+  #:genre{:name "battle rap"}
+  #:genre{:name "arabesk"}
+  #:genre{:name "forró universitário"}
+  #:genre{:name "avant-garde pop"}
+  #:genre{:name "deep techno"}
+  #:genre{:name "coupé-décalé"}
+  #:genre{:name "technobanda"}
+  #:genre{:name "colour bass"}
+  #:genre{:name "new orleans r&b"}
+  #:genre{:name "contemporary jazz"}
+  #:genre{:name "forró de favela"}
+  #:genre{:name "khyal"}
+  #:genre{:name "nashville sound"}
+  #:genre{:name "celtic new age"}
+  #:genre{:name "música cebolla"}
+  #:genre{:name "new age"}
+  #:genre{:name "underground hip hop"}
+  #:genre{:name "indian pop"}
+  #:genre{:name "chazzanut"}
+  #:genre{:name "pasillo"}
+  #:genre{:name "interview"}
+  #:genre{:name "post-rock"}
+  #:genre{:name "doo-wop"}
+  #:genre{:name "funeral doom metal"}
+  #:genre{:name "jangle pop"}
+  #:genre{:name "gamelan semar pegulingan"}
+  #:genre{:name "symphonic prog"}
+  #:genre{:name "skullstep"}
+  #:genre{:name "reparto"}
+  #:genre{:name "manele"}
+  #:genre{:name "jungle"}
+  #:genre{:name "dark folk"}
+  #:genre{:name "minimal techno"}
+  #:genre{:name "progressive pop"}
+  #:genre{:name "kuduro"}
+  #:genre{:name "hardcore techno"}
+  #:genre{:name "purple sound"}
+  #:genre{:name "mpb"}
+  #:genre{:name "latin house"}
+  #:genre{:name "nu metal"}
+  #:genre{:name "bossa nova"}
+  #:genre{:name "fairy tale"}
+  #:genre{:name "vallenato"}
+  #:genre{:name "folk punk"}
+  #:genre{:name "aita"}
+  #:genre{:name "luk krung"}
+  #:genre{:name "rockabilly"}
+  #:genre{:name "psychedelic rock"}
+  #:genre{:name "funkot"}
+  #:genre{:name "zolo"}
+  #:genre{:name "izlan"}
+  #:genre{:name "symphony"}
+  #:genre{:name "latin funk"}
+  #:genre{:name "afro-funk"}
+  #:genre{:name "drumless hip hop"}
+  #:genre{:name "uptempo hardcore"}
+  #:genre{:name "jiuta"}
+  #:genre{:name "samba-rock"}
+  #:genre{:name "ars antiqua"}
+  #:genre{:name "crunk"}
+  #:genre{:name "traditional pop"}
+  #:genre{:name "nu jazz"}
+  #:genre{:name "industrial techno"}
+  #:genre{:name "synth funk"}
+  #:genre{:name "goregrind"}
+  #:genre{:name "xote"}
+  #:genre{:name "louisiana blues"}
+  #:genre{:name "eccojams"}
+  #:genre{:name "ebm"}
+  #:genre{:name "impressionism"}
+  #:genre{:name "trap"}
+  #:genre{:name "poetry"}
+  #:genre{:name "black midi"}
+  #:genre{:name "mod revival"}
+  #:genre{:name "guoyue"}
+  #:genre{:name "balearic beat"}
+  #:genre{:name "industrial hip hop"}
+  #:genre{:name "dance-punk"}
+  #:genre{:name "bebop"}
+  #:genre{:name "eurodance"}
+  #:genre{:name "slam poetry"}
+  #:genre{:name "breaks"}
+  #:genre{:name "operatic pop"}
+  #:genre{:name "eletrofunk"}
+  #:genre{:name "barber beats"}
+  #:genre{:name "gnawa"}
+  #:genre{:name "acid trance"}
+  #:genre{:name "beach music"}
+  #:genre{:name "finnish tango"}
+  #:genre{:name "hi-tech"}
+  #:genre{:name "medieval rock"}
+  #:genre{:name "sleaze rock"}
+  #:genre{:name "street punk"}
+  #:genre{:name "old-time"}
+  #:genre{:name "hard nrg"}
+  #:genre{:name "math rock"}
+  #:genre{:name "tribal ambient"}
+  #:genre{:name "gospel"}
+  #:genre{:name "festival progressive house"}
+  #:genre{:name "occult rock"}
+  #:genre{:name "seapunk"}
+  #:genre{:name "lullaby"}
+  #:genre{:name "grunge"}
+  #:genre{:name "neoclassical dark wave"}
+  #:genre{:name "afro rock"}
+  #:genre{:name "p-funk"}
+  #:genre{:name "funktronica"}
+  #:genre{:name "progressive psytrance"}
+  #:genre{:name "gospel reggae"}
+  #:genre{:name "swamp blues"}
+  #:genre{:name "sertanejo"}
+  #:genre{:name "slowcore"}
+  #:genre{:name "schlager"}
+  #:genre{:name "jersey drill"}
+  #:genre{:name "gothic"}
+  #:genre{:name "spacesynth"}
+  #:genre{:name "volkstümliche musik"}
+  #:genre{:name "hardbass"}
+  #:genre{:name "afroswing"}
+  #:genre{:name "east coast hip hop"}
+  #:genre{:name "trip hop"}
+  #:genre{:name "bubblegum bass"}
+  #:genre{:name "country"}
+  #:genre{:name "dubstep"}
+  #:genre{:name "martial industrial"}
+  #:genre{:name "red song"}
+  #:genre{:name "italo house"}
+  #:genre{:name "freakbeat"}
+  #:genre{:name "raga rock"}
+  #:genre{:name "fandango"}
+  #:genre{:name "psychedelic folk"}
+  #:genre{:name "freak folk"}
+  #:genre{:name "group sounds"}
+  #:genre{:name "chanson réaliste"}
+  #:genre{:name "nederbeat"}
+  #:genre{:name "baithak gana"}
+  #:genre{:name "war metal"}
+  #:genre{:name "sacred steel"}
+  #:genre{:name "afropiano"}
+  #:genre{:name "desert blues"}
+  #:genre{:name "lo-fi"}
+  #:genre{:name "humppa"}
+  #:genre{:name "yodeling"}
+  #:genre{:name "indo jazz"}
+  #:genre{:name "campus folk"}
+  #:genre{:name "future rave"}
+  #:genre{:name "guitarrada"}
+  #:genre{:name "baroque pop"}
+  #:genre{:name "rumba"}
+  #:genre{:name "sertanejo romântico"}
+  #:genre{:name "country rap"}
+  #:genre{:name "lambada"}
+  #:genre{:name "gothic metal"}
+  #:genre{:name "brazilian phonk"}
+  #:genre{:name "minimal synth"}
+  #:genre{:name "dream pop"}
+  #:genre{:name "doskpop"}
+  #:genre{:name "doina"}
+  #:genre{:name "club"}
+  #:genre{:name "regional mexicano"}
+  #:genre{:name "hip hop"}
+  #:genre{:name "malhun"}
+  #:genre{:name "noise"}
+  #:genre{:name "jungle dutch"}
+  #:genre{:name "hyper techno"}
+  #:genre{:name "avant-garde"}
+  #:genre{:name "instrumental rock"}
+  #:genre{:name "funk melody"}
+  #:genre{:name "atmospheric sludge metal"}
+  #:genre{:name "tallava"}
+  #:genre{:name "musette"}
+  #:genre{:name "oriental ballad"}
+  #:genre{:name "cumbia colombiana"}
+  #:genre{:name "odissi classical"}
+  #:genre{:name "skacore"}
+  #:genre{:name "zenonesque"}
+  #:genre{:name "norteño"}
+  #:genre{:name "batucada"}
+  #:genre{:name "slack-key guitar"}
+  #:genre{:name "mathcore"}
+  #:genre{:name "data sonification"}
+  #:genre{:name "shima-uta"}
+  #:genre{:name "jug band"}
+  #:genre{:name "sketch comedy"}
+  #:genre{:name "acid jazz"}
+  #:genre{:name "russian chanson"}
+  #:genre{:name "hard techno"}
+  #:genre{:name "prank calls"}
+  #:genre{:name "orchestral"}
+  #:genre{:name "hypnagogic pop"}
+  #:genre{:name "minatory"}
+  #:genre{:name "hexd"}
+  #:genre{:name "no wave"}
+  #:genre{:name "brit funk"}
+  #:genre{:name "mbaqanga"}
+  #:genre{:name "death metal"}
+  #:genre{:name "2-step"}
+  #:genre{:name "wonky"}
+  #:genre{:name "neurohop"}
+  #:genre{:name "breakbeat hardcore"}
+  #:genre{:name "vietnamese bolero"}
+  #:genre{:name "grime"}
+  #:genre{:name "dennery segment"}
+  #:genre{:name "griot"}
+  #:genre{:name "detroit trap"}
+  #:genre{:name "cantu a tenore"}
+  #:genre{:name "shaabi"}
+  #:genre{:name "rap rock"}
+  #:genre{:name "garage rock"}
+  #:genre{:name "son cubano"}
+  #:genre{:name "tropicália"}
+  #:genre{:name "funky house"}
+  #:genre{:name "whale song"}
+  #:genre{:name "afro trap"}
+  #:genre{:name "birmingham sound"}
+  #:genre{:name "folk pop"}
+  #:genre{:name "praise & worship"}
+  #:genre{:name "nagauta"}
+  #:genre{:name "groove metal"}
+  #:genre{:name "tejano"}
+  #:genre{:name "kawaii metal"}
+  #:genre{:name "mood kayō"}
+  #:genre{:name "footwork"}
+  #:genre{:name "dangdut"}
+  #:genre{:name "pipe band music"}
+  #:genre{:name "biguine"}
+  #:genre{:name "celtic chant"}
+  #:genre{:name "bolero son"}
+  #:genre{:name "animal sounds"}
+  #:genre{:name "sertanejo raiz"}
+  #:genre{:name "staïfi"}
+  #:genre{:name "zeuhl"}
+  #:genre{:name "weightless"}
+  #:genre{:name "yacht rock"}
+  #:genre{:name "hauntology"}
+  #:genre{:name "southern rock"}
+  #:genre{:name "post-industrial"}
+  #:genre{:name "neo kyma"}
+  #:genre{:name "opera seria"}
+  #:genre{:name "operetta"}
+  #:genre{:name "acid breaks"}
+  #:genre{:name "melodic dubstep"}
+  #:genre{:name "full-on"}
+  #:genre{:name "epic collage"}
+  #:genre{:name "classical period"}
+  #:genre{:name "fidget house"}
+  #:genre{:name "estrada"}
+  #:genre{:name "noisegrind"}
+  #:genre{:name "zouglou"}
+  #:genre{:name "blues"}
+  #:genre{:name "melodic techno"}
+  #:genre{:name "hardwave"}
+  #:genre{:name "binaural beats"}
+  #:genre{:name "electropunk"}
+  #:genre{:name "conducted improvisation"}
+  #:genre{:name "terrorcore"}
+  #:genre{:name "raï"}
+  #:genre{:name "native american new age"}
+  #:genre{:name "gangsta rap"}
+  #:genre{:name "boogie-woogie"}
+  #:genre{:name "art pop"}
+  #:genre{:name "disco"}
+  #:genre{:name "min'yō"}
+  #:genre{:name "contemporary country"}
+  #:genre{:name "briddim"}
+  #:genre{:name "halftime"}
+  #:genre{:name "uk garage"}
+  #:genre{:name "samba-canção"}
+  #:genre{:name "merenhouse"}
+  #:genre{:name "artcore"}
+  #:genre{:name "son montuno"}
+  #:genre{:name "drift phonk"}
+  #:genre{:name "sound collage"}
+  #:genre{:name "rasin"}
+  #:genre{:name "crust punk"}
+  #:genre{:name "jesus music"}
+  #:genre{:name "gabber"}}

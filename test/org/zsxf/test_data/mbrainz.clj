@@ -9,27 +9,21 @@
             [clj-memory-meter.core :as mm]
             [ham-fisted.api :as hf]
             [net.cgrand.xforms :as xforms]
+            [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
             [datascript.core :as d]
             [taoensso.timbre :as timbre]))
 
 (defonce cnt (atom 0))
 
-(defonce *data (atom (hf/vector)))
+(defonce *data (atom []))
 
-(defonce *data-grouped (atom (hf/immut-map)))
-
-(def *output
-  (atom
-    (a/chan (a/sliding-buffer 1)
-      (map
-        (fn [output-result]
-          (swap! *data conj output-result))))))
+(defonce *data-grouped (atom {}))
 
 (def schema {:artist/name          {:db/cardinality :db.cardinality/one}
              :artist/id            {:db/cardinality :db.cardinality/one
                                     :db/unique      :db.unique/identity}
-             :artist/genre         {:db/cardinality :db.cardinality/many
+             :artist/genres        {:db/cardinality :db.cardinality/many
                                     :db/valueType   :db.type/ref}
              :genre/name           {:db/cardinality :db.cardinality/one
                                     :db/unique      :db.unique/identity}
@@ -39,17 +33,48 @@
              :country/name-alpha-2 {:db/cardinality :db.cardinality/one
                                     :db/unique      :db.unique/identity}})
 
+(defonce *conn (atom (d/create-conn schema)))
+
+(defn artist-genres->datascript-refs [genres]
+  (into []
+    (comp
+      (map :name)
+      (filter string?)
+      (map (fn [genre]
+             [:genre/name genre])))
+    genres))
+
+(defn artist->datascript-artist
+  [{:keys [name id genres country type]}]
+  (cond->
+    {:artist/id id}
+    (string? name) (assoc :artist/name name)
+    (string? country) (assoc :artist/country [:country/name-alpha-2 country])
+    (string? type) (assoc :artist/type type)
+    (< 0 (count genres)) (assoc :artist/genres (artist-genres->datascript-refs genres))))
+
+(def *output
+  (atom
+    (a/chan 1
+      (comp
+        (remove
+          (fn [artist]
+            ;(swap! *data conj output-result)
+            (d/transact! @*conn (vector artist))
+            true))))))
+
 (defn load-mbrainz [file-path]
   (reset! cnt 0)
-  (reset! *data (hf/vector))
-  (reset! *data-grouped (hf/immut-map))
+  (reset! *data [])
+  (reset! *data-grouped {})
   (with-open [rdr (io/reader file-path)]
     (let [input (a/chan 1000)
           p     (a/pipeline 7
                   @*output
                   (comp
                     (map (fn [s] (charred/read-json s :key-fn keyword)))
-                    (map (fn [m] (dissoc m :relations :tags :aliases :area :begin-area :end-area :annotation))))
+                    ;(map (fn [m] (dissoc m :relations :tags :aliases :area :begin-area :end-area :annotation)))
+                    (map artist->datascript-artist))
                   input)]
       (doall
         (transduce
@@ -66,8 +91,49 @@
           0
           (line-seq rdr))))))
 
+(defn data->country-set [data]
+  (into #{}
+    (comp
+      (map :country)
+      (filter string?)
+      (map (fn [country] {:country/name-alpha-2 country})))
+    data))
+
+(defn load-country-set []
+  (util/load-edn-file "resources/mbrainz/country_set.edn"))
+
+(defn data->genre-set [data]
+  (into #{}
+    (comp
+      (mapcat :genres)
+      (map :name)
+      (map (fn [genre-name] {:genre/name genre-name})))
+    data))
+
+(defn load-genre-set []
+  (util/load-edn-file "resources/mbrainz/genre_set.edn"))
+
+(defn pre-load []
+  (d/transact! @*conn (vec (load-country-set)))
+  (d/transact! @*conn (vec (load-genre-set))))
+
+(defn init-load-all []
+  (reset! *conn (d/create-conn schema))
+  (pre-load)
+  (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist"))
+
+(defn query-count-artists-by-genre []
+  (time
+    (d/q
+      '[:find ?genre-name (count ?a)
+        :where
+        [?a :artist/genres ?g]
+        [?g :genre/name ?genre-name]]
+      @@*conn)))
 
 (comment
+  (time (init-load-all))
+
   (time (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist"))
   (a/<!! @*output)
 
@@ -103,6 +169,9 @@
       @*data))
 
   (mm/measure "Hello, meter!")
+
+  (mm/measure *conn)
+
 
   (mm/measure @*data)
 

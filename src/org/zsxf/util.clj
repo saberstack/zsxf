@@ -1,8 +1,11 @@
 (ns org.zsxf.util
   (:require [clojure.core.async :as a]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [taoensso.timbre :as timbre]
             [taoensso.encore :as enc])
-  (:import (clojure.lang IReduceInit)))
+  (:import (clojure.lang IReduceInit)
+           (java.io PushbackReader)))
 
 (defn reducible->chan
   "Take the rows from the reducible and put them onto a channel. Return the channel.
@@ -121,3 +124,7 @@
            (when-not   (get output-opts :no-stacktrace?) ; Back compatibility
              (str enc/system-newline
                (ef data)))))))))
+
+(defn load-edn-file [file-path]
+  (with-open [rdr (io/reader file-path)]
+    (edn/read (PushbackReader. rdr))))

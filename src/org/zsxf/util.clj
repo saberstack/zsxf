@@ -128,3 +128,21 @@
 (defn load-edn-file [file-path]
   (with-open [rdr (io/reader file-path)]
     (edn/read (PushbackReader. rdr))))
+
+(defn take-lastv
+  "Similar to take-last but uses subvec, which is O(1).
+  Might return less than n items if n is greater than the count of v.
+  Returns a vector via subvec of original vector v."
+  [n v]
+  (let [cnt (count v)]
+    (subvec v (max 0 (- cnt n)) cnt)))
+
+
+(defmacro time-f
+  "Like time but accepts a function to call with the elapsed time."
+  [expr f]
+  `(let [start# (. System (nanoTime))
+         ret# ~expr
+         time# (/ (double (- (. System (nanoTime)) start#)) 1000000.0)]
+     (~f time#)
+     ret#))

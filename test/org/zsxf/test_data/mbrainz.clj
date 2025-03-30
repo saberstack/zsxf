@@ -9,16 +9,13 @@
             [clj-memory-meter.core :as mm]
             [ham-fisted.api :as hf]
             [net.cgrand.xforms :as xforms]
+            [org.zsxf.datascript :as ds]
+            [org.zsxf.query :as q]
             [org.zsxf.util :as util]
+            [org.zsxf.xf :as xf]
             [org.zsxf.zset :as zs]
             [datascript.core :as d]
             [taoensso.timbre :as timbre]))
-
-(defonce cnt (atom 0))
-
-(defonce *data (atom []))
-
-(defonce *data-grouped (atom {}))
 
 (def schema {:artist/name          {:db/cardinality :db.cardinality/one}
              :artist/id            {:db/cardinality :db.cardinality/one
@@ -34,6 +31,10 @@
                                     :db/unique      :db.unique/identity}})
 
 (defonce *conn (atom (d/create-conn schema)))
+(defonce *data (atom []))
+(defonce *data-grouped (atom {}))
+(defonce *query-1 (atom nil))
+(defonce *query-1-times (atom []))
 
 (defn artist-genres->datascript-refs [genres]
   (into []
@@ -63,7 +64,7 @@
             (d/transact! @*conn (vector artist))
             true))))))
 
-(defn load-mbrainz [file-path]
+(defn load-mbrainz [file-path n]
 
   (with-open [rdr (io/reader file-path)]
     (let [input (a/chan 1000)
@@ -76,7 +77,7 @@
                   input)]
       (doall
         (transduce
-          (comp (take 10000000))
+          (comp (take n))
           (completing
             (fn [accum-cnt item]
               (a/>!! input item)
@@ -115,17 +116,40 @@
   (d/transact! @*conn (vec (load-country-set)))
   (d/transact! @*conn (vec (load-genre-set))))
 
+(defn query-count-artists-by-country-zsxf [query-state]
+  (let [pred-1 #(ds/datom-attr-val= % :country/name-alpha-2 "US")
+        pred-2 #(ds/datom-attr= % :artist/country)]
+    (comp
+      (xf/mapcat-zset-transaction-xf)
+      (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
+      (xf/join-xf
+        pred-1 ds/datom->eid
+        pred-2 ds/datom->val
+        query-state
+        :last? true)
+      (xforms/reduce zs/zset+)
+      ;group by aggregates
+      (xf/group-by-xf
+        #(-> % (util/nth2 0) ds/datom->val)
+        (comp
+          (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
+          (mapcat (fn [{:keys [cnt]}]
+                    [(zs/zset-count-item cnt)]))))
+      (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
+
 (defn init-load-all []
-  (reset! cnt 0)
+  (reset! *query-1 (q/create-query query-count-artists-by-country-zsxf))
   (reset! *data [])
+  (reset! *query-1-times [])
   (reset! *data-grouped {})
   (reset! *conn (d/create-conn schema))
-  (d/listen! @*conn
+  (d/listen! @*conn :query-1
     (fn [tx-report]
-      (swap! *data (fn [v]
-                     (apply conj v (:tx-data tx-report))))))
+      (util/time-f
+        (q/input @*query-1 (ds/tx-datoms->zsets (:tx-data tx-report)))
+        (fn [elapsed-time] (swap! *query-1-times conj elapsed-time)))))
   (pre-load)
-  (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist"))
+  (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000))
 
 (defn query-count-artists-by-genre []
   (time
@@ -136,14 +160,99 @@
         [?g :genre/name ?genre-name]]
       @@*conn)))
 
+(defn query-genres []
+  (time
+    (d/q
+      '[:find ?genre-name
+        :where
+        [?g :genre/name ?genre-name]]
+      @@*conn)))
+
 (defn query-count-artists-by-country []
   (time
     (d/q
       '[:find ?country-name (count ?a)
         :where
         [?c :country/name-alpha-2 ?country-name]
-        [?a :artist/country ?c]]
+        [?a :artist/country ?c]
+        [(= ?country-name "US")]
+        ]
       @@*conn)))
+
+(defn query-country []
+  (d/q
+    '[:find ?c
+      :where
+      [?c :country/name-alpha-2 "US"]]
+    @@*conn))
+
+(defn query-artist []
+  (d/q
+    '[:find (pull ?a [:artist/name {:artist/country [*]}])
+      :where
+      [?a :artist/name "deadmau5"]
+      [?a :artist/country ?c]]
+    @@*conn)
+
+  (d/q
+    '[:find (pull ?a [:artist/name {:artist/country [*]}])
+      :where
+      [?a :artist/name "Eric Jordan"]
+      [?a :artist/country ?c]]
+    @@*conn))
+
+(comment
+
+  (set! *print-meta* true)
+  (timbre/set-min-level! :info)
+
+  (peek @*query-1-times)
+
+  (do
+    (d/transact! @*conn
+      [{:artist/name    "Eric Jordan"
+        :artist/id      "eric-jordan"
+        :artist/country [:country/name-alpha-2 "US"]
+        :artist/genres  [[:genre/name "electronic"]
+                         [:genre/name "trance"]]}])
+    :done)
+
+  (do
+    (d/transact! @*conn
+      [{:artist/id      "eric-jordan"
+        :artist/country [:country/name-alpha-2 "US"]}])
+    :done)
+
+  (do
+    (d/transact! @*conn
+      [{:artist/name    "Eric Jordan"
+        :artist/id      "eric-jordan"
+        :artist/country [:country/name-alpha-2 "US"]
+        :artist/genres  [[:genre/name "electronic"]
+                         [:genre/name "trance"]]}]))
+
+  (do
+    (d/transact! @*conn
+      [{:artist/name    "Neverrain"
+        :artist/id      "Neverrain"
+        :artist/country [:country/name-alpha-2 "NZ"]
+        :artist/genres  [[:genre/name "electronic"]
+                         [:genre/name "trance"]]}])
+    :done)
+
+  (do
+    (d/transact! @*conn [[:db/retract 140 :country/name-alpha-2 "US"]])
+    :done)
+
+  (do
+    (d/transact! @*conn [{:country/name-alpha-2 "US"}])
+    :done)
+
+  (q/get-state query-1)
+
+  (q/get-result query-1)
+
+  )
 
 (comment
   (time (init-load-all))
@@ -185,6 +294,10 @@
   (mm/measure "Hello, meter!")
 
   (mm/measure *conn)
+  (mm/measure *query-1)
+  (mm/measure [*conn query-1])
+
+
   (mm/measure *data)
   (mm/measure [*conn *data])
 

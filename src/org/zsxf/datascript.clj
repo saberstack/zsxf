@@ -40,7 +40,26 @@
 
   IPersistentCollection
   (equiv [self x]
-    ;small difference in this one:
+    ;WARNING about (= ...)
+    ; Mixing Datom and Datom2 (unlikely) can output the wrong result:
+    ;
+    ;(=
+    ; (datom2 (d/datom 1 :a "v"))
+    ; (d/datom 1 :a "v"))
+    ;;=> true ;looks good!
+    ;
+    ; ... but this one is wrong!
+    ;
+    ;(=
+    ;  (datom2 (d/datom 1 :a "v"))
+    ;  (d/datom 1 :a "v")
+    ;  (datom2 (d/datom 1 :a "v")))
+    ;;=> false
+    ;
+    ; This is because (= ...) compares items in overlapping pairs,
+    ; so in the latter case once it reaches the second item it will defer
+    ; the equiv decision to Datascript's Datom deftype which has a strict type check
+
     ;check if x is Datom2, if yes, "unwrap" it and pass through
     (cond
       (instance? Datom2 x) (.equiv datom (.-datom ^Datom2 x)) ;unwrap

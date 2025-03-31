@@ -29,8 +29,7 @@
   (datom-set-idx [self value] (ddb/datom-set-idx datom value))
 
   Object
-  (hashCode [self]
-    (.hashCode datom))
+  (hashCode [self] (.hashCode datom))
   (toString [self] (.toString datom))
 
   IHashEq
@@ -63,6 +62,14 @@
   (containsKey [self k] (.containsKey datom k))
   (assoc [self k v] (.assoc datom k v)))
 
+(defn datom2 [datom]
+  (->Datom2 datom nil))
+
+(defn datom-from-reader [v]
+  (datom2 (apply ddb/datom v)))
+
+;; Custom printing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn pr-on
   [x w]
   (if *print-dup*
@@ -88,11 +95,8 @@
       (.write w "#org.zsxf.datascript/Datom2")
       (pr [(.-e d) (.-a d) (.-v d) (ddb/datom-tx d) (ddb/datom-added d)]))))
 
-(defn datom2 [datom]
-  (->Datom2 datom nil))
-
-(defn datom-from-reader [v]
-  (datom2 (apply ddb/datom v)))
+;; Custom printing end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
   (set! *print-meta* true)

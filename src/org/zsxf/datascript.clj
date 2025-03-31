@@ -117,16 +117,6 @@
 ;; Custom printing end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(comment
-  (set! *print-meta* true)
-  (=
-    (with-meta
-      (datom2 (d/datom 1 :a "v"))
-      {:mmmm 42})
-    (with-meta
-      (datom2 (d/datom 1 :a "v"))
-      {:mmmm 43})))
-
 (defn datom->weight [datom]
   (let [weight (condp = (nth datom 4) true 1 false -1)]
     weight))
@@ -205,3 +195,15 @@
 
 (defn datom-attr-val= [datom attr value]
   (and (datom-attr= datom attr) (datom-val= datom value)))
+
+
+;examples
+(comment
+  (set! *print-meta* true)
+  (=
+    (with-meta
+      (datom2 (d/datom 1 :a "v"))
+      {:mmmm 42})
+    (with-meta
+      (datom2 (d/datom 1 :a "v"))
+      {:mmmm 43})))

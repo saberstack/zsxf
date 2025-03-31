@@ -4,12 +4,12 @@
             [datascript.db :as ddb]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative IHashEq ILookup IObj IPersistentCollection Indexed Seqable)
-           (datascript.db Datom IDatom)
+           (datascript.db Datom)
            (java.io Writer)))
 
 (deftype Datom2 [^Datom datom meta]
 
-  ;Extends Datascript datoms to support metadata, and potentially more in the future)
+  ;Extends Datascript datoms to support metadata, and potentially more features in the future.
   ; (!) Clojure-only at the moment, ClojureScript requires a slightly different set of methods.
   ; This will potentially allow lower memory usage (TBD) as the Datom objects
   ; are referenced and boxed directly inside Datom2 instead of being converted to vectors each time.
@@ -18,25 +18,27 @@
 
   ;New!
   IObj
-  (meta [_] meta)
-  (withMeta [_ m] (Datom2. datom m))
+  (meta [self] meta)
+  (withMeta [self m] (Datom2. datom m))
+
   ;All below almost directly pass through call execution to datascript.db.Datom
-  IDatom
-  (datom-tx [_] (.datom-tx datom))
-  (datom-added [_] (.datom-added datom))
-  (datom-get-idx [_] (.datom-get-idx datom))
-  (datom-set-idx [_ value] (.datom-set-idx datom value))
-  IObj
-  (meta [_] meta)
-  (withMeta [_ m] (Datom2. datom m))
+  ddb/IDatom
+  (datom-tx [self] (ddb/datom-tx datom))
+  (datom-added [self] (ddb/datom-added datom))
+  (datom-get-idx [self] (ddb/datom-get-idx datom))
+  (datom-set-idx [self value] (ddb/datom-set-idx datom value))
+
   Object
   (hashCode [self]
     (.hashCode datom))
   (toString [self] (.toString datom))
+
   IHashEq
   (hasheq [self] (.hasheq datom))
+
   Seqable
   (seq [self] (.seq datom))
+
   IPersistentCollection
   (equiv [self x]
     ;small difference in this one:
@@ -47,15 +49,15 @@
   (empty [self] (throw (UnsupportedOperationException. "empty is not supported on Datom")))
   (count [self] 5)
   (cons [self v] (.cons datom v))
-  ;
+
   Indexed
   (nth [self i] (.nth datom i))
   (nth [self i not-found] (.nth datom i not-found))
-  ;
+
   ILookup
   (valAt [self k] (.valAt datom k))
   (valAt [self k nf] (.valAt datom k nf))
-  ;
+
   Associative
   (entryAt [self k] (.entryAt datom k))
   (containsKey [self k] (.containsKey datom k))
@@ -143,7 +145,7 @@
     datoms))
 
 (defn tx-datoms->zsets2
-  "Transforms datoms into datom2s, and then into a vector of zsets.
+  "Transforms datoms into datoms2, and then into a vector of zsets.
   Useful to maintain inter-transaction order of datoms."
   [datoms]
   (transduce
@@ -174,11 +176,6 @@
 (defn datom->val [datom]
   (if (eligible-datom? datom)
     (nth datom 2 nil)))
-
-(defn datom->val-meta [datom]
-  (with-meta
-    (vector (datom->val datom))
-    (meta datom)))
 
 (defn datom-val= [datom value]
   (= (datom->val datom) value))

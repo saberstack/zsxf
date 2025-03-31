@@ -17,6 +17,8 @@
             [datascript.core :as d]
             [taoensso.timbre :as timbre]))
 
+(set! *print-meta* true)
+
 (def schema {:artist/name          {:db/cardinality :db.cardinality/one}
              :artist/id            {:db/cardinality :db.cardinality/one
                                     :db/unique      :db.unique/identity}
@@ -35,6 +37,7 @@
 (defonce *data-grouped (atom {}))
 (defonce *query-1 (atom nil))
 (defonce *query-1-times (atom []))
+(defonce *query-2 (atom nil))
 
 (defn artist-genres->datascript-refs [genres]
   (into []
@@ -65,7 +68,6 @@
             true))))))
 
 (defn load-mbrainz [file-path n]
-
   (with-open [rdr (io/reader file-path)]
     (let [input (a/chan 1000)
           p     (a/pipeline 7
@@ -149,25 +151,40 @@
         pred-2 #(ds/datom-attr= % :artist/country)]
     (query-count-artists-by-country-zsxf query-state [pred-1 pred-2])))
 
-(defn init-load-all []
-  (reset! *query-1 (q/create-query query-count-artists-by-country-zsxf))
-  (reset! *data [])
-  (reset! *query-1-times [])
-  (reset! *data-grouped {})
-  (reset! *conn (d/create-conn schema))
-  (d/listen! @*conn :query-1
-    (fn [tx-report]
-      (util/time-f
-        (q/input @*query-1 (ds/tx-datoms->zsets (:tx-data tx-report)))
-        (fn [elapsed-time] (swap! *query-1-times conj elapsed-time)))))
-  (pre-load)
-  (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000))
+(defn init-load-all
+  ([] (init-load-all ds/tx-datoms->zsets))
+  ([tx-datoms-f]
+   (reset! *query-1 (q/create-query query-count-artists-by-country-all-zsxf))
+   (reset! *data [])
+   (reset! *query-1-times [])
+   (reset! *data-grouped {})
+   (reset! *conn (d/create-conn schema))
+   (d/listen! @*conn :query-1
+     (fn [tx-report]
+       (util/time-f
+         (q/input @*query-1 (tx-datoms-f (:tx-data tx-report)))
+         (fn [elapsed-time] (swap! *query-1-times conj elapsed-time)))))
+   (pre-load)
+   (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000)))
 
-(defn init-query []
-  (let [query (q/create-query query-count-artists-by-country-all-zsxf)]
-    (q/input query
-      (ds/tx-datoms->zsets
-        (d/seek-datoms @@*conn :eavt)))))
+(defn init-query [query-atom]
+  (reset! query-atom nil)
+  (let [query  (q/create-query query-count-artists-by-country-all-zsxf)
+        result (time
+                 (q/input query
+                   (ds/tx-datoms->zsets2
+                     (d/seek-datoms @@*conn :eavt))))]
+    (reset! query-atom query)
+    (timbre/info (mm/measure query))
+    result))
+
+(comment
+  (init-query *query-1)
+
+  (init-query *query-2)
+
+  (mm/measure [*query-1 *query-2])
+  )
 
 (defn query-count-artists-by-genre []
   (time
@@ -275,7 +292,19 @@
   )
 
 (comment
-  (time (init-load-all))
+  (do
+    (timbre/set-min-level! :info)
+    (time (init-load-all ds/tx-datoms->zsets)))
+
+  (do
+    (timbre/set-min-level! :info)
+    (time (init-load-all ds/tx-datoms->zsets2)))
+
+  (set! *print-meta* true)
+  (set! *print-meta* false)
+
+  (q/get-result @*query-1)
+  (q/get-state @*query-1)
 
   (time (load-mbrainz "/Users/raspasov/Downloads/artist/mbdump/artist"))
   (a/<!! @*output)
@@ -315,8 +344,37 @@
 
   (mm/measure *conn)
   (mm/measure *query-1)
-  (mm/measure [*conn query-1])
+  (mm/measure [*conn *query-1])
 
+
+  ;Run 1: (new) via Datom2 (reusing datoms)
+  ; (mm/measure *conn)
+  ;=> "894.8 MiB"
+  ;(mm/measure *query-1)
+  ;=> "169.1 MiB"
+  ; (mm/measure [*conn *query-1])
+  ;=> "1016.5 MiB"
+  ;
+  ; Result interpretation:
+  ; (- 1016 895) ;total memory after, minus DataScript memory
+  ;=> 121 ; extra memory (mb) with zsxf query
+  ;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;
+  ;Run 2: (old) vector datom (creating new datom vectors)
+  ; (mm/measure *conn)
+  ;=> "894.8 MiB"
+  ;(mm/measure *query-1)
+  ;=> "206.3 MiB"
+  ;(mm/measure [*conn *query-1])
+  ;=> "1.1 GiB"
+  ;
+  ; Result interpretation:
+  ; (- 1100 895)
+  ;=> 205 ; extra memory (mb) with zsxf query
+  ;
+  ;Tldr; re-using datoms via Datom2 seems to be worth it
+  ;
 
   (mm/measure *data)
   (mm/measure [*conn *data])

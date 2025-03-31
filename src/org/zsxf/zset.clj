@@ -47,11 +47,19 @@
    (let [w (zset-weight item)]
      (+ accum w))))
 
+;Optimization to save (a lot!) of memory.
+;Reuse common zset weight maps
+; TODO Can this be expanded further?
+(defonce zset-weight-of-1 {:zset/w 1})
+
 (defn zset-item
   ([x]
-   (zset-item x 1))
+   (with-meta x zset-weight-of-1))
   ([x weight]
-   (with-meta x {:zset/w weight})))
+   ;reuse metadata map for common weights
+   (if (= 1 weight)
+     (with-meta x zset-weight-of-1)
+     (with-meta x {:zset/w weight}))))
 
 (defn zset-count-item
   "zset representing a count"

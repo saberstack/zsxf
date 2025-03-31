@@ -1,7 +1,11 @@
 (ns org.zsxf.datascript
-  (:require [org.zsxf.zset :as zs])
+  (:require [org.zsxf.zset :as zs]
+            [datascript.core :as d]
+            [datascript.db :as ddb]
+            [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative IHashEq ILookup IObj IPersistentCollection Indexed Seqable)
-           (datascript.db Datom IDatom)))
+           (datascript.db Datom IDatom)
+           (java.io Writer)))
 
 (deftype Datom2 [^Datom datom meta]
 
@@ -57,10 +61,39 @@
   (containsKey [self k] (.containsKey datom k))
   (assoc [self k v] (.assoc datom k v)))
 
+(defn pr-on
+  [x w]
+  (if *print-dup*
+    (print-dup x w)
+    (print-method x w))
+  nil)
+
+(defn- print-meta [o, ^Writer w]
+  (when-let [m (meta o)]
+    (when (and (pos? (count m))
+            (or *print-dup*
+              (and *print-meta* *print-readably*)))
+      (.write w " ^")
+      (if (and (= (count m) 1) (:tag m))
+        (pr-on (:tag m) w)
+        (pr-on m w))
+      (.write w " "))))
+
+(defmethod print-method Datom2 [^Datom2 datom2, ^Writer w]
+  (binding [*out* w]
+    (let [^Datom d (.-datom datom2)]
+      (print-meta datom2 w)
+      (.write w "#org.zsxf.datascript/Datom2")
+      (pr [(.-e d) (.-a d) (.-v d) (ddb/datom-tx d) (ddb/datom-added d)]))))
+
 (defn datom2 [datom]
   (->Datom2 datom nil))
 
+(defn datom-from-reader [v]
+  (datom2 (apply ddb/datom v)))
+
 (comment
+  (set! *print-meta* true)
   (=
     (with-meta
       (datom2 (d/datom 1 :a "v"))
@@ -69,16 +102,30 @@
       (datom2 (d/datom 1 :a "v"))
       {:mmmm 43})))
 
+(defn datom->weight [datom]
+  (let [weight (condp = (nth datom 4) true 1 false -1)]
+    weight))
 
-(defn datom->zset-item [[e a v _t add-or-retract]]
-  (let [weight (condp = add-or-retract true 1 false -1)]
-    (zs/zset-item [e a v] weight)))
+(defn datom->zset-item [[e a v _t add-or-retract :as datom]]
+  (zs/zset-item [e a v] (datom->weight datom)))
+
+(defn datom->datom2->zset-item [datom]
+  (zs/zset-item (datom2 datom) (datom->weight datom)))
 
 (defn tx-datoms->zset
   "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
   [datoms]
   (transduce
     (map datom->zset-item)
+    conj
+    #{}
+    datoms))
+
+(defn tx-datoms->datoms2->zset
+  "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
+  [datoms]
+  (transduce
+    (map datom->datom2->zset-item)
     conj
     #{}
     datoms))
@@ -95,19 +142,37 @@
     []
     datoms))
 
+(defn tx-datoms->zsets2
+  "Transforms datoms into datom2s, and then into a vector of zsets.
+  Useful to maintain inter-transaction order of datoms."
+  [datoms]
+  (transduce
+    (comp
+      (map datom->datom2->zset-item)
+      (map hash-set))
+    conj
+    []
+    datoms))
+
+(defn eligible-datom? [datom]
+  (or
+    (vector? datom)
+    (instance? Datom datom)
+    (instance? Datom2 datom)))
+
 (defn datom->eid [datom]
-  (if (vector? datom)
+  (if (eligible-datom? datom)
     (nth datom 0 nil)))
 
 (defn datom->attr [datom]
-  (if (vector? datom)
+  (if (eligible-datom? datom)
     (nth datom 1 nil)))
 
 (defn datom-attr= [datom attr]
   (= (datom->attr datom) attr))
 
 (defn datom->val [datom]
-  (if (vector? datom)
+  (if (eligible-datom? datom)
     (nth datom 2 nil)))
 
 (defn datom->val-meta [datom]

@@ -1,5 +1,6 @@
 (ns org.zsxf.query-test
   (:require [clojure.test :refer :all]
+            [datascript.db :as ddb]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.datascript :as ds]
             [org.zsxf.query :as q]
@@ -79,6 +80,38 @@
        [[1 :team/name "A" 536870913 false]
         [2 :team/name "A" 536870913 false]
         [3 :team/name "A" 536870913 false]])])
+
+  (q/get-result query-1)
+
+  )
+
+(comment
+  ;example usage
+  (def query-1 (q/create-query aggregate-example-xf))
+
+
+  (q/input query-1
+    [(ds/tx-datoms->datoms2->zset
+       [(ddb/datom 1 :team/name "A" 536870913 true)
+        (ddb/datom 1 :event/country "Japan" 536870913 true)
+        (ddb/datom 1 :team/points-scored 25 536870913 true)
+        (ddb/datom 2 :team/name "A" 536870913 true)
+        (ddb/datom 2 :event/country "Japan" 536870913 true)
+        (ddb/datom 2 :team/points-scored 18 536870913 true)
+        (ddb/datom 3 :team/name "A" 536870913 true)
+        (ddb/datom 3 :event/country "Australia" 536870913 true)
+        (ddb/datom 3 :team/points-scored 25 536870913 true)
+        (ddb/datom 4 :team/name "A" 536870913 true)
+        (ddb/datom 4 :event/country "Australia" 536870913 true)
+        (ddb/datom 4 :team/points-scored 4 536870913 true)])])
+
+  (q/get-result query-1)
+
+  (q/input query-1
+    [(ds/tx-datoms->datoms2->zset
+       [(ddb/datom 1 :team/name "A" 536870913 false)
+        (ddb/datom 2 :team/name "A" 536870913 false)
+        (ddb/datom 3 :team/name "A" 536870913 false)])])
 
   (q/get-result query-1)
 

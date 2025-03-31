@@ -75,6 +75,14 @@
   (when (vector? thing)
     (first thing)))
 
+(defmacro clause-pred-macro [locator-vec [e a v :as clause]]
+  (timbre/spy locator-vec)
+  (timbre/spy clause)
+  (if (parser/variable? v)
+    `#(ds/datom-attr=  ((comp ~@locator-vec) %) ~a)
+    `#(ds/datom-attr-val= ((comp ~@locator-vec) %) ~a ~v)))
+
+;(clause-pred-macro [safe-first safe-second identity] [?m :movie/cast ?p])
 (defn safe-second [thing]
   (when (vector? thing)
     (second thing)))
@@ -83,9 +91,6 @@
   (if (parser/variable? v)
     #(ds/datom-attr= (locator %) a)
     #(ds/datom-attr-val= (locator %) a v)))
-(def pos->getter
-  {:entity ds/datom->eid
-   :value ds/datom->val})
 
 (defn where-xf [datalog-query state]
   (let [where-clauses (query->where-clauses datalog-query)
@@ -160,6 +165,85 @@
                          (assoc to safe-second)
                          )
                      (inc n)))))))
+
+(defmacro where-xf-macro [datalog-query state]
+  (let [where-clauses# (query->where-clauses datalog-query)
+        ;; Give each clause a shorthand name, eg :c1
+        named-clauses# (name-clauses where-clauses#)
+        variable-index# (index-variables named-clauses#)
+        adjacency-list# (build-adjacency-list named-clauses#)
+        adjacency-tuples# (for [[from-node destinations] adjacency-list#
+                                [to-node _] destinations];
+                            [from-node to-node])
+        [first-clause# & remaining-clauses#] (keys named-clauses#)]
+    (loop [preds# []
+           xf-steps# []
+           covered-nodes# #{first-clause#}
+           remaining-nodes# (set remaining-clauses#)
+           locators# {first-clause# [identity]}
+           n# 1]
+
+      (cond (empty? remaining-nodes#)
+            `(comp
+               (xf/mapcat-zset-transaction-xf)
+               (map (fn [zset#]
+                      (xf/disj-irrelevant-items zset# ~@preds#)))
+               ~@xf-steps#
+               (xforms/reduce zs/zset+))
+
+            ;; Stack overflow
+            (> n# 10)
+            n#
+
+            :else
+            (let [[from# to# :as edge#] (medley/find-first
+                                         (fn [[from to]]
+                                           (and (covered-nodes# from)
+                                                (remaining-nodes# to)))
+                                         adjacency-tuples#)
+
+                  common-var# (get-in adjacency-list# [from# to#])
+                  [ [e1# a1# v1# :as c1#] [e2# a2# v2# :as c2#]] (map named-clauses# edge#)
+                  p1 (if (parser/variable? v1#)
+                       `#(ds/datom-attr=  ((comp  ~@(from# locators#)) %) ~a1#)
+                       `#(ds/datom-attr-val= ((comp ~@(from# locators#)) %) ~a1# ~v1#))
+                  p2 (if (parser/variable? v2#)
+                       `#(ds/datom-attr= % ~a2#)
+                       `#(ds/datom-attr-val= % ~a2# ~v2#))
+                  new-join `(xf/join-xf ~p1
+                                        (comp (get-in variable-index# [common-var# from#]) ~@(from# locators#))
+                                        ~p2
+                                        ~(get-in variable-index# [common-var# to#])
+                                        state
+                                        :last? ~(= #{to#} remaining-nodes#))]
+              (recur (conj preds# p1 p2)
+                     (conj xf-steps# new-join)
+                     (conj covered-nodes# to#)
+                     (disj remaining-nodes# to#)
+                     (-> (medley/map-vals #(conj % safe-first) locators#)
+                         (assoc to# [safe-second]))
+                     (inc n#)))))))
+
+(comment
+  (def state (atom []))
+  (def q '[:find ?name
+                 :where
+                 [?p :person/name ?name]
+                 [?m :movie/title "RoboCop"]
+                 [?m :movie/director ?p]
+                 ])
+  ;; Works
+  (where-xf-macro [:find ?name
+                 :where
+                 [?p :person/name ?name]
+                 [?m :movie/title "RoboCop"]
+                 [?m :movie/director ?p]
+                 ] state)
+  ;; Doesn't work
+  (where-xf-macro q state)
+
+  )
+
 
 (deftest test-robocop-transduce "basic datalog query"
   (let [datalog-query '[:find ?name
@@ -240,7 +324,5 @@
 
          (def adjacency-list (build-adjacency-list (name-clauses where-clauses)))
 
-
-         (where-xf where-clauses)
 
          )

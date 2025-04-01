@@ -261,6 +261,36 @@
             #{}
             (q/input query @txn-atom))))))
 
+(deftest test-function-vs-macro "where-xf versions"
+  (let [txn-atom (atom [])
+        _conn (load-learn-db txn-atom)
+        query1 (q/create-query
+               (where-xf-macro
+                [:find ?name
+                 :where
+                 [?m :movie/cast ?p]
+                 [?p :person/name "Arnold Schwarzenegger"]
+                 [?m :movie/director ?d]
+                 [?d :person/name ?name]]))
+        query2 (q/create-query
+                (where-xf
+                 '[:find ?name
+                   :where
+                   [?m :movie/cast ?p]
+                   [?p :person/name "Arnold Schwarzenegger"]
+                   [?m :movie/director ?d]
+                   [?d :person/name ?name]]))
+        get-result-set (fn [query ipt]
+                         (transduce
+                          (map (comp ds/datom->val second))
+                          (completing #(conj %1 %2))
+                          #{}
+                          (q/input query ipt)))]
+
+    (is (= #{"Jonathan Mostow" "James Cameron" "John McTiernan" "Mark L. Lester"}
+           (get-result-set query1 @txn-atom)
+           (get-result-set query2 @txn-atom)))))
+
 (comment
   (set! *print-meta* false)
   )

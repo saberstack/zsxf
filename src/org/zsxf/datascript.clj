@@ -1,5 +1,7 @@
 (ns org.zsxf.datascript
-  (:require [org.zsxf.zset :as zs]
+  (:require [org.zsxf.query :as q]
+            [org.zsxf.util :as util]
+            [org.zsxf.zset :as zs]
             [datascript.core :as d]
             [datascript.db :as ddb]
             [taoensso.timbre :as timbre])
@@ -196,6 +198,37 @@
 (defn datom-attr-val= [datom attr value]
   (and (datom-attr= datom attr) (datom-val= datom value)))
 
+(defn init-query-from-empty-db
+  "Initialize a listener for a given query and connection.
+  The database is assumed to be empty.
+  Supports a time-f function that will be called with the time taken to process each transaction.
+  Returns true"
+  [conn query & {:keys [time-f] :or {time-f identity}}]
+  (d/listen! conn (q/get-id query)
+    (fn [tx-report]
+      (util/time-f
+        (q/input query (timbre/spy (tx-datoms->zsets2 (:tx-data tx-report))))
+        (fn [input-time-ms]
+          (timbre/spy input-time-ms)))))
+  ;return
+  true)
+
+(defn init-query-from-existing-db
+  "Initial naive implementation.
+  Assumes no writes are incoming during initialization.
+  WIP"
+  [conn query & {:keys [time-f] :or {time-f identity}}]
+  ;load all existing data
+  (let [_result (q/input query
+                  (tx-datoms->zsets2
+                    (d/seek-datoms @conn :eavt)))]
+    ;setup listener
+    (init-query-from-empty-db conn query)))
+
+(defn take-last-datoms
+  "Helper to see recently added datoms"
+  [conn n]
+  (into [] (take n) (d/rseek-datoms @conn :eavt)))
 
 ;examples
 (comment

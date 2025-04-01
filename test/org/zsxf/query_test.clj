@@ -115,4 +115,6 @@
 
   (q/get-result query-1)
 
+  (q/get-state query-1)
+
   )

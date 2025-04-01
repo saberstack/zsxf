@@ -1,5 +1,6 @@
 (ns org.zsxf.query
-  (:require [org.zsxf.xf :as xf]))
+  (:require [org.zsxf.xf :as xf]
+            [org.zsxf.query :as q]))
 
 
 (defn create-query
@@ -10,8 +11,9 @@
   ([init-xf]
    (create-query init-xf (atom nil)))
   ([init-xf state]
-   {:xf (init-xf state)
-    :state state}))
+   {::q/xf    (init-xf state)
+    ::q/state state
+    ::q/id    (random-uuid)}))
 
 
 (defn input
@@ -19,27 +21,33 @@
   Synchronously executes the transaction, summing the existing query result state with new deltas, if any.
   Returns the full post-transaction query result.
   The result can be a set or a map (in the case of aggregations)."
-  [{:keys [state xf] :as _query} zsets]
+  [{::q/keys [state xf] :as _query} zsets]
   (transduce
     xf
     (fn
       ;query reducing fn
       ; sums existing result with query-computed deltas
       ([] state)
-      ([state] (get state :result))
+      ([state] (get state ::q/result))
       ([state result-delta]
        ;side effect
        (swap! state
-         (fn [{:keys [result] :as state-m}]
+         (fn [{::q/keys [result] :as state-m}]
            (let [[result result+] (xf/init-result result result-delta)]
-             (assoc state-m :result
+             (assoc state-m ::q/result
                (result+ result result-delta)))))))
     [zsets]))
 
 (defn get-result
   "View the current query result"
   [query]
-  (:result @(get query :state)))
+  (set! *print-meta* true)
+  (::q/result @(get query ::q/state)))
 
 (defn get-state [query]
-  @(get query :state))
+  @(get query ::q/state))
+
+(defn get-id
+  "Returns the unique query identifier (default is UUID)"
+  [query]
+  (get query ::q/id))

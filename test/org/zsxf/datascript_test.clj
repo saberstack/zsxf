@@ -271,18 +271,14 @@
          [59 :movie/title "RoboCop"]]}))))
 
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"
-  (let [datalog-query   '[:find ?name
-                          :where
-                          [?p :person/name ?name]
-                          [?m :movie/title "RoboCop"]
-                          [?m :movie/director ?p]
-                          ]
-        index-state-all (atom {})
-        txn-atom        (atom [])
+  (let [txn-atom        (atom [])
         _conn           (load-learn-db txn-atom)
         query           (q/create-query
-                          (where-xf datalog-query)
-                          index-state-all)]
+                         (where-xf-macro [:find ?name
+                                            :where
+                                            [?p :person/name ?name]
+                                            [?m :movie/title "RoboCop"]
+                                            [?m :movie/director ?p]]))]
     (is
       (=
         (q/input query @txn-atom)

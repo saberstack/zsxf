@@ -34,15 +34,21 @@
        (drop-while #(not= :where %))
        (drop  1)))
 
-(defn name-clauses [where-clauses]
-  (second
-   (reduce
-    (fn [[n acc] clause]
-      [(inc n) (assoc acc (keyword (format "c%s" n)) clause)])
-    [1 {}]
-    where-clauses)))
+(defn name-clauses
+  "Takes the where clauses of a datalog query and gives each a name, e.g. :c1.
+  Returns a map from name to clause."
+  [where-clauses]
 
-(defn index-variables [named-clauses]
+  (into {}
+        (map-indexed (fn [idx el]
+                       [(keyword (format "c%s" (inc idx))) el]))
+        where-clauses))
+
+(defn index-variables
+  "Builds a map from each variable appearing in the where clauses
+  to the clauses they appear in, and in which position.
+  Returns map from variable to map from clause name to positional getter function."
+  [named-clauses]
   (reduce
    (fn [acc [clause-name [e _ v]]]
      (cond-> acc
@@ -53,7 +59,12 @@
    {}
    named-clauses))
 
-(defn build-adjacency-list [named-clauses]
+(defn build-adjacency-list
+  "Where clauses in a datalog query can be modeled as the nodes
+  of a graph. The edges are common variables between clauses.
+  Returns a map from source clause name to a map from destination
+  clause name to the common variable (edge)."
+  [named-clauses]
   (let [variable-index (index-variables named-clauses)]
     (reduce
      (fn [acc [clause-name [e _ v]]]
@@ -73,22 +84,19 @@
   (when (vector? thing)
     (first thing)))
 
-(defmacro clause-pred-macro [locator-vec [e a v :as clause]]
-  (timbre/spy locator-vec)
-  (timbre/spy clause)
-  (if (parser/variable? v)
-    `#(ds/datom-attr=  ((comp ~@locator-vec) %) ~a)
-    `#(ds/datom-attr-val= ((comp ~@locator-vec) %) ~a ~v)))
-                                        ;(clause-pred-macro [safe-first safe-second identity] [?m :movie/cast ?p])
 (defn safe-second [thing]
   (when (vector? thing)
     (second thing)))
+                                        ;(clause-pred-macro [safe-first safe-second identity] [?m :movie/cast ?p])
+(defmacro clause-pred-macro [locator-vec [e a v :as clause]]
+  (if (parser/variable? v)
+    `#(ds/datom-attr=  ((comp ~@locator-vec) %) ~a)
+    `#(ds/datom-attr-val= ((comp ~@locator-vec) %) ~a ~v)))
 
 (defn clause-pred [locator [e a v]]
   (if (parser/variable? v)
     #(ds/datom-attr= (locator %) a)
     #(ds/datom-attr-val= (locator %) a v)))
-
 
 (defn where-xf [datalog-query]
   (fn [state]
@@ -317,4 +325,6 @@
 
 (comment
   (set! *print-meta* false)
+
+
   )

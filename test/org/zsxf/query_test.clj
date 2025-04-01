@@ -9,18 +9,16 @@
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre]))
 
+; Aggregates current limitation: retractions (deletes) have to be precise!
+; An _over-retraction_ by trying to retract a datom that doesn't exist will result in
+; an incorrect index state.
+; Luckily, DataScript/Datomic correctly report :tx-data without any extra over-deletions.
+; Still, it would be more robust to actually safeguard around this.
+; Possibly this would require maintaining the entire joined state so attempted
+; over-retractions can be filtered out when their delta does not result in a change
+; to the joined state
 
 (defn aggregate-example-xf [query-state]
-
-  ; Aggregates current limitation: retractions (deletes) have to be precise!
-  ; An _over-retraction_ by trying to retract a datom that doesn't exist will result in
-  ; an incorrect index state.
-  ; Luckily, DataScript/Datomic correctly report :tx-data without any extra over-deletions.
-  ; Still, it would be more robust to actually safeguard around this.
-  ; Possibly this would require maintaining the entire joined state so attempted
-  ; over-retractions can be filtered out when their delta does not result in a change
-  ; to the joined stat
-
   (comment
     ;equivalent query
     '[:find ?country (sum ?pts)

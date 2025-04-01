@@ -146,3 +146,23 @@
          time# (/ (double (- (. System (nanoTime)) start#)) 1000000.0)]
      (~f time#)
      ret#))
+
+(defn scaffold
+  "Clojure Scaffolding for deftype.
+  Show which methods a class implements and for which interfaces"
+  [iface]
+  ;; Big thanks to Christophe Grand
+  ;; https://groups.google.com/d/msg/clojure/L1GiqSyQVVg/m-WJogaqU8sJ
+  (doseq [[iface methods] (->> iface .getMethods
+                            (map #(vector (.getName (.getDeclaringClass %))
+                                    (symbol (.getName %))
+                                    (count (.getParameterTypes %))))
+                            (group-by first))]
+    (println (str "  " iface))
+    (doseq [[_ name argcount] methods]
+      (println
+        (str "    "
+          (list name (into ['this] (take argcount (repeatedly gensym)))))))))
+
+(comment
+  (scaffold clojure.lang.IPersistentMap))

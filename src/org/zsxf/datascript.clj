@@ -87,6 +87,8 @@
   (->Datom2 datom nil))
 
 (defn datom-from-reader [v]
+  ; This does not seem possible until this is solved:
+  ; https://clojure.atlassian.net/jira/software/c/projects/CLJ/issues/CLJ-2904
   (datom2 (apply ddb/datom v)))
 
 ;; Custom printing
@@ -198,9 +200,8 @@
 (defn datom-attr-val= [datom attr value]
   (and (datom-attr= datom attr) (datom-val= datom value)))
 
-(defn init-query-from-empty-db
+(defn- listen!
   "Initialize a listener for a given query and connection.
-  The database is assumed to be empty.
   Supports a time-f function that will be called with the time taken to process each transaction.
   Returns true"
   [conn query & {:keys [time-f] :or {time-f identity}}]
@@ -213,17 +214,18 @@
   ;return
   true)
 
-(defn init-query-from-existing-db
+(defn init-query-with-conn
   "Initial naive implementation.
   Assumes no writes are incoming during initialization.
   WIP"
-  [conn query & {:keys [time-f] :or {time-f identity}}]
-  ;load all existing data
-  (let [_result (q/input query
+  [query conn & {:keys [time-f] :or {time-f identity}}]
+  (let [db      @conn
+        ;load all existing data from a stable db state
+        _result (q/input query
                   (tx-datoms->zsets2
-                    (d/seek-datoms @conn :eavt)))]
+                    (d/seek-datoms db :eavt)))]
     ;setup listener
-    (init-query-from-empty-db conn query)))
+    (listen! conn query)))
 
 (defn take-last-datoms
   "Helper to see recently added datoms"

@@ -36,6 +36,7 @@
 (defonce *query-1 (atom nil))
 (defonce *query-1-times (atom []))
 (defonce *query-2 (atom nil))
+(defonce *query-3 (atom nil))
 (defonce *db (atom nil))
 
 (defn artist-genres->datascript-refs [genres]
@@ -157,13 +158,14 @@
 
 (defn init-load-all []
   (timbre/set-min-level! :info)
+
   (reset! *query-1 (q/create-query query-count-artists-by-country-zsxf))
   (reset! *query-2 nil)
-  (reset! *query-1-times [])
+  (reset! *query-3 nil)
+
   (reset! *conn (d/create-conn schema))
   ;setup link between query and connection via Datascript listener
-  (ds/init-query-from-empty-db @*conn @*query-1
-    :time-f (fn [t] (swap! *query-1-times conj t)))
+  (ds/init-query-with-conn @*query-1 @*conn)
   ;load countries and genres
   (pre-load)
   ;load artists
@@ -259,7 +261,6 @@
     (d/transact! @*conn [[:db/retractEntity [:artist/id "eric-jordan"]]])
     :done)
 
-
   (do
     ;retract country
     (d/transact! @*conn [[:db/retractEntity [:country/name-alpha-2 "US"]]])
@@ -273,8 +274,28 @@
     (timbre/set-min-level! :info)
     (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
       (reset! *query-2 query)
-      (ds/init-query-from-existing-db @*conn query)
+      (ds/init-query-with-conn query @*conn)
       (q/get-result query)))
+
+  (do
+    (timbre/set-min-level! :info)
+    (let [query (q/create-query query-count-artists-by-country-zsxf)]
+      (reset! *query-3 query)
+      (ds/init-query-with-conn query @*conn)
+      (q/get-result query)))
+
+  ;unlisten
+  (do
+    (d/unlisten! @*conn (q/get-id @*query-2))
+    :done)
+
+  (do
+    (d/unlisten! @*conn (q/get-id @*query-1))
+    :done)
+
+  (do
+    (d/unlisten! @*conn (q/get-id @*query-3))
+    :done)
 
   (ds/take-last-datoms @*conn 20)
 

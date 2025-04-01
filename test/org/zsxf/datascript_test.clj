@@ -1,5 +1,6 @@
 (ns org.zsxf.datascript-test
   (:require
+   [clj-memory-meter.core :as mm]
    [clojure.core.async :as a]
    [clojure.test :refer [deftest is]]
    [clojure.set :as set]
@@ -216,7 +217,59 @@
              ["Alien" 1979] ["RoboCop" 1987]
              ["Rambo III" 1988] ["Lethal Weapon 3" 1992]}))))
 
+(defonce *conn-tmp (atom nil))
+(defonce *query-tmp (atom nil))
+
+(deftest test-b-2 "another ad-hoc query"
+  (let [conn   (load-learn-db)
+        query  (q/create-query
+                 (sprinkle-dbsp-on [:find ?title ?year
+                                    :where
+                                    [?m :movie/title ?title]
+                                    [?m :movie/year ?year]]))
+        _      (ds/init-query-with-conn query conn)
+        pass? (= (q/get-result query)
+                #{["Lethal Weapon" 1987] ["Aliens" 1986]
+                  ["The Terminator" 1984] ["Rambo: First Blood Part II" 1985]
+                  ["Mad Max Beyond Thunderdome" 1985] ["Mad Max" 1979]
+                  ["First Blood" 1982] ["Predator" 1987]
+                  ["Terminator 2: Judgment Day" 1991] ["Predator 2" 1990]
+                  ["Mad Max 2" 1981] ["Lethal Weapon 2" 1989]
+                  ["Braveheart" 1995] ["Terminator 3: Rise of the Machines" 2003]
+                  ["Commando" 1985] ["Die Hard" 1988]
+                  ["Alien" 1979] ["RoboCop" 1987]
+                  ["Rambo III" 1988] ["Lethal Weapon 3" 1992]})]
+
+    ;unlisten to compare sizes
+    (d/unlisten! conn (q/get-id query))
+
+    (reset! *conn-tmp conn)
+    (reset! *query-tmp query)
+
+    (is (true? pass?))))
+
 (comment
   (set! *print-meta* false)
+
+  ;old
+  (do
+    [(mm/measure [*conn-tmp])
+     (mm/measure [*query-tmp])
+     (mm/measure [*conn-tmp *query-tmp])])
+  ;=> ["27.9 KiB" "18.7 KiB" "44.3 KiB"]
+  (- 44.3 27.9)
+  ;=> 16.4
+
+  ;new
+  (do
+    [(mm/measure [*conn-tmp])
+     (mm/measure [*query-tmp])
+     (mm/measure [*conn-tmp *query-tmp])])
+  ;=> ["27.9 KiB" "17.7 KiB" "41.8 KiB"]
+
+  (- 41.8 27.9)
+  ;=> 13.9
+  ;
+  (* 100 (/ (- 16.4 13.9) 13.9))
 
   )

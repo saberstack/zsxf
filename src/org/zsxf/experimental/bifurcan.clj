@@ -11,9 +11,9 @@
 
 (timbre/set-min-level! :trace)
 
-(defn empty-bf-map [] (bfm/map))
+(defn- empty-bf-map [] (bfm/map))
 
-(defn bfm-entry->clj-entry [^Maps$Entry bfm-entry]
+(defn- bfm-entry->clj-entry [^Maps$Entry bfm-entry]
   (MapEntry. (.key bfm-entry) (.value bfm-entry)))
 
 (deftype CljBifurcanMap [^IMap bfm]
@@ -41,13 +41,13 @@
   (empty [this] (CljBifurcanMap. (empty-bf-map)))
   (cons [this pairs]
     #_conj
-    (timbre/info "cons-ing")
+    ;(timbre/info "cons-ing")
     (CljBifurcanMap. (bfm/from-reduce bfm [pairs])))
   (equiv [this other]
     (= bfm other))
   Seqable
   (seq [this]
-    (timbre/info "seq-ing ?")
+    ;(timbre/info "seq-ing ?")
     (sequence
       (map bfm-entry->clj-entry)
       (iterator-seq

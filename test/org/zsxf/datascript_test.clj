@@ -168,7 +168,6 @@
 
 (defmacro where-xf-macro [datalog-query state]
   (let [where-clauses# (query->where-clauses datalog-query)
-        ;; Give each clause a shorthand name, eg :c1
         named-clauses# (name-clauses where-clauses#)
         variable-index# (index-variables named-clauses#)
         adjacency-list# (build-adjacency-list named-clauses#)
@@ -211,7 +210,7 @@
                        `#(ds/datom-attr= % ~a2#)
                        `#(ds/datom-attr-val= % ~a2# ~v2#))
                   new-join `(xf/join-xf ~p1
-                                        (comp (get-in variable-index# [common-var# from#]) ~@(from# locators#))
+                                        (comp ~(get-in variable-index# [common-var# from#]) ~@(from# locators#))
                                         ~p2
                                         ~(get-in variable-index# [common-var# to#])
                                         state

@@ -155,22 +155,19 @@
                     [(zs/zset-count-item cnt)]))))
       (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
 
-(defn init-load-all
-  ([] (init-load-all ds/tx-datoms->zsets))
-  ([_]
-   (timbre/set-min-level! :info)
-   (reset! *query-1 (q/create-query query-count-artists-by-country-zsxf))
-   (reset! *query-2 nil)
-   (reset! *query-1-times [])
-   (reset! *conn (d/create-conn schema))
-   ;setup link between query and connection via Datascript listener
-   (ds/init-query-from-empty-db @*conn @*query-1
-     :time-f (fn [t] (swap! *query-1-times conj t)))
-   ;load countries and genres
-   (pre-load)
-   ;load artists
-   (load-artists "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000)
-   ))
+(defn init-load-all []
+  (timbre/set-min-level! :info)
+  (reset! *query-1 (q/create-query query-count-artists-by-country-zsxf))
+  (reset! *query-2 nil)
+  (reset! *query-1-times [])
+  (reset! *conn (d/create-conn schema))
+  ;setup link between query and connection via Datascript listener
+  (ds/init-query-from-empty-db @*conn @*query-1
+    :time-f (fn [t] (swap! *query-1-times conj t)))
+  ;load countries and genres
+  (pre-load)
+  ;load artists
+  (load-artists "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000))
 
 (defn recreate-db []
   (let [db (time (d/init-db (d/seek-datoms @@*conn :eavt) schema))]
@@ -275,8 +272,8 @@
   (do
     (timbre/set-min-level! :info)
     (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
-      (ds/init-query-from-existing-db @*conn query)
       (reset! *query-2 query)
+      (ds/init-query-from-existing-db @*conn query)
       (q/get-result query)))
 
   (ds/take-last-datoms @*conn 20)
@@ -292,7 +289,7 @@
 (comment
 
   (do
-    (time (init-load-all ds/tx-datoms->zsets2)))
+    (time (init-load-all)))
 
   (set! *print-meta* true)
   (set! *print-meta* false)
@@ -335,6 +332,5 @@
   ;
   ;Tldr; re-using datoms via Datom2 seems to be worth it
   ;
-
 
   )

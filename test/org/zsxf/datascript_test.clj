@@ -224,6 +224,31 @@
                          (assoc to# [safe-second]))
                      (inc n#)))))))
 
+(deftest test-b "another ad-hoc query"
+  (let [txn-atom (atom [])
+        _conn           (load-learn-db txn-atom)
+        query           (q/create-query
+                         (where-xf-macro [:find ?title ?year
+                                          :where
+                                          [?m :movie/title ?title]
+                                          [?m :movie/year ?year]]))]
+    (is
+     (= (transduce
+         (map (juxt (comp ds/datom->val first) (comp ds/datom->val second) ))
+         (completing #(conj %1 %2))
+         #{}
+         (q/input query @txn-atom))
+        #{["Lethal Weapon" 1987] ["Aliens" 1986]
+          ["The Terminator" 1984] ["Rambo: First Blood Part II" 1985]
+          ["Mad Max Beyond Thunderdome" 1985] ["Mad Max" 1979]
+          ["First Blood" 1982] ["Predator" 1987]
+          ["Terminator 2: Judgment Day" 1991] ["Predator 2" 1990]
+          ["Mad Max 2" 1981] ["Lethal Weapon 2" 1989]
+          ["Braveheart" 1995] ["Terminator 3: Rise of the Machines" 2003]
+          ["Commando" 1985] ["Die Hard" 1988]
+          ["Alien" 1979] ["RoboCop" 1987]
+          ["Rambo III" 1988] ["Lethal Weapon 3" 1992]}))))
+
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"
   (let [txn-atom (atom [])
         _conn           (load-learn-db txn-atom)
@@ -234,13 +259,12 @@
                                           [?m :movie/title "RoboCop"]
                                           [?m :movie/director ?p]]))]
     (is
-     (=
-      (q/input query @txn-atom)
-      (q/get-result query)
-      #{^#:zset{:w 1}
-        [[[16 :person/name "Paul Verhoeven"]
-          [59 :movie/director 16]]
-         [59 :movie/title "RoboCop"]]}))))
+     (= (q/input query @txn-atom)
+        (q/get-result query)
+        #{^#:zset{:w 1}
+          [[[16 :person/name "Paul Verhoeven"]
+            [59 :movie/director 16]]
+           [59 :movie/title "RoboCop"]]}))))
 
 (deftest test-ahhnold "Another basic query"
   (let [txn-atom (atom [])

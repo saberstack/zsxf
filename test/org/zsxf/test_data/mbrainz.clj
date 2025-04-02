@@ -200,11 +200,11 @@
 (defn query-count-artists-by-country []
   (time
     (d/q
-      '[:find ?a
+      '[:find ?country-name (count ?a)
         :where
-        ;[?c :country/name-alpha-2 ?country-name]
-        [?a :artist/country 141]
-        ;[(= ?country-name "US")]
+        [?a :artist/country ?c]
+        [?c :country/name-alpha-2 ?country-name]
+        [(= ?country-name "US")]
         ]
       @@*conn)))
 
@@ -245,7 +245,7 @@
   (timbre/set-min-level! :info)
   (timbre/set-min-level! :trace)
 
-  (take 10 (d/seek-datoms @@*conn :eavt))
+  (take 10 (d/rseek-datoms @@*conn :eavt))
 
   (do
     ;add another artist
@@ -271,12 +271,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
   ;second query
-  (do
-    (timbre/set-min-level! :info)
-    (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
-      (reset! *query-2 query)
-      (ds/init-query-with-conn query @*conn)
-      (q/get-result query)))
+
+  (time
+    (do
+      (timbre/set-min-level! :info)
+      (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
+        (reset! *query-2 query)
+        (ds/init-query-with-conn query @*conn)
+        (q/get-result query))))
 
   (do
     (timbre/set-min-level! :info)
@@ -290,9 +292,20 @@
     (d/unlisten! @*conn (q/get-id @*query-2))
     :done)
 
+  ;re-listen
+  (do
+    (ds/listen! @*conn @*query-1)
+    :done)
+
   (do
     (d/unlisten! @*conn (q/get-id @*query-1))
     :done)
+
+  (do
+    (d/unlisten! @*conn (q/get-id @*query-2))
+    :done)
+
+
 
   (do
     (d/unlisten! @*conn (q/get-id @*query-3))
@@ -300,10 +313,17 @@
 
   (ds/take-last-datoms @*conn 20)
 
-  (mm/measure [*query-1 *query-2])
+
 
   (mm/measure *db)
-  (mm/measure *conn)
+
+  (mm/measure [*conn])
+
+  (mm/measure [*conn *query-1])
+
+  (q/get-id @*query-1)
+
+
   (mm/measure [*db *conn])
 
   )
@@ -317,6 +337,7 @@
   (set! *print-meta* false)
 
   (q/get-result @*query-1)
+  (q/get-result @*query-2)
   (q/get-state @*query-1)
 
 
@@ -324,6 +345,12 @@
   (mm/measure *conn)
   (mm/measure *query-1)
   (mm/measure [*conn *query-1])
+
+  (mm/measure [*conn *query-1])
+
+  (mm/measure [*query-1])
+  (mm/measure [*query-2])
+  (mm/measure [*conn *query-1 *query-2])
 
 
   ;Run 1: (new) via Datom2 (reusing datoms)

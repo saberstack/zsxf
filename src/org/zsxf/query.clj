@@ -3,7 +3,7 @@
             [org.zsxf.query :as q]))
 
 
-(defn create-query
+#_(defn create-query
   "Create a query with init-xf and optional state atom.
   If state is not provided, one will be created.
   init-xf is a function which takes an atom and must return a ZSXF-compatible transducer which takes and returns zsets
@@ -15,7 +15,7 @@
     ::q/state state
     ::q/id    (random-uuid)}))
 
-(defn create-query-a
+(defn create-query
   "Create a query with init-xf.
   init-xf is a function which takes an atom and must return a ZSXF-compatible transducer which takes and returns zsets
   Returns an atom"
@@ -28,7 +28,7 @@
     query))
 
 
-(defn input
+#_(defn input
   "Takes a query (a map created via create-query) and a vector of zsets representing a transaction.
   Synchronously executes the transaction, summing the existing query result state with new deltas, if any.
   Returns the full post-transaction query result.
@@ -50,7 +50,7 @@
                (result+ result result-delta)))))))
     [zsets]))
 
-(defn input-a
+(defn input
   "Takes a query (a map created via create-query) and a vector of zsets representing a transaction.
   Synchronously executes the transaction, summing the existing query result state with new deltas, if any.
   Returns the full post-transaction query result.
@@ -76,30 +76,30 @@
        ))
     [zsets]))
 
-(defn get-result
+#_(defn get-result
   "View the current query result"
   [query]
   (set! *print-meta* true)
   (::q/result @(get query ::q/state)))
 
-(defn get-result-a
+(defn get-result
   "View the current query result"
   [query]
   (set! *print-meta* true)
   (-> @query ::q/state ::q/result))
 
-(defn get-state [query]
+#_(defn get-state [query]
   @(get query ::q/state))
 
-(defn get-state-a [query]
+(defn get-state [query]
   (::q/state @query))
 
-(defn get-id
+#_(defn get-id
   "Returns the unique query identifier (default is UUID)"
   [query]
   (get query ::q/id))
 
-(defn get-id-a
+(defn get-id
   "Returns the unique query identifier (default is UUID)"
   [query]
   (::q/id @query))

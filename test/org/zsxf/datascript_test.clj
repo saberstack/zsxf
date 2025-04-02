@@ -217,9 +217,6 @@
              ["Alien" 1979] ["RoboCop" 1987]
              ["Rambo III" 1988] ["Lethal Weapon 3" 1992]}))))
 
-(defonce *conn-tmp (atom nil))
-(defonce *query-tmp (atom nil))
-
 (deftest test-b-2 "another ad-hoc query"
   (let [conn   (load-learn-db)
         query  (q/create-query
@@ -239,37 +236,10 @@
                   ["Commando" 1985] ["Die Hard" 1988]
                   ["Alien" 1979] ["RoboCop" 1987]
                   ["Rambo III" 1988] ["Lethal Weapon 3" 1992]})]
-
-    ;unlisten to compare sizes
-    (d/unlisten! conn (q/get-id query))
-
-    (reset! *conn-tmp conn)
-    (reset! *query-tmp query)
-
     (is (true? pass?))))
 
 (comment
   (set! *print-meta* false)
 
-  ;old
-  (do
-    [(mm/measure [*conn-tmp])
-     (mm/measure [*query-tmp])
-     (mm/measure [*conn-tmp *query-tmp])])
-  ;=> ["27.9 KiB" "18.7 KiB" "44.3 KiB"]
-  (- 44.3 27.9)
-  ;=> 16.4
-
-  ;new
-  (do
-    [(mm/measure [*conn-tmp])
-     (mm/measure [*query-tmp])
-     (mm/measure [*conn-tmp *query-tmp])])
-  ;=> ["27.9 KiB" "17.7 KiB" "41.8 KiB"]
-
-  (- 41.8 27.9)
-  ;=> 13.9
-  ;
-  (* 100 (/ (- 16.4 13.9) 13.9))
 
   )

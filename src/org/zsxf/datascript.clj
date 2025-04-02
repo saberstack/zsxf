@@ -200,7 +200,7 @@
 (defn datom-attr-val= [datom attr value]
   (and (datom-attr= datom attr) (datom-val= datom value)))
 
-(defn- listen!
+(defn listen!
   "Initialize a listener for a given query and connection.
   Supports a time-f function that will be called with the time taken to process each transaction.
   Returns true"

@@ -6,8 +6,7 @@
             [datascript.db :as ddb]
             [org.zsxf.type :as t]
             [taoensso.timbre :as timbre])
-  (:import (clojure.lang Associative IHashEq ILookup IObj IPersistentCollection Indexed Seqable)
-           (datascript.db Datom)
+  (:import (datascript.db Datom)
            (java.io Writer)
            (org.zsxf.type Datom2)))
 

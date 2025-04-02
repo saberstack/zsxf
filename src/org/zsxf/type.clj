@@ -8,7 +8,7 @@
 
   ;Extends Datascript datoms to support metadata, and potentially more features in the future.
   ; (!) Clojure-only at the moment, ClojureScript requires a slightly different set of methods.
-  ; This will potentially allow lower memory usage (TBD) as the Datom objects
+  ; This allows lower memory usage as the Datom objects
   ; are referenced and boxed directly inside Datom2 instead of being converted to vectors each time.
   ; Datom2 almost entirely calls the Datascript Datom type methods directly to preserve
   ; exact behavior, apart from the addition of IObj to support metadata
@@ -60,7 +60,7 @@
     ;check if x is Datom2, if yes, "unwrap" it and pass through
     (cond
       (instance? Datom2 x) (.equiv datom (.-datom ^Datom2 x)) ;unwrap
-      :else (.equiv datom x)))                              ;in any other case, call through direct
+      :else (.equiv datom x)))
   (empty [self] (throw (UnsupportedOperationException. "empty is not supported on Datom")))
   (count [self] 5)
   (cons [self v] (.cons datom v))

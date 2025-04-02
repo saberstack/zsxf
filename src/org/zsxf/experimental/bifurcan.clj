@@ -9,7 +9,7 @@
            (io.lacuna.bifurcan IMap Maps$Entry Maps$HashEntry)
            (java.io Writer)))
 
-(timbre/set-min-level! :trace)
+(timbre/set-ns-min-level! :info)
 
 (defn- empty-bf-map [] (bfm/map))
 
@@ -19,6 +19,8 @@
 (deftype CljBifurcanMap [^IMap bfm]
   IPersistentMap
   (assoc [this k v]
+    (timbre/spy "assoc-ing")
+    (timbre/spy [k v])
     (CljBifurcanMap. (bfm/put (.-bfm this) k v)))
   (assocEx [this k v] (throw (Exception.)))
   (without [this k]
@@ -28,7 +30,9 @@
   Iterable
   (iterator [this] (.iterator bfm))
   (spliterator [this])
-  (forEach [this each])
+  (forEach [this each]
+    (timbre/spy each)
+    nil)
   Associative
   (containsKey [this k]
     #_contains?
@@ -39,15 +43,16 @@
       (MapEntry. k v)))
   IPersistentCollection
   (empty [this] (CljBifurcanMap. (empty-bf-map)))
-  (cons [this pairs]
+  (cons [this pair]
     #_conj
-    ;(timbre/info "cons-ing")
-    (CljBifurcanMap. (bfm/from-reduce bfm [pairs])))
+    (timbre/spy "cons")
+    (timbre/spy pair)
+    (CljBifurcanMap. (bfm/put bfm (first pair) (second pair))))
   (equiv [this other]
     (= bfm other))
   Seqable
   (seq [this]
-    ;(timbre/info "seq-ing ?")
+    (timbre/spy "seq-ing")
     (sequence
       (map bfm-entry->clj-entry)
       (iterator-seq
@@ -71,6 +76,7 @@
 
 (defmethod print-method Maps$Entry
   [entry ^Writer w]
+  (timbre/info "Maps$Entry" entry)
   (let [class-name (type entry)]
     (if (= class-name Maps$Entry)
       (do
@@ -103,12 +109,21 @@
 
   (assoc (clj-bf-map) :a 1 :b 2)
 
+  (find (assoc (clj-bf-map) :a 1) :a)
 
-  (transduce
-    (map (fn [e] (timbre/spy e)))
-    conj
-    (clj-bf-map)
-    (assoc (clj-bf-map) :a 1 :b 2))
+  (let [_
+        (transduce
+          (comp
+            (map (fn [e] e))
+            (partition-all 8))
+          (completing
+            (fn [accum pairs]
+              (apply conj accum pairs)))
+          (clj-bf-map)
+          (repeatedly
+            50
+            (fn [] [(random-uuid) :x])))]
+    )
 
   (conj (clj-bf-map) [:a 1] [:b 2])
 

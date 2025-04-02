@@ -133,6 +133,7 @@
     (timbre/info "tx-data" tx-data)
     (timbre/info "zsets" zsets)
     (timbre/info "query id" (q/get-id query))
+    (timbre/info (identical? query ))
     (let [result (q/input query zsets)]
       (timbre/info result)
       result)

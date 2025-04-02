@@ -8,7 +8,8 @@
             [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative IHashEq ILookup IObj IPersistentCollection Indexed Seqable)
            (datascript.db Datom)
-           (java.io Writer)))
+           (java.io Writer)
+           (org.zsxf.type Datom2)))
 
 (defn datom2 [datom]
   (t/->Datom2 datom nil))

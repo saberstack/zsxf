@@ -30,11 +30,6 @@
      (d/transact! conn data)
      conn)))
 
-(defn query->where-clauses [q]
-  (->> q
-       (drop-while #(not= :where %))
-       (drop  1)))
-
 (defn query->map [q]
   (second (reduce
            (fn [[current-segment acc] el]
@@ -198,34 +193,20 @@
            (q/input query @txn-atom)))))
 
 (deftest test-b "another ad-hoc query"
-  (let [txn-atom (atom [])
-        _conn           (load-learn-db txn-atom)
-        query           (q/create-query
-                         (sprinkle-dbsp-on [:find ?title ?year
-                                            :where
-                                            [?m :movie/title ?title]
-                                            [?m :movie/year ?year]]))]
-    (is (= (q/input query @txn-atom)
-           #{["Lethal Weapon" 1987] ["Aliens" 1986]
-             ["The Terminator" 1984] ["Rambo: First Blood Part II" 1985]
-             ["Mad Max Beyond Thunderdome" 1985] ["Mad Max" 1979]
-             ["First Blood" 1982] ["Predator" 1987]
-             ["Terminator 2: Judgment Day" 1991] ["Predator 2" 1990]
-             ["Mad Max 2" 1981] ["Lethal Weapon 2" 1989]
-             ["Braveheart" 1995] ["Terminator 3: Rise of the Machines" 2003]
-             ["Commando" 1985] ["Die Hard" 1988]
-             ["Alien" 1979] ["RoboCop" 1987]
-             ["Rambo III" 1988] ["Lethal Weapon 3" 1992]}))))
-
-(deftest test-b-2 "another ad-hoc query"
   (let [conn   (load-learn-db)
         query  (q/create-query
                  (sprinkle-dbsp-on [:find ?title ?year
                                     :where
                                     [?m :movie/title ?title]
-                                    [?m :movie/year ?year]]))
-        _      (ds/init-query-with-conn query conn)
-        pass? (= (q/get-result query)
+                                    [?m :movie/year ?year]]))]
+    (ds/init-query-with-conn query conn)
+    (is
+        (= (q/get-result query)
+           (d/q '[:find ?title ?year
+                  :where
+                  [?m :movie/title ?title]
+                  [?m :movie/year ?year]]
+                @conn)
                 #{["Lethal Weapon" 1987] ["Aliens" 1986]
                   ["The Terminator" 1984] ["Rambo: First Blood Part II" 1985]
                   ["Mad Max Beyond Thunderdome" 1985] ["Mad Max" 1979]
@@ -235,8 +216,7 @@
                   ["Braveheart" 1995] ["Terminator 3: Rise of the Machines" 2003]
                   ["Commando" 1985] ["Die Hard" 1988]
                   ["Alien" 1979] ["RoboCop" 1987]
-                  ["Rambo III" 1988] ["Lethal Weapon 3" 1992]})]
-    (is (true? pass?))))
+                  ["Rambo III" 1988] ["Lethal Weapon 3" 1992]}))))
 
 (comment
   (set! *print-meta* false)

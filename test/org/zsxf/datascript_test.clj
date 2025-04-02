@@ -36,7 +36,7 @@
 
 (defn query->map [q]
   (second (reduce
-           (*fn [[current-segment acc] el]
+           (fn [[current-segment acc] el]
                 (if (keyword? el)
                   [el acc]
                   [current-segment (update acc current-segment (fnil conj []) el)]))

@@ -4,87 +4,14 @@
             [org.zsxf.zset :as zs]
             [datascript.core :as d]
             [datascript.db :as ddb]
+            [org.zsxf.type :as t]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative IHashEq ILookup IObj IPersistentCollection Indexed Seqable)
            (datascript.db Datom)
            (java.io Writer)))
 
-(deftype Datom2 [^Datom datom meta]
-
-  ;Extends Datascript datoms to support metadata, and potentially more features in the future.
-  ; (!) Clojure-only at the moment, ClojureScript requires a slightly different set of methods.
-  ; This will potentially allow lower memory usage (TBD) as the Datom objects
-  ; are referenced and boxed directly inside Datom2 instead of being converted to vectors each time.
-  ; Datom2 almost entirely calls the Datascript Datom type methods directly to preserve
-  ; exact behavior, apart from the addition of IObj to support metadata
-
-  ;New!
-  IObj
-  (meta [self] meta)
-  (withMeta [self m] (Datom2. datom m))
-
-  ;All below almost directly pass through call execution to datascript.db.Datom
-  ddb/IDatom
-  (datom-tx [self] (ddb/datom-tx datom))
-  (datom-added [self] (ddb/datom-added datom))
-  (datom-get-idx [self] (ddb/datom-get-idx datom))
-  (datom-set-idx [self value] (ddb/datom-set-idx datom value))
-
-  Object
-  (hashCode [self] (.hashCode datom))
-  (toString [self] (.toString datom))
-
-  IHashEq
-  (hasheq [self] (.hasheq datom))
-
-  Seqable
-  (seq [self] (.seq datom))
-
-  IPersistentCollection
-  (equiv [self x]
-    ;WARNING about (= ...)
-    ; Mixing Datom and Datom2 (unlikely) can output the wrong result:
-    ;
-    ;(=
-    ; (datom2 (d/datom 1 :a "v"))
-    ; (d/datom 1 :a "v"))
-    ;;=> true ;looks good!
-    ;
-    ; ... but this one is wrong!
-    ;
-    ;(=
-    ;  (datom2 (d/datom 1 :a "v"))
-    ;  (d/datom 1 :a "v")
-    ;  (datom2 (d/datom 1 :a "v")))
-    ;;=> false
-    ;
-    ; This is because (= ...) compares items in overlapping pairs,
-    ; so in the latter case once it reaches the second item it will defer
-    ; the equiv decision to Datascript's Datom deftype which has a strict type check
-
-    ;check if x is Datom2, if yes, "unwrap" it and pass through
-    (cond
-      (instance? Datom2 x) (.equiv datom (.-datom ^Datom2 x)) ;unwrap
-      :else (.equiv datom x)))                              ;in any other case, call through direct
-  (empty [self] (throw (UnsupportedOperationException. "empty is not supported on Datom")))
-  (count [self] 5)
-  (cons [self v] (.cons datom v))
-
-  Indexed
-  (nth [self i] (.nth datom i))
-  (nth [self i not-found] (.nth datom i not-found))
-
-  ILookup
-  (valAt [self k] (.valAt datom k))
-  (valAt [self k nf] (.valAt datom k nf))
-
-  Associative
-  (entryAt [self k] (.entryAt datom k))
-  (containsKey [self k] (.containsKey datom k))
-  (assoc [self k v] (.assoc datom k v)))
-
 (defn datom2 [datom]
-  (->Datom2 datom nil))
+  (t/->Datom2 datom nil))
 
 (defn datom-from-reader [v]
   ; This does not seem possible until this is solved:

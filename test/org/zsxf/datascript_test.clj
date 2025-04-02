@@ -14,8 +14,7 @@
    [org.zsxf.experimental.datastream :as data-stream]
    [net.cgrand.xforms :as xforms]
    [org.zsxf.util :as util :refer [nth2]]
-   [taoensso.timbre :as timbre]
-   [clojure.set :as set]))
+   [taoensso.timbre :as timbre]))
 
 (defn load-learn-db
   ([]
@@ -43,7 +42,6 @@
   "Takes the where clauses of a datalog query and gives each a name, e.g. :c1.
   Returns a map from name to clause."
   [where-clauses]
-
   (into {}
         (map-indexed (fn [idx el]
                        [(keyword (format "c%s" (inc idx))) el]))

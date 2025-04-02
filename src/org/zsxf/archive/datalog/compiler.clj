@@ -1,7 +1,7 @@
 (ns org.zsxf.archive.datalog.compiler
   (:require [org.zsxf.xf :as dbsp-xf]
             [org.zsxf.zset :as zs]
-            [org.zsxf.datalog.parser :as parser]
+            [org.zsxf.archive.datalog.parser :as parser]
             [pangloss.transducers :as pxf]
             [pattern :as p]))
 

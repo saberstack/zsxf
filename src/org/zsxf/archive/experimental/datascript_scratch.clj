@@ -1,4 +1,4 @@
-(ns org.zsxf.experimental.datascript-scratch
+(ns org.zsxf.archive.experimental.datascript-scratch
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zs]

@@ -1,4 +1,4 @@
-(ns org.zsxf.experimental.postgres-data-init
+(ns org.zsxf.archive.experimental.postgres-data-init
   (:require [honey.sql :as hsql]
             [next.jdbc :as jdbc]
             [org.zsxf.zset :as zs]))

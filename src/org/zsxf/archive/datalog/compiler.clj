@@ -1,4 +1,4 @@
-(ns org.zsxf.datalog.compiler
+(ns org.zsxf.archive.datalog.compiler
   (:require [org.zsxf.xf :as dbsp-xf]
             [org.zsxf.zset :as zs]
             [org.zsxf.datalog.parser :as parser]

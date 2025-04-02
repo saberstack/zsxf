@@ -1,4 +1,4 @@
-(ns org.zsxf.jdbc.postgres
+(ns org.zsxf.archive.jdbc.postgres
   (:require
    [clojure.core.async :as a]
    [config.core :as config]

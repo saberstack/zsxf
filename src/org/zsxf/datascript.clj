@@ -200,6 +200,22 @@
 (defn datom-attr-val= [datom attr value]
   (and (datom-attr= datom attr) (datom-val= datom value)))
 
+(defn listener [tx-report query]
+  (let [tx-data (:tx-data tx-report)
+        zsets (tx-datoms->zsets2 tx-data)]
+    (timbre/info "tx-data" tx-data)
+    (timbre/info "zsets" zsets)
+    (timbre/info "query id" (q/get-id query))
+    (timbre/info (identical? query ))
+    (let [result (q/input query zsets)]
+      (timbre/info result)
+      result)
+
+    #_(util/time-f
+      (q/input query (timbre/spy (tx-datoms->zsets2 (:tx-data tx-report))))
+      (fn [input-time-ms]
+        (timbre/spy input-time-ms)))))
+
 (defn listen!
   "Initialize a listener for a given query and connection.
   Supports a time-f function that will be called with the time taken to process each transaction.
@@ -207,6 +223,8 @@
   [conn query & {:keys [time-f] :or {time-f identity}}]
   (d/listen! conn (q/get-id query)
     (fn [tx-report]
+      (listener tx-report query))
+    #_(fn [tx-report]
       (util/time-f
         (q/input query (timbre/spy (tx-datoms->zsets2 (:tx-data tx-report))))
         (fn [input-time-ms]
@@ -214,7 +232,7 @@
   ;return
   true)
 
-(defn init-query-with-conn
+(defn init-query-with-conn!
   "Initial naive implementation.
   Assumes no writes are incoming during initialization.
   WIP"
@@ -231,6 +249,15 @@
   "Helper to see recently added datoms"
   [conn n]
   (into [] (take n) (d/rseek-datoms @conn :eavt)))
+
+
+(defn conn-listeners
+  "Helper that returns current Datascript conn listeners.
+  Returns a map of listener key -> fn (which receives tx-report)
+  Warning: This is likely a Datascript implementation detail.
+  It could break without warning."
+  [conn]
+  (:listeners @(:atom conn)))
 
 ;examples
 (comment

@@ -224,7 +224,7 @@
                                     :where
                                     [?m :movie/title ?title]
                                     [?m :movie/year ?year]]))
-        _      (ds/init-query-with-conn query conn)
+        _      (ds/init-query-with-conn! query conn)
         pass? (= (q/get-result query)
                 #{["Lethal Weapon" 1987] ["Aliens" 1986]
                   ["The Terminator" 1984] ["Rambo: First Blood Part II" 1985]

@@ -1,14 +1,16 @@
 (ns org.zsxf.xf
   (:require [net.cgrand.xforms :as xforms]
+            [org.zsxf.query-state :as qs]
             [org.zsxf.zset :as zs]
             [pangloss.transducers :as pxf]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre])
+  (:import (clojure.lang Atom)))
 
 (defn join-xf
   "Joins two relations (represented by zsets)
   based on predicates pred-1 and pred-2 and index key functions index-k-1 and index-k-2.
   index-state is an atom containing a map of index UUIDs (one for each of the two relations) to indexed zsets."
-  [pred-1 index-k-1 pred-2 index-k-2 index-state
+  [pred-1 index-k-1 pred-2 index-k-2 ^Atom query
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
@@ -39,14 +41,15 @@
         any?
         (comp
           (map (fn [[delta-1 delta-2 zset]]
-                 (let [index-state-1-prev (get @index-state index-uuid-1 {})
-                       index-state-2-prev (get @index-state index-uuid-2 {})]
+                 (let [index-state-1-prev (get (qs/query-state @query) index-uuid-1 {})
+                       index-state-2-prev (get (qs/query-state @query) index-uuid-2 {})]
                    ;advance indices
-                   (swap! index-state
-                     (fn [state]
-                       (-> state
-                         (update index-uuid-1 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-1))))
-                         (update index-uuid-2 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-2)))))))
+                   (swap! query
+                     (qs/query-state-f
+                       (fn [state]
+                         (-> state
+                           (update index-uuid-1 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-1))))
+                           (update index-uuid-2 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-2))))))))
                    ;return
                    [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
           (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]

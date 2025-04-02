@@ -18,7 +18,7 @@
 ; over-retractions can be filtered out when their delta does not result in a change
 ; to the joined state
 
-(defn aggregate-example-xf [query]
+(defn aggregate-example-xf [query-state]
   (comment
     ;equivalent query
     '[:find ?country (sum ?pts)
@@ -32,11 +32,11 @@
     (xf/join-xf
       #(ds/datom-attr-val= % :team/name "A") ds/datom->eid
       #(ds/datom-attr= % :event/country) ds/datom->eid
-      query)
+      query-state)
     (xf/join-right-pred-1-xf
       #(ds/datom-attr= % :event/country) ds/datom->eid
       #(ds/datom-attr= % :team/points-scored) ds/datom->eid
-      query
+      query-state
       :last? true)
     (xforms/reduce zs/zset+)
     ;group by aggregates
@@ -114,34 +114,5 @@
   (q/get-result query-1)
 
   (q/get-state query-1)
-
-  )
-
-(comment
-
-  (def query-1 (q/create-query-a aggregate-example-xf))
-
-  (q/input-a query-1
-    [(ds/tx-datoms->datoms2->zset
-       [(ddb/datom 1 :team/name "A" 536870913 true)
-        (ddb/datom 1 :event/country "Japan" 536870913 true)
-        (ddb/datom 1 :team/points-scored 25 536870913 true)
-        (ddb/datom 2 :team/name "A" 536870913 true)
-        (ddb/datom 2 :event/country "Japan" 536870913 true)
-        (ddb/datom 2 :team/points-scored 18 536870913 true)
-        (ddb/datom 3 :team/name "A" 536870913 true)
-        (ddb/datom 3 :event/country "Australia" 536870913 true)
-        (ddb/datom 3 :team/points-scored 25 536870913 true)
-        (ddb/datom 4 :team/name "A" 536870913 true)
-        (ddb/datom 4 :event/country "Australia" 536870913 true)
-        (ddb/datom 4 :team/points-scored 4 536870913 true)])])
-
-  (q/get-result-a query-1)
-
-  (q/input-a query-1
-    [(ds/tx-datoms->datoms2->zset
-       [(ddb/datom 1 :team/name "A" 536870913 false)
-        (ddb/datom 2 :team/name "A" 536870913 false)
-        (ddb/datom 3 :team/name "A" 536870913 false)])])
 
   )

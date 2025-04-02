@@ -158,7 +158,7 @@
       (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
 
 (defn init-load-all []
-  (timbre/set-min-level! :warn)
+  (timbre/set-min-level! :info)
 
   (reset! *query-1 (q/create-query query-count-artists-by-country-zsxf))
   (reset! *query-2 nil)
@@ -166,7 +166,7 @@
 
   (reset! *conn (d/create-conn schema))
   ;setup link between query and connection via Datascript listener
-  (ds/init-query-with-conn! @*query-1 @*conn)
+  (ds/init-query-with-conn @*query-1 @*conn)
   ;load countries and genres
   (pre-load)
   ;load artists
@@ -274,17 +274,17 @@
 
   (time
     (do
-      (timbre/set-min-level! :warn)
+      (timbre/set-min-level! :info)
       (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
         (reset! *query-2 query)
-        (ds/init-query-with-conn! query @*conn)
+        (ds/init-query-with-conn query @*conn)
         (q/get-result query))))
 
   (do
     (timbre/set-min-level! :info)
     (let [query (q/create-query query-count-artists-by-country-zsxf)]
       (reset! *query-3 query)
-      (ds/init-query-with-conn! query @*conn)
+      (ds/init-query-with-conn query @*conn)
       (q/get-result query)))
 
   ;unlisten

@@ -46,6 +46,13 @@
     `#(ds/datom-attr=  ((comp ~@locator-vec) %) ~a)
     `#(ds/datom-attr-val= ((comp ~@locator-vec) %) ~a ~v)))
 
+(defn clause-pred-2 [locator-vec a v]
+  (let [datom (gensym 'datom)
+        locator (if locator-vec `((comp ~@locator-vec) ~datom) datom)]
+    (if (parser/variable? v)
+      `(fn [~datom] (ds/datom-attr= ~locator ~a))
+      `(fn [~datom] (ds/datom-attr-val= ~locator ~a ~v)))))
+
 (defmacro sprinkle-dbsp-on [datalog-query]
   (let [{where-clauses# :where find-vars# :find} (parser/query->map datalog-query)
         named-clauses# (parser/name-clauses where-clauses#)
@@ -90,19 +97,16 @@
 
                   common-var# (get-in adjacency-list# [from# to#])
                   [[_ a1# v1# ] [_ a2# v2#]] (map named-clauses# edge#)
-                  p1 (if (parser/variable? v1#)
-                       `#(ds/datom-attr=  ((comp  ~@(from# locators#)) %) ~a1#)
-                       `#(ds/datom-attr-val= ((comp ~@(from# locators#)) %) ~a1# ~v1#))
-                  p2 (if (parser/variable? v2#)
-                       `#(ds/datom-attr= % ~a2#)
-                       `#(ds/datom-attr-val= % ~a2# ~v2#))
-                  new-join `(xf/join-xf ~p1
+                  locator-vec# (from# locators#)
+                  p1# (clause-pred-2 locator-vec# a1# v1#)
+                  p2# (clause-pred-2 nil a2# v2#)
+                  new-join `(xf/join-xf ~p1#
                                         (comp ~((get-in variable-index# [common-var# from#]) pos->getter) ~@(from# locators#))
-                                        ~p2
+                                        ~p2#
                                         ~((get-in variable-index# [common-var# to#]) pos->getter)
                                         ~state
                                         :last? ~(= #{to#} remaining-nodes#))]
-              (recur (conj preds# p1 p2)
+              (recur (conj preds# p1# p2#)
                      (conj xf-steps# new-join)
                      (conj covered-nodes# to#)
                      (disj remaining-nodes# to#)

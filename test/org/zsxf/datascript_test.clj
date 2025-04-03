@@ -30,8 +30,8 @@
      conn)))
 
 (def pos->getter
-  {:entity ds/datom->eid
-   :value ds/datom->val})
+  {:entity `ds/datom->eid
+   :value `ds/datom->val})
 
 (defn safe-first [thing]
   (when (vector? thing)
@@ -60,7 +60,7 @@
            xf-steps# []
            covered-nodes# #{first-clause#}
            remaining-nodes# (set remaining-clauses#)
-           locators# {first-clause# [identity]}
+           locators# {first-clause# [`identity]}
            n# 1]
 
       (cond (empty? remaining-nodes#)
@@ -106,8 +106,8 @@
                      (conj xf-steps# new-join)
                      (conj covered-nodes# to#)
                      (disj remaining-nodes# to#)
-                     (-> (medley/map-vals #(conj % safe-first) locators#)
-                         (assoc to# [safe-second]))
+                     (-> (medley/map-vals #(conj % `safe-first) locators#)
+                         (assoc to# [`safe-second]))
                      (inc n#)))))))
 
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"

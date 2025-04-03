@@ -61,6 +61,12 @@
      (with-meta x zset-weight-of-1)
      (with-meta x {:zset/w weight}))))
 
+(defn zset-item?
+  [x]
+  (and
+    (util/can-meta? x)
+    (int? (zset-weight x))))
+
 (defn zset-count-item
   "zset representing a count"
   [n]

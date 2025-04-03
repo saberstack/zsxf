@@ -4,7 +4,7 @@
             [clojure.java.io :as io]
             [taoensso.timbre :as timbre]
             [taoensso.encore :as enc])
-  (:import (clojure.lang IReduceInit)
+  (:import (clojure.lang IObj IReduceInit)
            (java.io PushbackReader)))
 
 (defn reducible->chan
@@ -183,6 +183,12 @@
     (fn [index item]
       (when (int? (/ index n))
         item))))
+
+(defn can-meta?
+  "Check if x can have metadata."
+  [x]
+  ;TODO make it work for ClojureScript
+  (instance? IObj x))
 
 (comment
   ;usage

@@ -9,6 +9,23 @@
             [org.zsxf.util :as util :refer [nth2]]
             [taoensso.timbre :as timbre]))
 
+(defn query-result-set-xf [result-set-state]
+  (map (fn [result-set-delta]
+         (timbre/spy result-set-delta)
+         (swap! result-set-state
+           (fn [m] (zs/zset-pos+ m result-set-delta))))))
+
+(defn query-result-state-xf
+  "Saves query results to atom. Works for both zsets and indexed-zset results."
+  [state]
+  (map (fn [result-delta]
+         (timbre/spy result-delta)
+         (swap! state
+           (fn [{:keys [result] :as state-m}]
+             (let [[result result+] (xf/init-result result result-delta)]
+               (assoc state-m :result
+                 (result+ result result-delta))))))))
+
 (comment
   (let [conn (d/create-conn {})]
     [
@@ -336,7 +353,7 @@
                             (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
                             (xforms/reduce zs/zset+))))
             output-ch (a/chan (a/sliding-buffer 1)
-                        (xf/query-result-set-xf result-set))
+                        (query-result-set-xf result-set))
             to        (a/pipeline 1 output-ch xf @input)]
         @input))
 
@@ -426,7 +443,7 @@
                           (map (fn [delta]
                                  (swap! result-deltas conj delta)
                                  delta))                    ;debug
-                          (xf/query-result-state-xf result-state)
+                          (query-result-state-xf result-state)
                           ))
             to        (a/pipeline 1 output-ch xf @input)]
         @input)
@@ -657,7 +674,7 @@
                             (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
                             (xforms/reduce (zs/zset-xf+ find-xf)))))
             output-ch (a/chan (a/sliding-buffer 1)
-                        (xf/query-result-set-xf result-set))
+                        (query-result-set-xf result-set))
             to        (a/pipeline 1 output-ch xf @input)]
         @input)
 
@@ -715,7 +732,7 @@
                                   [(zs/zset-sum-item sum)
                                    (zs/zset-count-item cnt)])))))
         output-ch (a/chan (a/sliding-buffer 1)
-                    (xf/query-result-state-xf result-state))
+                    (query-result-state-xf result-state))
         _to       (a/pipeline 1 output-ch xf @input)])
 
   (a/>!! @input

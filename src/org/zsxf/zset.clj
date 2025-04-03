@@ -133,7 +133,7 @@
   ([zset-1]
    (zset-pos+ zset-1 (zset #{})))
   ([zset-1 zset-2]
-   ;{:pre [(zset? zset-1) (zset? zset-2)]}
+   #_{:pre [(zset? zset-1) (zset? zset-2)]}
    (transduce
      ;get set items one by one
      (comp cat)
@@ -155,7 +155,7 @@
 (defn zset-negate
   "Change the sign of all the weights in a zset"
   [zset]
-  {:pre [(zset? zset)]}
+  ;{:pre [(zset? zset)]}
   (transduce
     (map (fn [item]
            (update-zset-item-weight
@@ -172,7 +172,7 @@
   ([coll xf]
    (zset coll xf 1))
   ([coll xf weight]
-   {:pre [(s/valid? (s/coll-of eligible-coll?) coll)]}
+   ;{:pre [(s/valid? (s/coll-of eligible-coll?) coll)]}
    (transduce
      xf
      (fn
@@ -204,7 +204,7 @@
 (defn zset*
   "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"
   [zset-1 zset-2]
-  {:pre [(zset? zset-1) (zset? zset-2)]}
+  #_{:pre [(zset? zset-1) (zset? zset-2)]}
   (set
     (for [item-1 zset-1 item-2 zset-2]
       (let [weight-1   (zset-weight item-1)
@@ -245,12 +245,11 @@
   ([indexed-zset]
    (indexed-zset->zset indexed-zset (map identity)))
   ([indexed-zset xf]
-   (transduce
+   (into
+     #{}
      (comp
        (mapcat (fn [[_k v]] v))
        xf)
-     conj
-     #{}
      indexed-zset)))
 
 (defn indexed-zset+
@@ -301,10 +300,9 @@
   "Join and multiply two indexed zsets (indexed zsets are maps)"
   [indexed-zset-1 indexed-zset-2]
   (let [commons (util/key-intersection indexed-zset-1 indexed-zset-2)]
-    (transduce
-      (map (fn [common] [common (zset* (indexed-zset-1 common) (indexed-zset-2 common))]))
-      conj
+    (into
       {}
+      (map (fn [common] [common (zset* (indexed-zset-1 common) (indexed-zset-2 common))]))
       commons)))
 
 (comment

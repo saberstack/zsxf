@@ -4,16 +4,15 @@
 
 
 (defn create-query
-  "Create a query with init-xf and optional state atom.
-  If state is not provided, one will be created.
-  init-xf is a function which takes an atom and must return a ZSXF-compatible transducer which takes and returns zsets
+  "Create a query with init-xf.
+  init-xf is a function which takes a single argument,
+  and must return a ZSXF-compatible transducer which takes and returns zsets
   Returns a map."
-  ([init-xf]
-   (create-query init-xf (atom nil)))
-  ([init-xf state]
-   {::q/xf    (init-xf state)
-    ::q/state state
-    ::q/id    (random-uuid)}))
+  [init-xf]
+  (let [state (atom nil)]
+    {::q/xf     (init-xf state)
+     ::q/state  state
+     ::q/id     (random-uuid)}))
 
 
 (defn input

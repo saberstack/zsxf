@@ -92,12 +92,11 @@
   "Transforms datoms into datoms2, and then into a vector of zsets.
   Useful to maintain inter-transaction order of datoms."
   [datoms]
-  (transduce
+  (into
+    []
     (comp
       (map datom->datom2->zset-item)
       (map hash-set))
-    conj
-    []
     datoms))
 
 (defn eligible-datom? [datom]
@@ -158,6 +157,14 @@
   "Helper to see recently added datoms"
   [conn n]
   (into [] (take n) (d/rseek-datoms @conn :eavt)))
+
+(defn conn-listeners
+  "Helper that returns current Datascript conn listeners.
+  Returns a map of listener key -> fn (which receives tx-report)
+  Warning: This is likely a Datascript implementation detail.
+  It could break without warning."
+  [conn]
+  (:listeners @(:atom conn)))
 
 ;examples
 (comment

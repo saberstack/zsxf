@@ -17,7 +17,7 @@
                                                       :sha     "f3ae713fc025e8726d5241d9e797c6ea92c80a42"}
            gigasquid/vsa-clj                         {:git/url "https://github.com/gigasquid/vsa-clj"
                                                       :sha     "4db3de1b8efb33c14ebd1bd60ea91c75e9b79857"}
-           com.taoensso/nippy                        {:mvn/version "3.3.0"}
+           com.taoensso/nippy                        {:mvn/version "3.4.2"}
            datascript/datascript                     {:mvn/version "1.7.4"}
            org.clojure/math.combinatorics            {:mvn/version "0.3.0"}
            saberstack/loop                           {:git/url "https://github.com/saberstack/loop"
@@ -39,7 +39,7 @@
            com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}
            com.cnuernber/ham-fisted                  {:mvn/version "2.026"}
            com.aphyr/bifurcan-clj                    {:mvn/version "0.1.3"}
-
+           criterium/criterium                       {:mvn/version "0.4.6"}
            }
  :aliases {:add-opens
            {:jvm-opts ["-Djdk.attach.allowAttachSelf"

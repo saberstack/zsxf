@@ -10,11 +10,13 @@
             [ham-fisted.api :as hf]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.datascript :as ds]
+            [taoensso.nippy :as nippy]
             [org.zsxf.query :as q]
             [org.zsxf.util :as util]
             [org.zsxf.experimental.bifurcan :as clj-bf]
             [org.zsxf.xf :as xf]
             [org.zsxf.zset :as zs]
+            [criterium.core :as criterium]
             [datascript.core :as d]
             [taoensso.timbre :as timbre]))
 
@@ -35,10 +37,9 @@
 
 (defonce *conn (atom (d/create-conn schema)))
 (defonce *query-1 (atom nil))
-(defonce *query-1-times (atom []))
 (defonce *query-2 (atom nil))
 (defonce *query-3 (atom nil))
-(defonce *db (atom nil))
+(defonce *conn-2 (atom nil))
 
 (defn artist-genres->datascript-refs [genres]
   (into []
@@ -49,6 +50,8 @@
              [:genre/name genre])))
     genres))
 
+(defonce artists-full-set (atom #{}))
+
 (defn artist->datascript-artist
   [{:keys [name id genres country type]}]
   (cond->
@@ -58,33 +61,64 @@
     (string? type) (assoc :artist/type type)
     (< 0 (count genres)) (assoc :artist/genres (artist-genres->datascript-refs genres))))
 
-(defn load-artists [file-path n]
+
+(defn json-artists->datascript
+  [n artists & {:keys [artist-xf] :or {artist-xf (map identity)}}]
+  (let [input-ch  (a/chan 1000)
+        output-ch (a/chan 1
+                    (comp
+                      (remove
+                        (fn [artist]
+                          (d/transact! @*conn (vector artist))
+                          ; return true to "drop" the data in this transducer
+                          ; before it reaches the channel
+                          true))))
+        _         (a/pipeline 7
+                    output-ch
+                    artist-xf
+                    input-ch)]
+    (transduce
+      (comp (take n))
+      (completing
+        (fn [accum-cnt item]
+          (a/>!! input-ch item)
+          (inc accum-cnt))
+        (fn [accum-cnt-final] accum-cnt-final))
+      0
+      artists)))
+
+(defn nippy-artists->datascript
+  [n artists]
+  (transduce
+    (comp (take n))
+    (completing
+      (fn [accum-cnt artist]
+        (d/transact! @*conn (vector artist))
+        ; return true to "drop" the data in this transducer
+        ; before it reaches the channel
+        true
+        (inc accum-cnt))
+      (fn [accum-cnt-final] accum-cnt-final))
+    0
+    artists))
+
+(defn load-artists-from-nippy [file-path n]
+  (nippy-artists->datascript n (nippy/thaw-from-file file-path)))
+
+(defn load-artists-from-json [file-path n]
   (with-open [rdr (io/reader file-path)]
-    (let [input-ch  (a/chan 1000)
-          output-ch (a/chan 1
-                      (comp
-                        (remove
-                          (fn [artist]
-                            (d/transact! @*conn (vector artist))
-                            ;after transact into Datascript,
-                            ; return true to "drop" the data in this transducer
-                            ; before it reaches the channel
-                            true))))
-          _         (a/pipeline 7
-                      output-ch
-                      (comp
-                        (map (fn [s] (charred/read-json s :key-fn keyword)))
-                        (map artist->datascript-artist))
-                      input-ch)]
-      (transduce
-        (comp (take n))
-        (completing
-          (fn [accum-cnt item]
-            (a/>!! input-ch item)
-            (inc accum-cnt))
-          (fn [accum-cnt-final] accum-cnt-final))
-        0
-        (line-seq rdr)))))
+    (json-artists->datascript
+      n (line-seq rdr)
+      :artist-xf
+      (comp
+        (map (fn [s] (charred/read-json s :key-fn keyword)))
+        (map artist->datascript-artist)))))
+
+(comment
+  (nippy/freeze-to-file "resources/mbrainz/artists_mini_set.nippy"
+    (into #{}
+      (util/keep-every-nth 100)
+      @artists-full-set)))
 
 (defn data->country-set [data]
   (into #{}
@@ -103,13 +137,10 @@
     data))
 
 (defn load-country-set []
-  (util/load-edn-file "resources/mbrainz/country_set.edn"))
+  (util/read-edn-file "resources/mbrainz/country_set.edn"))
 (defn load-genre-set []
-  (util/load-edn-file "resources/mbrainz/genre_set.edn"))
+  (util/read-edn-file "resources/mbrainz/genre_set.edn"))
 
-(defn pre-load []
-  (d/transact! @*conn (vec (load-country-set)))
-  (d/transact! @*conn (vec (load-genre-set))))
 
 (defn query-count-artists-by-country-zsxf
   "Query for artist count by a specific country."
@@ -168,14 +199,49 @@
   ;setup link between query and connection via Datascript listener
   (ds/init-query-with-conn @*query-1 @*conn)
   ;load countries and genres
-  (pre-load)
-  ;load artists
-  (load-artists "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000))
+  (d/transact! @*conn (vec (load-country-set)))
+  (d/transact! @*conn (vec (load-genre-set)))
 
-(defn recreate-db []
-  (let [db (time (d/init-db (d/seek-datoms @@*conn :eavt) schema))]
-    (reset! *db db)
-    :done))
+  ;load artists
+  ;(load-artists-from-json "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000)
+  ;(load-artists-from-nippy "resources/mbrainz/artists_mini_set.nippy" 10000000)
+  (load-artists-from-nippy "resources/mbrainz/artists_set.nippy" 10000000))
+
+
+
+(defn init-db-fast
+  ([] (init-db-fast (d/seek-datoms @@*conn :eavt)))
+  ([datoms]
+   (let [db (d/init-db datoms schema)]
+     (reset! *conn-2 (d/conn-from-db db))
+     :done)))
+
+(comment
+  (reset! *conn-2 nil)
+
+  (let [stage-1 (time (nippy/freeze-to-file
+                        "resources/mbrainz/artists_datoms.nippy"
+                        (into
+                          []
+                          (comp
+                            (map (fn [[e a v tx b]]
+                                   [e a v tx b])))
+                          (d/seek-datoms @@*conn :eavt))))])
+
+  (let [stage-2 (time
+                  (nippy/thaw-from-file
+                    "resources/mbrainz/artists_datoms.nippy"
+                    {:thaw-xform
+                     (comp
+                       (map (fn [thawing]
+                              (if (vector? thawing)
+                                (let [[e a v tx b] thawing]
+                                  (d/datom e a v tx b))
+                                thawing))))}))
+        state-3 (time (init-db-fast stage-2))]
+    :done)
+
+  )
 
 ;Direct Datascript queries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -207,6 +273,17 @@
         [(= ?country-name "US")]
         ]
       @@*conn)))
+
+(defn query-count-artists-by-country-2 [conn]
+  (time
+    (d/q
+      '[:find ?country-name (count ?a)
+        :where
+        [?a :artist/country ?c]
+        [?c :country/name-alpha-2 ?country-name]
+        [(= ?country-name "US")]
+        ]
+      @conn)))
 
 (defn query-all-countries []
   (d/q
@@ -240,7 +317,23 @@
 ;end queries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defn init-query [conn query-atom]
+  (do
+    (timbre/set-min-level! :info)
+    (when-let [query @query-atom]
+      (timbre/info "unlisten...")
+      (d/unlisten! conn (q/get-id query))
+      :ok)
+    (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
+      (reset! query-atom query)
+      (ds/init-query-with-conn query conn)
+      (q/get-result query))))
+
 (comment
+
+  (init-query @*conn-2 *query-2)
+
   (set! *print-meta* true)
   (timbre/set-min-level! :info)
   (timbre/set-min-level! :trace)
@@ -249,7 +342,7 @@
 
   (do
     ;add another artist
-    (d/transact! @*conn
+    (d/transact! @*conn-2
       [{:artist/name    "Eric Jordan"
         :artist/id      "eric-jordan"
         :artist/country [:country/name-alpha-2 "US"]
@@ -277,7 +370,7 @@
       (timbre/set-min-level! :info)
       (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
         (reset! *query-2 query)
-        (ds/init-query-with-conn query @*conn)
+        (ds/init-query-with-conn query @*conn-2)
         (q/get-result query))))
 
   (do
@@ -315,7 +408,7 @@
 
 
 
-  (mm/measure *db)
+  (mm/measure *conn-2)
 
   (mm/measure [*conn])
 
@@ -324,7 +417,7 @@
   (q/get-id @*query-1)
 
 
-  (mm/measure [*db *conn])
+  (mm/measure [*conn-2 *conn])
 
   )
 
@@ -475,7 +568,5 @@
       :done
       @*clojure-map))
   ;Approx "Elapsed time: 500 msecs"
-
-
 
   )

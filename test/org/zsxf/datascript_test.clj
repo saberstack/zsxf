@@ -21,8 +21,8 @@
    (load-learn-db nil)
    )
   ([listen-atom]
-   (let [schema (util/load-edn-file "resources/learndatalogtoday/schema_datascript.edn")
-         data (util/load-edn-file   "resources/learndatalogtoday/data_datascript.edn")
+   (let [schema (util/read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
+         data (util/read-edn-file   "resources/learndatalogtoday/data_datascript.edn")
          conn (d/create-conn schema)]
      (when listen-atom
        (data-stream/listen-datom-stream conn listen-atom ds/tx-datoms->zset))

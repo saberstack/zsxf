@@ -94,7 +94,7 @@
     (map (fn [indexed-zset]
            (update-vals indexed-zset
              (fn [indexed-zset-item]
-               (transduce xform conj #{} indexed-zset-item)))))))
+               (into #{} xform indexed-zset-item)))))))
 
 
 (defn join-right-pred-1-xf
@@ -156,13 +156,6 @@
   []
   (mapcat (fn [tx-v] (timbre/spy tx-v))))
 
-
-(defn query-result-set-xf [result-set-state]
-  (map (fn [result-set-delta]
-         (timbre/spy result-set-delta)
-         (swap! result-set-state
-           (fn [m] (zs/zset-pos+ m result-set-delta))))))
-
 (defn init-result [result result-delta]
   (if (nil? result)
     ;init
@@ -178,23 +171,11 @@
       :else (throw (ex-info "result and result-delta together must be either maps or sets"
                      {:result result :result-delta result})))))
 
-(defn query-result-state-xf
-  "Saves query results to atom. Works for both zsets and indexed-zset results."
-  [state]
-  (map (fn [result-delta]
-         (timbre/spy result-delta)
-         (swap! state
-           (fn [{:keys [result] :as state-m}]
-             (let [[result result+] (init-result result result-delta)]
-               (assoc state-m :result
-                 (result+ result result-delta))))))))
-
 
 (defn disj-irrelevant-items [zset & preds]
-  (transduce
-    (filter (apply some-fn preds))
-    conj
+  (into
     #{}
+    (filter (apply some-fn preds))
     zset))
 
 (defn pull-join-xf []

@@ -125,9 +125,21 @@
              (str enc/system-newline
                (ef data)))))))))
 
-(defn load-edn-file [file-path]
-  (with-open [rdr (io/reader file-path)]
-    (edn/read (PushbackReader. rdr))))
+(defn read-edn-file [file-path]
+  (with-open [r (io/reader file-path)]
+    (edn/read (PushbackReader. r))))
+
+(defn write-text-to-file
+  "Write a string to a file.
+  data-f is a function that takes the data and returns a string.
+  The default is pr-str, which will print the data as a string."
+  [data file-path & {:keys [data-f] :or {data-f pr-str}}]
+  (with-open [w (io/writer file-path :append true)]
+    (.write w ^String (data-f data))))
+
+(comment
+  ;usage
+  (write-text-to-file {:hello "tmp"} "/tmp/hello-tmp"))
 
 (defn take-lastv
   "Similar to take-last but uses subvec, which is O(1).
@@ -163,6 +175,20 @@
       (println
         (str "    "
           (list name (into ['this] (take argcount (repeatedly gensym)))))))))
+
+(defn keep-every-nth
+  "Transducer that keeps every nth item."
+  [n]
+  (keep-indexed
+    (fn [index item]
+      (when (int? (/ index n))
+        item))))
+
+(comment
+  ;usage
+  (into [] (keep-every-nth 10) (range 100))
+  ;=> [0 10 20 30 40 50 60 70 80 90]
+  )
 
 (comment
   (scaffold clojure.lang.IPersistentMap))

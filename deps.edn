@@ -5,7 +5,7 @@
            tick/tick                                 {:mvn/version "0.6.0"}
            com.rpl/proxy-plus                        {:mvn/version "0.0.8"}
            net.cgrand/xforms                         {:mvn/version "0.19.4"}
-           org.clojure/core.async                    {:mvn/version "1.6.673"}
+           org.clojure/core.async                    {:mvn/version "1.8.730"}
            com.cognitect.aws/api                     {:mvn/version "0.8.641"}
            com.cognitect.aws/endpoints               {:mvn/version "1.1.12.398"}
            com.cognitect.aws/s3                      {:mvn/version "825.2.1250.0"}
@@ -18,7 +18,7 @@
            gigasquid/vsa-clj                         {:git/url "https://github.com/gigasquid/vsa-clj"
                                                       :sha     "4db3de1b8efb33c14ebd1bd60ea91c75e9b79857"}
            com.taoensso/nippy                        {:mvn/version "3.3.0"}
-           datascript/datascript                     {:mvn/version "1.6.1"}
+           datascript/datascript                     {:mvn/version "1.7.4"}
            org.clojure/math.combinatorics            {:mvn/version "0.3.0"}
            saberstack/loop                           {:git/url "https://github.com/saberstack/loop"
                                                       :sha     "627adc4febad2c2105510416fe92003bacf58c4b"}

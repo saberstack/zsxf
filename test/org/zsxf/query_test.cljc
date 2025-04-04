@@ -2,11 +2,12 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]])
    #?(:cljs [cljs.test :refer-macros [deftest is]])
+   [datascript.core :as d]
    [datascript.db :as ddb]
    [net.cgrand.xforms :as xforms]
    [org.zsxf.datascript :as ds]
    [org.zsxf.query :as q]
-   [org.zsxf.util :as util]
+   [org.zsxf.util :as util :refer [nth2]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
    [taoensso.timbre :as timbre]))
@@ -85,5 +86,119 @@
   (q/get-result query-1)
 
   (q/get-state query-1)
+
+  )
+
+
+;PROBLEM 1:
+; once we reach certain clauses, joining to a previous clause can become ambiguous
+; when using only numbered (first, second, nth, etc) paths
+;
+;
+
+(defn >inst [inst-1 inst-2]
+  (condp = (compare inst-1 inst-2)
+    0 false
+    -1 false
+    1 true))
+
+(comment
+  '[:find ?actor
+    :where
+    [?danny :person/born ?danny-born]
+    [?danny :person/name "Danny Glover"]
+    [?a :person/name ?actor]
+    [?a :person/born ?actor-born]
+    [_ :movie/cast ?a]
+    [(> ?danny-born ?actor-born)]])
+
+(defn actors-older-than-danny [query-state]
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    ;danny
+    (xf/join-xf
+      ;[?danny :person/born ?danny-born]
+      #(ds/datom-attr= % :person/born) ds/datom->eid
+      ;[?danny :person/name "Danny Glover"]
+      #(ds/datom-attr-val= % :person/name "Danny Glover") ds/datom->eid
+      query-state)
+
+    ;actors
+    (xf/join-xf
+      ;[?a :person/name ?actor]
+      #(ds/datom-attr= % :person/name) ds/datom->eid
+      ;[?a :person/born ?actor-born]
+      #(ds/datom-attr= % :person/born) ds/datom->eid
+      query-state)
+
+    (xf/join-right-pred-1-xf
+      ;[?a :person/born ?actor-born]
+      #(ds/datom-attr= % :person/born) ds/datom->eid
+      ;[_ :movie/cast ?a]
+      #(ds/datom-attr= % :movie/cast) ds/datom->val
+      query-state)
+
+    ;danny joins actors where...
+    ;[(> ?danny-born ?actor-born)]
+    (xf/join-left-pred-1-xf
+      ;?danny-born --> [?danny :person/born ?danny-born]
+      #(ds/datom-attr= % :person/born) ds/datom->val
+      ;?actor-born
+      #(ds/datom-attr= (-> % (nth2 0) (nth2 1)) :person/born) #(-> % (nth2 0) (nth2 1) ds/datom->val)
+      query-state
+      :return-zset-item-xf
+      (comp
+        (filter
+          (fn [rel1+rel2]
+            (timbre/info "reached here...")
+            (let [inst-1 (timbre/spy (-> rel1+rel2 first (nth2 0) ds/datom->val))
+                  inst-2 (timbre/spy (-> rel1+rel2 second (nth2 0) (nth2 1) (ds/datom->val)))]
+              (timbre/info rel1+rel2)
+              (timbre/info inst-1)
+              (timbre/info inst-2)
+              (when (and inst-1 inst-2)
+                (>inst
+                  ;[?danny :person/born ?danny-born]'s value
+                  inst-1
+                  ;[?a :person/born ?actor-born]'s value... inside another relation
+                  ;notice the (nth2 0) (nth2 1) part of the path is the same as above
+                  inst-2))))))
+      :last? true)
+    (xforms/reduce (zs/zset-xf+
+                     (map (xf/with-meta-f
+                            (fn [rel1+rel2]
+                              (timbre/info rel1+rel2))))))
+    (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))
+  )
+
+(comment
+  ;p2 looking for a joined relation like:
+  (let [rel [['[?a :person/name ?actor]
+              '[?a :person/born ?actor-born]]
+             '[_ :movie/cast ?a]]]
+    ;looking for [?a :person/born ?actor-born]
+    ; so the path is:
+    (-> rel
+      (nth2 0)
+      (nth2 1)))
+  ;=> [?a :person/born ?actor-born]
+  )
+
+(defn load-learn-db
+  []
+  (let [schema (util/read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
+        data   (util/read-edn-file "resources/learndatalogtoday/data_datascript.edn")
+        conn   (d/create-conn schema)]
+    (d/transact! conn data)
+    conn))
+
+(comment
+
+  (do
+    (timbre/set-min-level! :info)
+    (def conn (load-learn-db))
+    (def query-1 (q/create-query actors-older-than-danny))
+    (ds/init-query-with-conn query-1 conn)
+    (q/get-result query-1))
 
   )

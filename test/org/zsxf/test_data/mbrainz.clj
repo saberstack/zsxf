@@ -364,13 +364,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
   ;second query
-
   (time
     (do
       (timbre/set-min-level! :info)
       (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
         (reset! *query-2 query)
-        (ds/init-query-with-conn query @*conn-2)
+        (ds/init-query-with-conn query @*conn)
         (q/get-result query))))
 
   (do

@@ -1,0 +1,1 @@
+clj -M --main cljs.main --compile org.zsxf.core --repl

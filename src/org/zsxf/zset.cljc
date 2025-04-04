@@ -2,7 +2,6 @@
   (:require [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]
-            [org.zsxf.util :as util]
             [taoensso.timbre :as timbre]))
 
 ;How to turn a zset into a proper Clojure collection
@@ -61,11 +60,11 @@
      (with-meta x zset-weight-of-1)
      (with-meta x {:zset/w weight}))))
 
-(defn zset-item?
-  [x]
-  (and
-    (util/can-meta? x)
-    (int? (zset-weight x))))
+;(defn zset-item?
+;  [x]
+;  (and
+;    (util/can-meta? x)
+;    (int? (zset-weight x))))
 
 (defn zset-count-item
   "zset representing a count"
@@ -302,10 +301,25 @@
      indexed-zset-1
      indexed-zset-2)))
 
+(defn key-intersection
+  "Taken from clojure.set/intersection but adapted to work for maps.
+  Takes maps m1 and m2.
+  Returns a set of common keys."
+  [m1 m2]
+  (if (< (count m2) (count m1))
+    (recur m2 m1)
+    (reduce
+      (fn [result item]
+        (if (contains? m2 item)
+          (conj result item)
+          result))
+      #{}
+      (keys m1))))
+
 (defn join-indexed*
   "Join and multiply two indexed zsets (indexed zsets are maps)"
   [indexed-zset-1 indexed-zset-2]
-  (let [commons (util/key-intersection indexed-zset-1 indexed-zset-2)]
+  (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
     (into
       {}
       (map (fn [common] [common (zset* (indexed-zset-1 common) (indexed-zset-2 common))]))

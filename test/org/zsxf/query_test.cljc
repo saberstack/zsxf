@@ -105,11 +105,13 @@
 (comment
   '[:find ?actor
     :where
-    [?danny :person/born ?danny-born]
     [?danny :person/name "Danny Glover"]
+    [?danny :person/born ?danny-born]
+
     [?a :person/name ?actor]
     [?a :person/born ?actor-born]
     [_ :movie/cast ?a]
+
     [(> ?danny-born ?actor-born)]])
 
 (defn actors-older-than-danny [query-state]
@@ -187,18 +189,44 @@
 (defn load-learn-db
   []
   (let [schema (util/read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
-        data   (util/read-edn-file "resources/learndatalogtoday/data_datascript.edn")
-        conn   (d/create-conn schema)]
-    (d/transact! conn data)
-    conn))
+        data   (util/read-edn-file "resources/learndatalogtoday/data_datascript.edn")]
+    [schema data]))
 
 (comment
 
   (do
     (timbre/set-min-level! :info)
-    (def conn (load-learn-db))
+    (let [[schema data] (load-learn-db)]
+
+      (def conn (d/create-conn schema))
+      #_(d/transact! conn
+        [{:person/born #inst"2025-01-01T00:00:00.000-00:00"
+          :person/name "Danny Glover"}])
+      (d/transact! conn data))
+
     (def query-1 (q/create-query actors-older-than-danny))
     (ds/init-query-with-conn query-1 conn)
     (q/get-result query-1))
+
+  (d/q
+    '[:find ?actor (count ?danny)
+      :where
+      [?danny :person/name "Danny Glover"]
+      [?danny :person/born ?danny-born]
+
+      [?a :person/name ?actor]
+      [?a :person/born ?actor-born]
+      ;[_ :movie/cast ?a]
+
+      [(> ?danny-born ?actor-born)]]
+    @conn)
+
+  (d/q
+    '[:find ?danny
+      :where
+      [?danny :person/name "Danny Glover"]]
+    @conn)
+
+  conn
 
   )

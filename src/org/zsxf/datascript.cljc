@@ -3,49 +3,28 @@
             [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
             [datascript.core :as d]
-            [datascript.db :as ddb]
-            [org.zsxf.type :as t]
-            [taoensso.timbre :as timbre])
-  (:import (datascript.db Datom)
-           (java.io Writer)
-           (org.zsxf.type Datom2)))
+            [taoensso.timbre :as timbre]
+            #?(:clj [org.zsxf.type :as t]))
+  #?(:clj
+     (:import (datascript.db Datom)
+              (org.zsxf.type Datom2))))
 
 (defn datom2 [datom]
-  (t/->Datom2 datom nil))
+  #?(:clj
+     (t/->Datom2 datom nil)
+     :cljs
+     ;TODO implement Datom2 for CLJS
+     (let [[e a v _t add-or-retract :as datom] datom]
+       [e a v])))
 
-(defn datom-from-reader [v]
-  ; This does not seem possible until this is solved:
-  ; https://clojure.atlassian.net/jira/software/c/projects/CLJ/issues/CLJ-2904
-  (datom2 (apply ddb/datom v)))
+(defn eligible-datom? [datom]
+  (or
+    (vector? datom)
+    ;TODO implement Datom2 for CLJS
+    #?(:clj (instance? Datom datom))
+    #?(:clj (instance? Datom2 datom))))
 
-;; Custom printing
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn pr-on
-  [x w]
-  (if *print-dup*
-    (print-dup x w)
-    (print-method x w))
-  nil)
-
-(defn- print-meta [o, ^Writer w]
-  (when-let [m (meta o)]
-    (when (and (pos? (count m))
-            (or *print-dup*
-              (and *print-meta* *print-readably*)))
-      (.write w " ^")
-      (if (and (= (count m) 1) (:tag m))
-        (pr-on (:tag m) w)
-        (pr-on m w))
-      (.write w " "))))
-
-(defmethod print-method Datom2 [^Datom2 datom2, ^Writer w]
-  (binding [*out* w]
-    (let [^Datom d (.-datom datom2)]
-      (print-meta datom2 w)
-      (.write w "#org.zsxf.datascript/Datom2")
-      (pr [(.-e d) (.-a d) (.-v d) (ddb/datom-tx d) (ddb/datom-added d)]))))
-
-;; Custom printing end
+;; End CLJC code
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn datom->weight [datom]
@@ -76,18 +55,6 @@
     #{}
     datoms))
 
-(defn tx-datoms->zsets
-  "Transforms datoms into a vector of zsets.
-  Useful to maintain inter-transaction order of datoms."
-  [datoms]
-  (transduce
-    (comp
-      (map datom->zset-item)
-      (map hash-set))
-    conj
-    []
-    datoms))
-
 (defn tx-datoms->zsets2
   "Transforms datoms into datoms2, and then into a vector of zsets.
   Useful to maintain inter-transaction order of datoms."
@@ -98,12 +65,6 @@
       (map datom->datom2->zset-item)
       (map hash-set))
     datoms))
-
-(defn eligible-datom? [datom]
-  (or
-    (vector? datom)
-    (instance? Datom datom)
-    (instance? Datom2 datom)))
 
 (defn datom->eid [datom]
   (if (eligible-datom? datom)
@@ -130,13 +91,10 @@
   "Initialize a listener for a given query and connection.
   Supports a time-f function that will be called with the time taken to process each transaction.
   Returns true"
-  [conn query & {:keys [time-f] :or {time-f identity}}]
+  [conn query]
   (d/listen! conn (q/get-id query)
     (fn [tx-report]
-      (util/time-f
-        (q/input query (timbre/spy (tx-datoms->zsets2 (:tx-data tx-report))))
-        (fn [input-time-ms]
-          (timbre/spy input-time-ms)))))
+      (q/input query (timbre/spy (tx-datoms->zsets2 (:tx-data tx-report))))))
   ;return
   true)
 

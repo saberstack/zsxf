@@ -2,7 +2,8 @@
   (:require [datascript.core :as d]
             [datascript.db :as ddb])
   (:import (clojure.lang Associative IHashEq ILookup IObj IPersistentCollection Indexed Seqable)
-           (datascript.db Datom)))
+           (datascript.db Datom)
+           (java.io Writer)))
 
 (deftype Datom2 [^Datom datom meta]
 
@@ -99,3 +100,39 @@
   (= datom2-2 datom2-3)
   ;=> false (!!!)
   )
+
+
+;; Custom printing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn pr-on
+  [x w]
+  (if *print-dup*
+    (print-dup x w)
+    (print-method x w))
+  nil)
+
+(defn- print-meta [o, ^Writer w]
+  (when-let [m (meta o)]
+    (when (and (pos? (count m))
+            (or *print-dup*
+              (and *print-meta* *print-readably*)))
+      (.write w " ^")
+      (if (and (= (count m) 1) (:tag m))
+        (pr-on (:tag m) w)
+        (pr-on m w))
+      (.write w " "))))
+
+(defmethod print-method Datom2 [^Datom2 datom2, ^Writer w]
+  (binding [*out* w]
+    (let [^Datom d (.-datom datom2)]
+      (print-meta datom2 w)
+      (.write w "#org.zsxf.datascript/Datom2")
+      (pr [(.-e d) (.-a d) (.-v d) (ddb/datom-tx d) (ddb/datom-added d)]))))
+
+(defn datom-from-reader [v]
+  ; This does not seem possible until this is solved:
+  ; https://clojure.atlassian.net/jira/software/c/projects/CLJ/issues/CLJ-2904
+  (->Datom2 (apply ddb/datom v) nil))
+
+;; Custom printing end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

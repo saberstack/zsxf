@@ -1,6 +1,6 @@
 (ns org.zsxf.query
   (:require [org.zsxf.xf :as xf]
-            [org.zsxf.query :as q]))
+            [org.zsxf.query :as-alias q]))
 
 
 (defn create-query

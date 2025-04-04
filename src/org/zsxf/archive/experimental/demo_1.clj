@@ -1,7 +1,7 @@
 (ns org.zsxf.archive.experimental.demo-1
   (:require [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre]
-            [org.zsxf.jdbc.postgres :as postgres]
+            [org.zsxf.archive.jdbc.postgres :as postgres]
             [org.zsxf.archive.experimental.dataflow :as xp-dataflow]
             [tea-time.core :as tt]
             [tech.v3.dataset :as ds]))

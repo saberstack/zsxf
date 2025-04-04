@@ -1,13 +1,15 @@
 (ns org.zsxf.query-test
-  (:require [clojure.test :refer :all]
-            [datascript.db :as ddb]
-            [net.cgrand.xforms :as xforms]
-            [org.zsxf.datascript :as ds]
-            [org.zsxf.query :as q]
-            [org.zsxf.util :as util]
-            [org.zsxf.xf :as xf]
-            [org.zsxf.zset :as zs]
-            [taoensso.timbre :as timbre]))
+  (:require
+   #?(:clj [clojure.test :refer [deftest is]])
+   #?(:cljs [cljs.test :refer-macros [deftest is]])
+   [datascript.db :as ddb]
+   [net.cgrand.xforms :as xforms]
+   [org.zsxf.datascript :as ds]
+   [org.zsxf.query :as q]
+   [org.zsxf.util :as util]
+   [org.zsxf.xf :as xf]
+   [org.zsxf.zset :as zs]
+   [taoensso.timbre :as timbre]))
 
 ; Aggregates current limitation: retractions (deletes) have to be precise!
 ; An _over-retraction_ by trying to retract a datom that doesn't exist will result in
@@ -51,37 +53,6 @@
                   [(zs/zset-sum-item sum)
                    (zs/zset-count-item cnt)]))))
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
-
-(comment
-  ;example usage
-  (def query-1 (q/create-query aggregate-example-xf))
-
-  (q/input query-1
-    [(ds/tx-datoms->zset
-       [[1 :team/name "A" 536870913 true]
-        [1 :event/country "Japan" 536870913 true]
-        [1 :team/points-scored 25 536870913 true]
-        [2 :team/name "A" 536870913 true]
-        [2 :event/country "Japan" 536870913 true]
-        [2 :team/points-scored 18 536870913 true]
-        [3 :team/name "A" 536870913 true]
-        [3 :event/country "Australia" 536870913 true]
-        [3 :team/points-scored 25 536870913 true]
-        [4 :team/name "A" 536870913 true]
-        [4 :event/country "Australia" 536870913 true]
-        [4 :team/points-scored 4 536870913 true]])])
-
-  (q/get-result query-1)
-
-  (q/input query-1
-    [(ds/tx-datoms->zset
-       [[1 :team/name "A" 536870913 false]
-        [2 :team/name "A" 536870913 false]
-        [3 :team/name "A" 536870913 false]])])
-
-  (q/get-result query-1)
-
-  )
 
 (comment
   ;example usage

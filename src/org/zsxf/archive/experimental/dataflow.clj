@@ -1,9 +1,7 @@
 (ns org.zsxf.archive.experimental.dataflow
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
-            [org.zsxf.jdbc.postgres :as postgres]
-            [org.zsxf.xf :as xf]
-            [org.zsxf.xf :as dbsp-xf]
+            [org.zsxf.archive.jdbc.postgres :as postgres]
             [org.zsxf.zset :as zset]
             [org.zsxf.zset :as zs]
             [pangloss.transducers :as pxf]

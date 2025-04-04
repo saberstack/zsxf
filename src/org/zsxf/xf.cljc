@@ -1,8 +1,48 @@
 (ns org.zsxf.xf
-  (:require [net.cgrand.xforms :as xforms]
-            [org.zsxf.zset :as zs]
-            [pangloss.transducers :as pxf]
+  (:require [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre]))
+
+(defn rf-branchable
+  "Helper to adapt a reducing function to a branching transducer.
+
+  Don't pass the completing of the rf through because completing multiple times
+  is invalid and this transducer will do that after its child xforms have been
+  completed."
+  [rf]
+  (fn ([result] result)
+    ([result item] (rf result item))))
+
+(defn cond-branch
+  "Will route data down the first path whose predicate is truthy. The results are merged.
+
+  Predicates are regular functions. They are called on each element that flows into this
+  transducer until one of the predicates passes, causing the data to be routed down that
+  predicate's xform."
+  [& pred-xform-pairs]
+  (let [pairs (partition-all 2 pred-xform-pairs)]
+    (if (seq pairs)
+      (fn [rf]
+        (let [pairs (mapv (fn [[pred xform]]
+                            (if xform
+                              ;; if pred is not a fn, treat it as either always true or always false.
+                              [(if (ifn? pred) pred (constantly (boolean pred)))
+                               (xform (rf-branchable rf))]
+                              ;; treat sole trailing xform as else:
+                              [(constantly true) (pred (rf-branchable rf))]))
+                      pairs)]
+
+          (fn
+            ([] (doseq [[_ xform] pairs] (xform)) (rf))
+            ([result]
+             (rf (reduce (fn [result [_ xform]] (xform result)) result pairs)))
+            ([result input]
+             (loop [[[pred xform] & pairs] pairs]
+               (if pred
+                 (if (pred input)
+                   (xform result input)
+                   (recur pairs))
+                 result))))))
+      (map identity))))
 
 (defn join-xf
   "Joins two relations (represented by zsets)
@@ -26,7 +66,7 @@
                    zset    (if last? #{} #{zset-item})]
                ;return
                [delta-1 delta-2 zset])))
-      (pxf/cond-branch
+      (cond-branch
         ;does this join-xf care about the current item?
         (fn [[delta-1 delta-2 _zset :as delta-1+delta-2+zset]]
           (timbre/spy delta-1+delta-2+zset)

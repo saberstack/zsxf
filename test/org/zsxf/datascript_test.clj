@@ -41,17 +41,22 @@
   (when (vector? thing)
     (second thing)))
 
-(defmacro clause-pred-macro [locator-vec [e a v :as clause]]
-  (if (parser/variable? v)
-    `#(ds/datom-attr=  ((comp ~@locator-vec) %) ~a)
-    `#(ds/datom-attr-val= ((comp ~@locator-vec) %) ~a ~v)))
 
-(defn clause-pred-2 [locator-vec a v]
-  (let [datom (gensym 'datom)
-        locator (if locator-vec `((comp ~@locator-vec) ~datom) datom)]
+(defn clause-pred [[f & _ :as locator-vec] a v]
+  (condp = (count locator-vec)
+    0
     (if (parser/variable? v)
-      `(fn [~datom] (ds/datom-attr= ~locator ~a))
-      `(fn [~datom] (ds/datom-attr-val= ~locator ~a ~v)))))
+      `#(ds/datom-attr= % ~a)
+      `#(ds/datom-attr-val= % ~a ~v))
+
+    1
+    (if (parser/variable? v)
+      `#(ds/datom-attr= (~f %) ~a)
+      `#(ds/datom-attr-val= (~f %) ~a ~v))
+
+    (if (parser/variable? v)
+      `#(ds/datom-attr= ((comp ~@locator-vec) %)  ~a)
+      `#(ds/datom-attr-val= ((comp ~@locator-vec) %)  ~a ~v))))
 
 (defmacro sprinkle-dbsp-on [datalog-query]
   (let [{where-clauses# :where find-vars# :find} (parser/query->map datalog-query)
@@ -67,7 +72,7 @@
            xf-steps# []
            covered-nodes# #{first-clause#}
            remaining-nodes# (set remaining-clauses#)
-           locators# {first-clause# [`identity]}
+           locators# {first-clause# []}
            n# 1]
 
       (cond (empty? remaining-nodes#)
@@ -98,8 +103,8 @@
                   common-var# (get-in adjacency-list# [from# to#])
                   [[_ a1# v1# ] [_ a2# v2#]] (map named-clauses# edge#)
                   locator-vec# (from# locators#)
-                  p1# (clause-pred-2 locator-vec# a1# v1#)
-                  p2# (clause-pred-2 nil a2# v2#)
+                  p1# (clause-pred locator-vec# a1# v1#)
+                  p2# (clause-pred [] a2# v2#)
                   new-join `(xf/join-xf ~p1#
                                         (comp ~((get-in variable-index# [common-var# from#]) pos->getter) ~@(from# locators#))
                                         ~p2#

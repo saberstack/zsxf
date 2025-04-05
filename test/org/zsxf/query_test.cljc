@@ -90,11 +90,6 @@
   )
 
 
-;PROBLEM 1:
-; once we reach certain clauses, joining to a previous clause can become ambiguous
-; when using only numbered (first, second, nth, etc) paths
-;
-;
 
 (defn >inst [inst-1 inst-2]
   (condp = (compare inst-1 inst-2)
@@ -105,14 +100,43 @@
 (comment
   '[:find ?actor
     :where
+    ;danny
     [?danny :person/name "Danny Glover"]
     [?danny :person/born ?danny-born]
-
+    ;actors
     [?a :person/name ?actor]
     [?a :person/born ?actor-born]
     [_ :movie/cast ?a]
 
     [(> ?danny-born ?actor-born)]])
+
+;
+;Glossary
+; - Clause: defines a single relation
+; - Joined relation: a pair of relations with arbitrary depth of joined relations nested inside
+;    [:R1 :R2] ;two relations (smallest possible joined relation pair)
+;    [[:R1 :R2] :R3] ;three relations
+;    [[[:R1 :R2] :R3] :R4] ;four relations
+;
+;
+;Every join-xf:
+; - takes zset-items & joined relations (from previous join-xfs outputs)
+;    (!) Note: zset-items can be datoms but critically can also
+;       can be joined relations (a vector pair):
+;       [:R1 :R2]
+;       [[:R1 :R2] :R3]
+;       [[[:R1 :R2] :R3] :R4]
+;       Notice the top level vector count is always two (i.e. it's a pair)
+;       with more pairs potentially nested at every level
+; - outputs joined relations based on predicates and index kfn
+; - outputs zset-items, unchanged (until :last?)
+;
+;PROBLEM 1:
+; once we reach a certain :where clause, joining to a previous relation can become ambiguous
+; when using only numbered (first, second, nth, etc) paths
+;
+;
+
 
 (defn actors-older-than-danny [query-state]
   (comp

@@ -98,34 +98,11 @@
     1 true))
 
 
-
-;
-;Glossary
-; - Clause: defines a single relation
-; - Joined relation: a pair of relations with arbitrary depth of joined relations nested inside
-;    [:R1 :R2] ;two relations (smallest possible joined relation pair)
-;    [[:R1 :R2] :R3] ;three relations
-;    [[[:R1 :R2] :R3] :R4] ;four relations
-;
-;
-;_Every_ join-xf:
-; - takes zset-items & joined relations (from previous join-xfs outputs)
-;    (!) Note: zset-items can be datoms but critically can also
-;       can be joined relations (a vector pair):
-;       [:R1 :R2]
-;       [[:R1 :R2] :R3]
-;       [[[:R1 :R2] :R3] :R4]
-;       Notice the top level vector count is always two (i.e. it's a pair)
-;       with more pairs potentially nested at every level
-; - outputs joined relations based on predicates and index kfns
-; - outputs zset-items, unchanged (until :last?)
 ;
 ;PROBLEM 1:
 ; once we reach a certain :where clause, joining to a previous relation can become ambiguous
 ; when using only numbered (first, second, nth, etc) paths
 ;
-;
-
 
 
 (comment

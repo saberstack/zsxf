@@ -169,6 +169,27 @@
     (zs/index #{zset-item} index-kfn)
     {}))
 
+;Glossary
+; - Clause: defines a single relation
+; - Joined relation: a pair of relations with arbitrary depth of joined relations nested inside
+;    [:R1 :R2] ;two relations (smallest possible joined relation pair)
+;    [[:R1 :R2] :R3] ;three relations
+;    [[[:R1 :R2] :R3] :R4] ;four relations
+;
+;
+;*Every* join-xf:
+; - takes a zset, outputs one or more zsets
+; - takes zset-items & joined relations (from previous join-xfs outputs)
+;    (!) Note: zset-items can be datoms but critically can also
+;       can be joined relations (a vector pair):
+;       [:R1 :R2]
+;       [[:R1 :R2] :R3]
+;       [[[:R1 :R2] :R3] :R4]
+;       Notice the top level vector count is always two (i.e. it's a pair)
+;       with more pairs potentially nested at every level
+; - outputs joined relations based on predicates and index kfns
+; - outputs zset-items, unchanged (until :last?)
+
 (defn join-xf-2
   "WIP"
   [clause-1 pred-1 index-kfn-1 clause-2 pred-2 index-kfn-2 index-state

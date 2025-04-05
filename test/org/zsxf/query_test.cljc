@@ -169,7 +169,7 @@
     ;[(> ?danny-born ?actor-born)]
     ])
 
-(defn actors-older-than-danny
+(defn join-xf-with-clauses-test-1
   [query-state]
   (comment
     '[:find ?danny ?actor ?title
@@ -199,7 +199,7 @@
       '[?m :movie/cast ?danny]
       #(ds/datom-attr= % :movie/cast) ds/datom->val
       query-state)
-    ;movie title
+    ;;movie title
     (xf/join-xf-2
       '[?m :movie/cast ?danny]
       #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
@@ -213,14 +213,14 @@
       '[?m :movie/cast ?a]
       #(ds/datom-attr= % :movie/cast) ds/datom->eid
       query-state)
-    ;actors, :person/name
+    ;;actors, :person/name
     (xf/join-xf-2
       '[?m :movie/cast ?a]
       #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
       '[?a :person/name ?actor]
       #(ds/datom-attr= % :person/name) ds/datom->eid
       query-state)
-    ;actors, :person/born
+    ;;actors, :person/born
     (xf/join-xf-2
       '[?a :person/name ?actor]
       #(ds/datom-attr= (-> % (nth2 1)) :person/name) #(-> % (nth2 1) ds/datom->eid)
@@ -228,10 +228,15 @@
       #(ds/datom-attr= % :person/born) ds/datom->eid
       query-state
       :last? true)
-    (xforms/reduce zs/zset+ #_(zs/zset-xf+
-                                (map (xf/with-meta-f
-                                       (fn [rel1+rel2]
-                                         (timbre/info rel1+rel2))))))
+    (map (fn [pre-reduce] (timbre/spy pre-reduce)))
+    (xforms/reduce
+      #_zs/zset+
+      (zs/zset-xf+
+        (map (xf/with-meta-f
+               (fn [joined-relation]
+                 ;TODO :find
+                 (timbre/spy (meta joined-relation))
+                 joined-relation)))))
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))
   )
 
@@ -257,32 +262,57 @@
 (comment
 
   (do
-    (timbre/set-min-level! :info)
+    (timbre/set-min-level! :trace)
     (let [[schema data] (load-learn-db)]
 
       (def conn (d/create-conn schema))
-      #_(d/transact! conn
-          [{:person/born #inst"2025-01-01T00:00:00.000-00:00"
-            :person/name "Danny Glover"}])
-      (d/transact! conn data))
+      (d/transact! conn
+        [{:person/born #inst"2025-01-01T00:00:00.000-00:00"
+          :person/name "Danny Glover"}])
+      (d/transact! conn
+        [{:person/born #inst"1900"
+          :person/name "Arnold"}])
+      ;(d/transact! conn data)
+      )
 
-    (def query-1 (q/create-query actors-older-than-danny))
+    (def query-1 (q/create-query join-xf-with-clauses-test-1))
     (ds/init-query-with-conn query-1 conn)
-    (q/get-result query-1))
+    )
 
-  (d/q
+  (d/transact! conn
+    [{:movie/cast  1
+      :movie/title "Untitled"}])
+
+  (d/transact! conn
+    [{:db/id       -1
+      :movie/title "Untitled"}
+     {:db/id      -1
+      :movie/cast 1}
+     {:db/id      -1
+      :movie/cast 2}])
+
+  (q/get-result query-1)
+
+  (comment
     '[:find ?danny ?actor ?title
       :where
       [?danny :person/name "Danny Glover"]
       [?danny :person/born ?danny-born]
-
-      [?a :person/name ?actor]
-      [?a :person/born ?actor-born]
-      [?m :movie/cast ?a]
       [?m :movie/cast ?danny]
       [?m :movie/title ?title]
+      [?m :movie/cast ?a]
+      [?a :person/name ?actor]
+      ])
 
-      ;[(> ?danny-born ?actor-born)]
+  (d/q
+    '[:find ?actor
+      :where
+      [?danny :person/name "Danny Glover"]
+      [?danny :person/born ?danny-born]
+      [?m :movie/cast ?danny]
+      [?m :movie/title ?title]
+      [?m :movie/cast ?a]
+      [?a :person/name ?actor]
       ]
     @conn)
 

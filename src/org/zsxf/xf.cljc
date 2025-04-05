@@ -177,14 +177,15 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [index-uuid-1    (random-uuid)
-        index-uuid-2    (random-uuid)
+  (let [index-uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
+        index-uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
         join-xf-clauses #{clause-1 clause-2}]
     (timbre/spy index-uuid-1)
     (timbre/spy index-uuid-2)
     (timbre/spy join-xf-clauses)
     (mapcat
       (fn [input-zset]
+        (timbre/spy input-zset)
         (let [input-zset-meta (meta input-zset)]
           (->>
             (vector input-zset)
@@ -247,7 +248,7 @@
                                input-zset-meta
                                join-xf-clauses)
                              zset)))
-                    (map (fn [[join-xf-delta zset]]
+                    (mapcat (fn [[join-xf-delta zset]]
                            ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                            [(timbre/spy join-xf-delta) zset]))))))))))))
 

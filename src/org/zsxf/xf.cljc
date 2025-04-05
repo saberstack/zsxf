@@ -170,9 +170,7 @@
     {}))
 
 (defn join-xf-2
-  "Joins two relations (represented by zsets)
-  based on predicates pred-1 and pred-2 and index key functions index-k-1 and index-k-2.
-  index-state is an atom containing a map of index UUIDs (one for each of the two relations) to indexed zsets."
+  "WIP"
   [clause-1 pred-1 index-kfn-1 clause-2 pred-2 index-kfn-2 index-state
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false

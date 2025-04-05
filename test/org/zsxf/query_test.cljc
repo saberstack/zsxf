@@ -266,13 +266,13 @@
     (let [[schema data] (load-learn-db)]
 
       (def conn (d/create-conn schema))
-      (d/transact! conn
-        [{:person/born #inst"2025-01-01T00:00:00.000-00:00"
-          :person/name "Danny Glover"}])
-      (d/transact! conn
-        [{:person/born #inst"1900"
-          :person/name "Arnold"}])
-      ;(d/transact! conn data)
+      ;(d/transact! conn
+      ;  [{:person/born #inst"2025-01-01T00:00:00.000-00:00"
+      ;    :person/name "Danny Glover"}])
+      ;(d/transact! conn
+      ;  [{:person/born #inst"1900"
+      ;    :person/name "Arnold"}])
+      (d/transact! conn data)
       )
 
     (def query-1 (q/create-query join-xf-with-clauses-test-1))
@@ -315,6 +315,38 @@
       [?a :person/name ?actor]
       ]
     @conn)
+
+  ;find can be a join also
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ; no join
+  (d/q
+    '[:find ?danny
+      :where
+      ;danny
+      [?danny :person/name "Danny Glover"]
+      [?danny :person/born ?danny-born]
+
+      ;actors
+      [?a :person/name ?actor]
+      [?a :person/born ?actor-born]
+      [_ :movie/cast ?a]
+      ]
+    @conn)
+  ; join
+  (d/q
+    '[:find ?danny ?a
+      :where
+      [?danny :person/name "Danny Glover"]
+      [?danny :person/born ?danny-born]
+
+      ;actors
+      [?a :person/name ?actor]
+      [?a :person/born ?actor-born]
+      [_ :movie/cast ?a]
+      ]
+    @conn)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+`
 
 
 

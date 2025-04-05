@@ -107,6 +107,7 @@
                      return-zset-item-xf)
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]
+                    ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [(timbre/spy join-xf-delta) zset])))))))
 
 (defn group-by-count-xf

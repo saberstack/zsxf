@@ -97,18 +97,7 @@
     -1 false
     1 true))
 
-(comment
-  '[:find ?actor
-    :where
-    ;danny
-    [?danny :person/name "Danny Glover"]
-    [?danny :person/born ?danny-born]
-    ;actors
-    [?a :person/name ?actor]
-    [?a :person/born ?actor-born]
-    [_ :movie/cast ?a]
 
-    [(> ?danny-born ?actor-born)]])
 
 ;
 ;Glossary
@@ -119,7 +108,7 @@
 ;    [[[:R1 :R2] :R3] :R4] ;four relations
 ;
 ;
-;Every join-xf:
+;_Every_ join-xf:
 ; - takes zset-items & joined relations (from previous join-xfs outputs)
 ;    (!) Note: zset-items can be datoms but critically can also
 ;       can be joined relations (a vector pair):
@@ -128,7 +117,7 @@
 ;       [[[:R1 :R2] :R3] :R4]
 ;       Notice the top level vector count is always two (i.e. it's a pair)
 ;       with more pairs potentially nested at every level
-; - outputs joined relations based on predicates and index kfn
+; - outputs joined relations based on predicates and index kfns
 ; - outputs zset-items, unchanged (until :last?)
 ;
 ;PROBLEM 1:
@@ -137,18 +126,48 @@
 ;
 ;
 
+(comment
+  '[:find ?actor
+    :where
+    ;danny
+    [?danny :person/name "Danny Glover"]
+    [?danny :person/born ?danny-born]
+
+    ;actors
+    [?a :person/name ?actor]
+    [?a :person/born ?actor-born]
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    [_ :movie/cast ?a]
+    ;;joins them together
+    [(> ?danny-born ?actor-born)]])
 
 (defn actors-older-than-danny [query-state]
   (comp
     (xf/mapcat-zset-transaction-xf)
     ;danny
     (xf/join-xf
-      ;[?danny :person/born ?danny-born]
-      #(ds/datom-attr= % :person/born) ds/datom->eid
       ;[?danny :person/name "Danny Glover"]
       #(ds/datom-attr-val= % :person/name "Danny Glover") ds/datom->eid
-      query-state)
+      ;[?danny :person/born ?danny-born]
+      #(ds/datom-attr= % :person/born) ds/datom->eid
+      query-state
+      :join-relation
+      '[[?danny :person/name "Danny Glover"] [?danny :person/born ?danny-born]])
+    ; output => [[?danny :person/name "Danny Glover"] [?danny :person/born ?danny-born]]
 
+    (comment
+      ;1. tx, datom shows up
+      [1 :person/born 1955]
+      ;waiting
+      ;2. tx, another datom shows up
+      [1 :person/name "Danny Glover"]
+      ;3. tx
+      [50 :movie/cast 1]
+
+      #{(zs/zset-item [[1 :person/name "Danny Glover"]
+                       [1 :person/born 1955]])}
+      #{(zs/zset-item [1 :person/name "Danny Glover"])}
+      )
     ;actors
     (xf/join-xf
       ;[?a :person/name ?actor]
@@ -157,18 +176,32 @@
       #(ds/datom-attr= % :person/born) ds/datom->eid
       query-state)
 
-    (xf/join-right-pred-1-xf
+    ; output => [[?danny :person/name "Danny Glover"] [?danny :person/born ?danny-born]]
+
+    (comment
+      ;movie cast xf receives this
+      #{(zs/zset-item [[1 :person/name "Danny Glover"]
+                       [1 :person/born 1955]])}
+
+      #{(zs/zset-item [[1 :person/name "Danny Glover"]
+                       [1 :person/born 1955]])}
+      ;original datom
+      #{(zs/zset-item [1 :person/name "Danny Glover"])}
+      )
+    ; ... :movie/cast
+    (xf/join-xf
       ;[?a :person/born ?actor-born]
-      #(ds/datom-attr= % :person/born) ds/datom->eid
+      '[?a :person/born ?actor-born] #(ds/datom-attr= (-> % (nth2 1)) :person/born) #(-> % (nth2 1) ds/datom->eid)
       ;[_ :movie/cast ?a]
       #(ds/datom-attr= % :movie/cast) ds/datom->val
       query-state)
 
+
     ;danny joins actors where...
     ;[(> ?danny-born ?actor-born)]
-    (xf/join-left-pred-1-xf
+    (xf/join-xf
       ;?danny-born --> [?danny :person/born ?danny-born]
-      #(ds/datom-attr= % :person/born) ds/datom->val
+      #(ds/datom-attr= (-> % (nth2 0)) :person/born) #(-> % (nth2 0) ds/datom->val)
       ;?actor-born
       #(ds/datom-attr= (-> % (nth2 0) (nth2 1)) :person/born) #(-> % (nth2 0) (nth2 1) ds/datom->val)
       query-state
@@ -190,7 +223,7 @@
                   ;notice the (nth2 0) (nth2 1) part of the path is the same as above
                   inst-2))))))
       :last? true)
-    (xforms/reduce (zs/zset-xf+
+    (xforms/reduce zs/zset+ #_(zs/zset-xf+
                      (map (xf/with-meta-f
                             (fn [rel1+rel2]
                               (timbre/info rel1+rel2))))))
@@ -223,7 +256,7 @@
     (let [[schema data] (load-learn-db)]
 
       (def conn (d/create-conn schema))
-      #_(d/transact! conn
+      (d/transact! conn
         [{:person/born #inst"2025-01-01T00:00:00.000-00:00"
           :person/name "Danny Glover"}])
       (d/transact! conn data))
@@ -240,16 +273,19 @@
 
       [?a :person/name ?actor]
       [?a :person/born ?actor-born]
-      ;[_ :movie/cast ?a]
+      [_ :movie/cast ?a]
 
       [(> ?danny-born ?actor-born)]]
     @conn)
 
-  (d/q
-    '[:find ?danny
-      :where
-      [?danny :person/name "Danny Glover"]]
-    @conn)
+
+
+  (time
+    (d/q
+      '[:find (count ?danny)
+        :where
+        [?danny :person/name "Danny Glover"]]
+      @conn))
 
   conn
 

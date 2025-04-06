@@ -1,5 +1,6 @@
 (ns org.zsxf.xf
-  (:require [org.zsxf.util :as util]
+  (:require [datascript.core :as d]
+            [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [taoensso.timbre :as timbre]))
@@ -114,62 +115,67 @@
 
 (defn zset-item-can-join?
   "join-xf helper fn"
-  [input-zset-meta clause]
+  [zset-item input-zset-meta clause]
   ;either a joined relation with the wanted join clause...
   (if-let [clauses-set (::xf/clauses input-zset-meta)]
     ;only allowed to join if the clause is in the set
-    (contains? clauses-set clause)
+    (let [contains-and-can-join? (contains? clauses-set clause)]
+      (timbre/spy clause)
+      (timbre/spy clauses-set)
+      (timbre/info "contains-and-can-join?" contains-and-can-join?)
+      (timbre/info zset-item)
+      contains-and-can-join?)
     ;clauses-set is nil, allowed to join
     ;TODO this case assumes too much? better way to check?
-    true))
+    (do
+      (timbre/info "zset-item joining:" zset-item)
+      true)))
 
-(comment
-  (zset-item-can-join?
-    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
-    '[?e :a2 "v2"])
-  ;=> true
-  (zset-item-can-join?
-    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
-    '[?some :other "clause"])
-  ;=> false
-  (zset-item-can-join?
-    ;no zset metadata means "can join", presumably a single datom being added
-    nil
-    '[?some :other "clause"])
-  ;=> true
-  )
+;(comment
+;  (zset-item-can-join?
+;    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
+;    '[?e :a2 "v2"])
+;  ;=> true
+;  (zset-item-can-join?
+;    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
+;    '[?some :other "clause"])
+;  ;=> false
+;  (zset-item-can-join?
+;    ;no zset metadata means "can join", presumably a single datom being added
+;    nil
+;    '[?some :other "clause"])
+;  ;=> true
+;  )
 
 (defn- with-meta-clauses
   "join-xf helper fn"
-  [output-zset {input-zset-clauses ::xf/clauses} join-xf-clauses]
+  [output-zset join-xf-clauses]
   (if-not (empty? output-zset)
-    (vary-meta
-      output-zset
-      (fn [m]
-        (update m ::xf/clauses
-          (fn [a-set]
-            (clojure.set/union
-              (or a-set #{})
-              (or input-zset-clauses #{})
-              (or join-xf-clauses #{}))))))
-    output-zset))
+      (vary-meta
+        output-zset
+        (fn [m]
+          (assoc m ::xf/clauses join-xf-clauses)))
+      output-zset))
 
-(comment
-  (set! *print-meta* true)
-  (with-meta-clauses
-    #{[:A :B]}
-    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
-    #{'[?some :other "clause"]
-      '[_ :another "clause"]}))
+(defn vary-meta-with-clause [zset-item clause]
+  (vary-meta zset-item (fn [m] (assoc m :clause clause))))
 
-(defn- zset-item->delta
-  "join-xf helper fn"
-  [zset-item input-zset-meta clause pred index-kfn]
-  (if (and
-        (zset-item-can-join? input-zset-meta clause)
-        (pred zset-item))
-    (zs/index #{zset-item} index-kfn)
-    {}))
+;(comment
+;  (set! *print-meta* true)
+;  (with-meta-clauses
+;    #{[:A :B]}
+;    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
+;    #{'[?some :other "clause"]
+;      '[_ :another "clause"]}))
+
+;(defn- zset-item->index-delta
+;  "join-xf helper fn"
+;  [zset-item input-zset-meta clause pred index-kfn]
+;  (if (and
+;        (zset-item-can-join? input-zset-meta clause)
+;        (pred zset-item))
+;    (zs/index #{zset-item} index-kfn)
+;    {}))
 
 ;Glossary
 ; - Clause: defines a single relation
@@ -208,6 +214,8 @@
       (fn [input-zset]
         (timbre/spy input-zset)
         (let [input-zset-meta (meta input-zset)]
+          (when (= join-xf-clauses #{'[?m :movie/cast ?danny] '[?danny :person/born ?danny-born]})
+            (timbre/info "input-zset-meta::" input-zset-meta))
           (->>
             (vector input-zset)
             (eduction
@@ -220,8 +228,16 @@
                       (mapv (juxt identity (constantly (meta zset))) zset)))
                 ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
                 (map (fn [zset-item]
-                       (let [delta-1 (zset-item->delta zset-item input-zset-meta clause-1 pred-1 index-kfn-1)
-                             delta-2 (zset-item->delta zset-item input-zset-meta clause-2 pred-2 index-kfn-2)
+                       (let [delta-1 (if (and
+                                           (zset-item-can-join? zset-item input-zset-meta clause-1)
+                                           (pred-1 zset-item))
+                                       (zs/index #{zset-item} index-kfn-1)
+                                       {})
+                             delta-2 (if (and
+                                           (zset-item-can-join? zset-item input-zset-meta clause-2)
+                                           (pred-2 zset-item))
+                                       (zs/index #{zset-item} index-kfn-2)
+                                       {})
                              zset    (if last? #{} #{zset-item})]
                          ;return
                          [delta-1 delta-2 zset])))
@@ -266,12 +282,11 @@
                                    (timbre/spy (zs/join-indexed* delta-1 delta-2)))
                                  ;transducer to transform zset items during conversion indexed-zset -> zset
                                  return-zset-item-xf)
-                               input-zset-meta
                                join-xf-clauses)
                              zset)))
                     (mapcat (fn [[join-xf-delta zset]]
-                           ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
-                           [(timbre/spy join-xf-delta) zset]))))))))))))
+                              ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
+                              [(timbre/spy join-xf-delta) zset]))))))))))))
 
 (defn group-by-count-xf
   "Takes a group-by-style function f and returns a transducer which

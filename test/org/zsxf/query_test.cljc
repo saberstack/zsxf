@@ -157,7 +157,7 @@
       [?m :movie/title ?title]
       [?m :movie/cast ?a]
       [?a :person/name ?actor]
-      [?a :person/born ?actor-born]
+      ;[?a :person/born ?actor-born]
       ])
 
   (comp
@@ -176,7 +176,7 @@
       '[?m :movie/cast ?danny]
       #(ds/datom-attr= % :movie/cast) ds/datom->val
       query-state)
-    ;;movie title
+    ;movie title
     (xf/join-xf-2
       '[?m :movie/cast ?danny]
       #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
@@ -189,30 +189,35 @@
       #(ds/datom-attr= (-> % (nth2 1)) :movie/title) #(-> % (nth2 1) ds/datom->eid)
       '[?m :movie/cast ?a]
       #(ds/datom-attr= % :movie/cast) ds/datom->eid
-      query-state)
+      query-state
+      )
     ;;actors, :person/name
     (xf/join-xf-2
       '[?m :movie/cast ?a]
       #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
       '[?a :person/name ?actor]
       #(ds/datom-attr= % :person/name) ds/datom->eid
-      query-state)
-    ;;actors, :person/born
-    (xf/join-xf-2
-      '[?a :person/name ?actor]
-      #(ds/datom-attr= (-> % (nth2 1)) :person/name) #(-> % (nth2 1) ds/datom->eid)
-      '[?a :person/born ?actor-born]
-      #(ds/datom-attr= % :person/born) ds/datom->eid
       query-state
       :last? true)
+    ;;;actors, :person/born
+    ;(xf/join-xf-2
+    ;  '[?a :person/name ?actor]
+    ;  #(ds/datom-attr= (-> % (nth2 1)) :person/name) #(-> % (nth2 1) ds/datom->eid)
+    ;  '[?a :person/born ?actor-born]
+    ;  #(ds/datom-attr= % :person/born) ds/datom->eid
+    ;  query-state
+    ;  :last? true)
     (map (fn [pre-reduce] (timbre/spy pre-reduce)))
     (xforms/reduce
       (zs/via-meta-zset-xf+
         (fn [zset-meta]
           (when (some? zset-meta)
-            (timbre/info "zset-meta found::" zset-meta))
+            ;(timbre/info "zset-meta found::" zset-meta)
+            ;(timbre/info "clauses count::" (count (::xf/clauses zset-meta)))
+            )
           (map (xf/with-meta-f
                  (fn [joined-relation]
+                   ;(timbre/info "joined-relation::" joined-relation)
                    joined-relation))))))
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))
   )
@@ -239,14 +244,14 @@
 (comment
 
   (do
-    (timbre/set-min-level! :trace)
+    ;(timbre/set-min-level! :trace)
     (timbre/set-min-level! :info)
     (let [[schema data] (load-learn-db)]
 
       (def conn (d/create-conn schema))
-      ;(d/transact! conn
-      ;  [{:person/born #inst"2025-01-01T00:00:00.000-00:00"
-      ;    :person/name "Danny Glover"}])
+      #_(d/transact! conn
+        [{:person/born #inst"2025-01-01T00:00:00.000-00:00"
+          :person/name "Danny Glover"}])
       ;(d/transact! conn
       ;  [{:person/born #inst"1900"
       ;    :person/name "Arnold"}])
@@ -333,7 +338,7 @@
       @conn))
 
   (d/q
-    '[:find ?a ?danny
+    '[:find ?m ?a
       :where
       [?danny :person/name "Danny Glover"]
       [?danny :person/born ?danny-born]
@@ -341,8 +346,22 @@
       [?m :movie/title ?title]
       [?m :movie/cast ?a]
       [?a :person/name ?actor]
-      [?a :person/born ?actor-born]
+      [(not= ?actor "Danny Glover")]
+      ;[?a :person/born ?actor-born]
       ]
+    @conn)
+
+  ;implicit join via find example
+  (d/q
+    ;implicit joins via find happens here
+    '[:find ?a ?danny
+      :where
+      ;one set of clauses, seemingly independent
+      [?danny :person/name "Danny Glover"]
+      [?danny :person/born ?danny-born]
+      ;another set of clauses, seemingly independent
+      [?a :person/name ?actor]
+      [?a :person/born ?actor-born]]
     @conn)
 
   conn

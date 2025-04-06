@@ -51,7 +51,7 @@
 ; TODO Can this be expanded further?
 (defonce zset-weight-of-1 {:zset/w 1})
 
-(defn zset-item
+#_(defn zset-item
   ([x]
    (with-meta x zset-weight-of-1))
   ([x weight]
@@ -59,6 +59,15 @@
    (if (= 1 weight)
      (with-meta x zset-weight-of-1)
      (with-meta x {:zset/w weight}))))
+
+(defn zset-item
+  ([x]
+   (vary-meta x (fn [m] (merge (or m {}) zset-weight-of-1))))
+  ([x weight]
+   ;reuse metadata map for common weights
+   (if (= 1 weight)
+     (vary-meta x (fn [m] (merge (or m {}) zset-weight-of-1)))
+     (vary-meta x (fn [m] (merge (or m {}) {:zset/w weight}))))))
 
 ;(defn zset-item?
 ;  [x]

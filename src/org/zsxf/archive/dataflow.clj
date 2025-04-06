@@ -119,7 +119,8 @@
                (timbre/info "player!")
                m))
         (pxf/grouped-by :player/team :on-value set)))
-    ;TODO implement indexed-zset add and multiply
+    ;
+    ; TODO implement indexed-zset add and multiply
     (map (fn [grouped-by-result] (timbre/spy grouped-by-result)))))
 
 (defonce tmp-1 (atom nil))

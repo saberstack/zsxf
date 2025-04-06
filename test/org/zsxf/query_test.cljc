@@ -207,13 +207,13 @@
       :last? true)
     (map (fn [pre-reduce] (timbre/spy pre-reduce)))
     (xforms/reduce
-      #_zs/zset+
-      (zs/zset-xf+
-        (map (xf/with-meta-f
-               (fn [joined-relation]
-                 ;TODO :find
-                 (timbre/spy (meta joined-relation))
-                 joined-relation)))))
+      (zs/via-meta-zset-xf+
+        (fn [zset-meta]
+          (when (some? zset-meta)
+            (timbre/info "zset-meta found::" zset-meta))
+          (map (xf/with-meta-f
+                 (fn [joined-relation]
+                   joined-relation))))))
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))
   )
 
@@ -240,6 +240,7 @@
 
   (do
     (timbre/set-min-level! :trace)
+    (timbre/set-min-level! :info)
     (let [[schema data] (load-learn-db)]
 
       (def conn (d/create-conn schema))
@@ -324,15 +325,25 @@
     @conn)
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
-
   (time
     (d/q
       '[:find (count ?danny)
         :where
         [?danny :person/name "Danny Glover"]]
       @conn))
+
+  (d/q
+    '[:find ?a ?danny
+      :where
+      [?danny :person/name "Danny Glover"]
+      [?danny :person/born ?danny-born]
+      [?m :movie/cast ?danny]
+      [?m :movie/title ?title]
+      [?m :movie/cast ?a]
+      [?a :person/name ?actor]
+      [?a :person/born ?actor-born]
+      ]
+    @conn)
 
   conn
 

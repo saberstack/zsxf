@@ -131,6 +131,17 @@
     ([zset-1 zset-2]
      (zset+ zset-1 zset-2 xf))))
 
+(defn via-meta-zset-xf+
+  "->xf-meta is a fn of one argument which accept the zset-2 metadata and returns a transducer.
+  Returns a function with the same signature as zset+.
+  The transducer is applied to each new zset item from the second zset before adding it to the first zset."
+  [->xf-meta]
+  (fn
+    ([] (zset #{}))
+    ([zset-1] zset-1)
+    ([zset-1 zset-2]
+     (zset+ zset-1 zset-2 (->xf-meta (meta zset-2))))))
+
 (defn zset-pos+
   "Same as zset+ but does not maintain items with negative weight after +"
   ([]

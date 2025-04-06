@@ -142,15 +142,17 @@
 (defn- with-meta-clauses
   "join-xf helper fn"
   [output-zset {input-zset-clauses ::xf/clauses} join-xf-clauses]
-  (vary-meta
-    output-zset
-    (fn [m]
-      (update m ::xf/clauses
-        (fn [a-set]
-          (clojure.set/union
-            (or a-set #{})
-            (or input-zset-clauses #{})
-            (or join-xf-clauses #{})))))))
+  (if-not (empty? output-zset)
+    (vary-meta
+      output-zset
+      (fn [m]
+        (update m ::xf/clauses
+          (fn [a-set]
+            (clojure.set/union
+              (or a-set #{})
+              (or input-zset-clauses #{})
+              (or join-xf-clauses #{}))))))
+    output-zset))
 
 (comment
   (set! *print-meta* true)

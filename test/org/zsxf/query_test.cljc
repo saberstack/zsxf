@@ -128,6 +128,99 @@
 
   )
 
+(defn person-city-country-example-xf [query-state]
+  (comment
+    ;equivalent query
+    '[:find ?p
+      :where
+      [?p :person/name "Alice"]
+      [?p :person/country ?c]
+      [?c :country/continent "Europe"]
+      [?p :likes "pizza"]])
+
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/join-xf
+      #(ds/datom-attr-val= % :person/name "Alice") ds/datom->eid
+      #(ds/datom-attr= % :person/country) ds/datom->eid
+      query-state)
+    (xf/join-xf
+      #(ds/datom-attr= (-> % (nth2 1)) :person/country) #(-> % (nth2 1) ds/datom->val)
+      #(ds/datom-attr-val= % :country/continent "Europe") ds/datom->eid
+      query-state)
+    (xf/join-xf
+      #(ds/datom-attr= (-> % (util/nth2 0) (util/nth2 0)) :person/name) #(-> % (util/nth2 0) (util/nth2 0) ds/datom->eid)
+      #(ds/datom-attr-val= % :likes "pizza") ds/datom->eid
+      query-state
+      :last? true)
+    (xforms/reduce zs/zset+)
+    (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+
+(defn person-city-country-example-xf-join-2 [query-state]
+  (comment
+    ;equivalent query
+    '[:find ?p
+      :where
+      [?p :person/name "Alice"]
+      [?p :person/country ?c]
+      [?c :country/continent "Europe"]
+      [?p :likes "pizza"]])
+
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/join-xf-2
+      '[?p :person/name "Alice"]
+      #(ds/datom-attr-val= % :person/name "Alice") ds/datom->eid
+      '[?p :person/country ?c]
+      #(ds/datom-attr= % :person/country) ds/datom->eid
+      query-state)
+    (xf/join-xf-2
+      '[?p :person/country ?c]
+      #(ds/datom-attr= (-> % (nth2 1)) :person/country) #(-> % (nth2 1) ds/datom->val)
+      '[?c :country/continent "Europe"]
+      #(ds/datom-attr-val= % :country/continent "Europe") ds/datom->eid
+      query-state)
+    (xf/join-xf-2
+      ;this works but it's semantically... weird...
+      ;ideally we should be able to pass [?p :person/name "Alice"]
+      ;right now it only works if we pass [?c :country/continent "Europe"]
+      ;i.e. a clause that identifies one of the last two joined relations
+      '[?c :country/continent "Europe"]                     ;TODO fix to be [?p :person/name "Alice"]
+      #(ds/datom-attr= (-> % (util/nth2 0) (util/nth2 0)) :person/name) #(-> % (util/nth2 0) (util/nth2 0) ds/datom->eid)
+      '[?p :likes "pizza"]
+      #(ds/datom-attr-val= % :likes "pizza") ds/datom->eid
+      query-state
+      :last? true)
+    (xforms/reduce zs/zset+)
+    (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+
+(comment
+  ;example usage
+  (def query-1 (q/create-query person-city-country-example-xf))
+  (def query-1 (q/create-query person-city-country-example-xf-join-2))
+
+
+  (q/input query-1
+    [(ds/tx-datoms->datoms2->zset
+       [(ddb/datom 1 :country/continent "Europe" 536870913 true)
+        (ddb/datom 2 :person/name "Alice" 536870913 true)
+        (ddb/datom 2 :person/country 1 536870913 true)
+        (ddb/datom 2 :likes "pizza" 536870913 true)])])
+
+  (q/get-result query-1)
+
+  (q/input query-1
+    [(ds/tx-datoms->datoms2->zset
+       [(ddb/datom 1 :team/name "A" 536870913 false)
+        (ddb/datom 2 :team/name "A" 536870913 false)
+        (ddb/datom 3 :team/name "A" 536870913 false)])])
+
+  (q/get-result query-1)
+
+  (q/get-state query-1)
+
+  )
+
 (defn load-learn-db
   []
   (let [schema (util/read-edn-file "resources/learndatalogtoday/schema_datascript.edn")

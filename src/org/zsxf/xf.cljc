@@ -118,13 +118,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defn input-zset-item-type [zset-item]
   (cond
     (and
       (vector? zset-item)
       (= 2 (count zset-item))
-      (some? (::xf/clause (meta zset-item)))) :relation
+      (some? (::xf/clauses (meta zset-item)))) :relation
     (and
       (instance? Datom2 zset-item)
       (nil? (::xf/clauses (meta zset-item)))) :datom
@@ -133,14 +132,15 @@
 (defn zset-item-can-join?
   [zset-item clause]
   (let [zset-item-type      (input-zset-item-type zset-item)
-        datom-clause (::xf/clause (meta zset-item))
+        item-clauses (::xf/clauses (meta zset-item))
         zset-item-can-join? (condp = zset-item-type
-                              :relation (= datom-clause clause)
+                              :relation (contains? item-clauses clause)
                               :datom true)]
-    (when (false? zset-item-can-join?)
-      (timbre/info "cannot join :::" zset-item)
-      (timbre/info "datom tagged with" datom-clause)
-      (timbre/info "looking for" clause))
+    (comment
+      (when (false? zset-item-can-join?)
+        (timbre/info "cannot join :::" zset-item)
+        (timbre/info "item tagged with" item-clauses)
+        (timbre/info "looking for" clause)))
     zset-item-can-join?))
 
 (defn dissoc-meta-clause [meta-map]
@@ -149,7 +149,7 @@
 
 (defn join-xf-2
   "WIP"
-  [clause-1 [path-f-1 pred-1] index-kfn-1 clause-2 [path-f-2 pred-2] index-kfn-2 index-state
+  [clause-1 pred-1 index-kfn-1 clause-2 pred-2 index-kfn-2 index-state
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
@@ -166,13 +166,13 @@
       (map (fn [zset-item]
              (let [delta-1 (if (and
                                  (zset-item-can-join? zset-item clause-1)
-                                 (pred-1 (path-f-1 zset-item)))
-                             (zs/index #{zset-item} (comp index-kfn-1 path-f-1))
+                                 (pred-1 zset-item))
+                             (zs/index #{zset-item} index-kfn-1)
                              {})
                    delta-2 (if (and
                                  (zset-item-can-join? zset-item clause-2)
-                                 (pred-2 (path-f-2 zset-item)))
-                             (zs/index #{zset-item} (comp index-kfn-2 path-f-1))
+                                 (pred-2 zset-item))
+                             (zs/index #{zset-item} index-kfn-2)
                              {})
                    zset    (if last? #{} #{zset-item})]
                ;return
@@ -220,18 +220,14 @@
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
                        return-zset-item-xf
-                       (map (fn [[datom-1 datom-2 :as zset-item]]
+                       (map (fn [zset-item]
                               ;"tag" zset items with the current join-xf-clauses
                               ;this allows join-xf to skip joining relations that are pattern-identical
                               ; but are not linked via clause
-                              (timbre/info "counting zset-items..." (count zset-item))
-                              (timbre/info "type" (type zset-item))
-                              (timbre/info "old" zset-item)
-                              (let [new-zset-item
-                                    [(vary-meta datom-1 (fn [m] (assoc m ::xf/clause clause-1)))
-                                     (vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))]]
-                                (timbre/info "new" new-zset-item)
-                                new-zset-item)))))
+                              (vary-meta
+                                zset-item
+                                (fn [m]
+                                  (assoc m ::xf/clauses join-xf-clauses)))))))
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat

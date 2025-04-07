@@ -229,7 +229,6 @@
 
 (defn join-xf-with-clauses-test-2
   [query-state]
-
   (comp
     (xf/mapcat-zset-transaction-xf)
     ;danny

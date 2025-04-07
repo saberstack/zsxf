@@ -163,7 +163,6 @@
       (mapcat identity)
       ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
       (map (fn [zset-item]
-
              (let [delta-1 (if (and
                                  (zset-item-can-join? zset-item clause-1)
                                  (pred-1 zset-item))

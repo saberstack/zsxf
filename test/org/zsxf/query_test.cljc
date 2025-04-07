@@ -356,7 +356,7 @@
           (count (q/get-result query-1))))))
 
 (comment
-  ;old wrong output
+  ;old wrong output, 16 items, badly formed
   #{[[[[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [58 :movie/title "Lethal Weapon 2"]] [58 :movie/cast 37]]
      [37 :person/name "Joe Pesci"]]
 
@@ -397,7 +397,7 @@
      [13 :person/name "Mel Gibson"]]
     [[[14 :person/name "Danny Glover"] [57 :movie/cast 14]] [14 :person/name "Danny Glover"]]}
 
-  ;new correct
+  ;new correct, 12 items, all uniform
   #{[[[[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [58 :movie/title "Lethal Weapon 2"]] [58 :movie/cast 37]]
      [37 :person/name "Joe Pesci"]]
 

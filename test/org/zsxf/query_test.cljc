@@ -161,16 +161,21 @@
   ;subquery explore
   '[:find ?p
     :where
+    ;Alice
     [?p :person/name "Alice"]
     [?p :person/country ?c]
     [?c :country/continent "Europe"]
     [?p :likes "pizza"]
-    [?p2 :person/name "Bob"]
+
+    ;Bob
     ;?p2 (Bob) has the same country as ?p (Alice)
-    [?p2 :person/country ?c]
     ;and he also must like pizza
     ;this is one fully formed subquery (no breaks in the chain)
     ;but without unique identifiers, are we talking about Bob or Alice here?
+    [?p2 :person/name "Bob"]
+    [?p2 :person/country ?c]
+    [?c :country/continent "Europe"]
+    ;with no identifiers/clauses, this is ambiguous::
     [?p2 :likes "pizza"]]
   )
 

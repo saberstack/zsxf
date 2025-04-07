@@ -272,8 +272,7 @@
       [?m :movie/cast ?danny]
       [?m :movie/title ?title]
       [?m :movie/cast ?a]
-      [?a :person/name ?actor]
-      [?a :person/born ?actor-born]])
+      [?a :person/name ?actor]])
 
   (comp
     (xf/mapcat-zset-transaction-xf)
@@ -313,14 +312,6 @@
       '[?a :person/name ?actor]
       #(ds/datom-attr= % :person/name) ds/datom->eid
       query-state)
-    ;;actors, :person/born
-    (xf/join-xf-2
-      '[?a :person/name ?actor]
-      #(ds/datom-attr= (-> % (nth2 1)) :person/name) #(-> % (nth2 1) ds/datom->eid)
-      '[?a :person/born ?actor-born]
-      #(ds/datom-attr= % :person/born) ds/datom->eid
-      query-state
-      :last? true)
     (map (fn [pre-reduce] (timbre/spy pre-reduce)))
     (xforms/reduce
       (zs/via-meta-zset-xf+

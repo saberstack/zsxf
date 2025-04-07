@@ -27,8 +27,10 @@
   [zset-item w]
   (vary-meta zset-item (fn [meta-map] (assoc meta-map :zset/w w))))
 
-(defn dissoc-weight [zset-item]
-  (vary-meta zset-item (fn [meta-map] (dissoc meta-map :zset/w))))
+(defn dissoc-meta-weight [meta-map]
+  (let [meta-map (dissoc meta-map :zset/w)]
+    (timbre/info "meta-map after dissoc" meta-map)
+    meta-map))
 
 (defn zset-sum+
   [f]
@@ -53,13 +55,13 @@
 (defonce zset-weight-of-1 {:zset/w 1})
 
 #_(defn zset-item
-  ([x]
-   (with-meta x zset-weight-of-1))
-  ([x weight]
-   ;reuse metadata map for common weights
-   (if (= 1 weight)
-     (with-meta x zset-weight-of-1)
-     (with-meta x {:zset/w weight}))))
+    ([x]
+     (with-meta x zset-weight-of-1))
+    ([x weight]
+     ;reuse metadata map for common weights
+     (if (= 1 weight)
+       (with-meta x zset-weight-of-1)
+       (with-meta x {:zset/w weight}))))
 
 (defn zset-item
   ([x]
@@ -229,18 +231,20 @@
 
 (defn zset*
   "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"
-  [zset-1 zset-2]
-  #_{:pre [(zset? zset-1) (zset? zset-2)]}
-  (set
-    (for [item-1 zset-1 item-2 zset-2]
-      (let [weight-1   (zset-weight item-1)
-            weight-2   (zset-weight item-2)
-            new-weight (* weight-1 weight-2)]
-        (zset-item
-          ;zset weights of internal items don't serve a purpose after multiplication - remove them
-          [(dissoc-weight item-1)                           ;remove weight
-           (dissoc-weight item-2)]                          ;remove weight
-          new-weight)))))
+  ([zset-1 zset-2]
+   (zset* zset-1 zset-2 identity))
+  ([zset-1 zset-2 internal-meta-cleanup-f]
+   #_{:pre [(zset? zset-1) (zset? zset-2)]}
+   (set
+     (for [item-1 zset-1 item-2 zset-2]
+       (let [weight-1   (zset-weight item-1)
+             weight-2   (zset-weight item-2)
+             new-weight (* weight-1 weight-2)]
+         (zset-item
+           ;zset weights of internal items don't serve a purpose after multiplication - remove them
+           [(vary-meta item-1 (comp internal-meta-cleanup-f dissoc-meta-weight)) ;remove weight
+            (vary-meta item-2 (comp internal-meta-cleanup-f dissoc-meta-weight))]               ;remove weight
+           new-weight))))))
 
 (defn index-xf
   "Returns a group-by-style transducer.
@@ -339,12 +343,18 @@
 
 (defn join-indexed*
   "Join and multiply two indexed zsets (indexed zsets are maps)"
-  [indexed-zset-1 indexed-zset-2]
-  (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
-    (into
-      {}
-      (map (fn [common] [common (zset* (indexed-zset-1 common) (indexed-zset-2 common))]))
-      commons)))
+  ([indexed-zset-1 indexed-zset-2]
+   (join-indexed* indexed-zset-1 indexed-zset-2 identity))
+  ([indexed-zset-1 indexed-zset-2 internal-meta-cleanup-f]
+   (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
+     (into
+       {}
+       (map (fn [common]
+              [common (zset*
+                        (indexed-zset-1 common)
+                        (indexed-zset-2 common)
+                        internal-meta-cleanup-f)]))
+       commons))))
 
 (comment
 

@@ -142,6 +142,10 @@
       (timbre/info "looking for" clause))
     zset-item-can-join?))
 
+(defn dissoc-meta-clause [meta-map]
+  (let [meta-map (dissoc meta-map ::xf/clauses)]
+    meta-map))
+
 (defn join-xf-2
   "WIP"
   [clause-1 pred-1 index-kfn-1 clause-2 pred-2 index-kfn-2 index-state
@@ -208,11 +212,11 @@
                    (zs/indexed-zset->zset
                      (zs/indexed-zset+
                        ;ΔTeam ⋈ Players
-                       (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev))
+                       (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev dissoc-meta-clause))
                        ;Teams ⋈ ΔPlayers
-                       (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
+                       (timbre/spy (zs/join-indexed* index-state-1-prev delta-2 dissoc-meta-clause))
                        ;ΔTeams ⋈ ΔPlayers
-                       (timbre/spy (zs/join-indexed* delta-1 delta-2)))
+                       (timbre/spy (zs/join-indexed* delta-1 delta-2 dissoc-meta-clause)))
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
                        return-zset-item-xf

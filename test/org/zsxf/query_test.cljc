@@ -290,6 +290,7 @@
       )
     (def query-1 (q/create-query join-xf-with-clauses-test-2))
     (ds/init-query-with-conn query-1 conn)
+    (count (q/get-result query-1))
     )
 
   (d/transact! conn
@@ -297,17 +298,19 @@
 
   (d/transact! conn
     [{:db/id 1 :person/name "Danny Glover"}])
+  (d/transact! conn
+    [{:db/id 2 :movie/title "Movie-1"}])
 
   (q/get-state query-1)
 
   (d/transact! conn
-    [{:movie/cast  1}])
+    [{:db/id 2 :movie/cast 1}])
+
+
 
   (d/transact! conn
-    [{:db/id 2 :movie/title "Movie-1"}])
-
-  (d/transact! conn
-    [{:person/name "Alice"}])
+    [{:db/id -1 :person/name "Alice"}
+     {:db/id 2 :movie/cast -1}])
 
   (d/transact! conn
     [{:db/id 2 :movie/cast 3}])
@@ -322,10 +325,11 @@
       :movie/cast 2}])
 
   (q/get-result query-1)
+  (q/get-state query-1)
 
 
   (d/q
-    '[:find ?actor
+    '[:find ?danny ?actor
       :where
       [?danny :person/name "Danny Glover"]
       [?danny :person/born ?danny-born]

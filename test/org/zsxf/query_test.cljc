@@ -354,3 +354,84 @@
     (is (=
           (count (d/q datalog-query-1 @conn))
           (count (q/get-result query-1))))))
+
+(comment
+  ;old wrong output
+  #{[[[[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [58 :movie/title "Lethal Weapon 2"]] [58 :movie/cast 37]]
+     [37 :person/name "Joe Pesci"]]
+
+    [[[[[14 :person/name "Danny Glover"] [64 :movie/cast 14]] [64 :movie/title "Lethal Weapon 3"]] [64 :movie/cast 14]]
+     [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [64 :movie/cast 14]] [64 :movie/title "Lethal Weapon 3"]] [64 :movie/cast 13]]
+     [13 :person/name "Mel Gibson"]]
+
+    [[[[[14 :person/name "Danny Glover"] [56 :movie/cast 14]] [56 :movie/title "Predator 2"]] [56 :movie/cast 15]]
+     [15 :person/name "Gary Busey"]]
+    [[[14 :person/name "Danny Glover"] [64 :movie/cast 14]] [14 :person/name "Danny Glover"]]
+    [[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [57 :movie/cast 14]] [57 :movie/title "Lethal Weapon"]] [57 :movie/cast 14]]
+     [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [57 :movie/cast 14]] [57 :movie/title "Lethal Weapon"]] [57 :movie/cast 13]]
+     [13 :person/name "Mel Gibson"]]
+
+    [[[[[14 :person/name "Danny Glover"] [56 :movie/cast 14]] [56 :movie/title "Predator 2"]] [56 :movie/cast 36]]
+     [36 :person/name "Ruben Blades"]]
+    [[[14 :person/name "Danny Glover"] [56 :movie/cast 14]] [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [57 :movie/cast 14]] [57 :movie/title "Lethal Weapon"]] [57 :movie/cast 15]]
+     [15 :person/name "Gary Busey"]]
+
+    [[[[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [58 :movie/title "Lethal Weapon 2"]] [58 :movie/cast 14]]
+     [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [64 :movie/cast 14]] [64 :movie/title "Lethal Weapon 3"]] [64 :movie/cast 37]]
+     [37 :person/name "Joe Pesci"]]
+
+    [[[[[14 :person/name "Danny Glover"] [56 :movie/cast 14]] [56 :movie/title "Predator 2"]] [56 :movie/cast 14]]
+     [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [58 :movie/title "Lethal Weapon 2"]] [58 :movie/cast 13]]
+     [13 :person/name "Mel Gibson"]]
+    [[[14 :person/name "Danny Glover"] [57 :movie/cast 14]] [14 :person/name "Danny Glover"]]}
+
+  ;new correct
+  #{[[[[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [58 :movie/title "Lethal Weapon 2"]] [58 :movie/cast 37]]
+     [37 :person/name "Joe Pesci"]]
+
+    [[[[[14 :person/name "Danny Glover"] [64 :movie/cast 14]] [64 :movie/title "Lethal Weapon 3"]] [64 :movie/cast 14]]
+     [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [64 :movie/cast 14]] [64 :movie/title "Lethal Weapon 3"]] [64 :movie/cast 13]]
+     [13 :person/name "Mel Gibson"]]
+
+    [[[[[14 :person/name "Danny Glover"] [56 :movie/cast 14]] [56 :movie/title "Predator 2"]] [56 :movie/cast 15]]
+     [15 :person/name "Gary Busey"]]
+
+    [[[[[14 :person/name "Danny Glover"] [57 :movie/cast 14]] [57 :movie/title "Lethal Weapon"]] [57 :movie/cast 14]]
+     [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [57 :movie/cast 14]] [57 :movie/title "Lethal Weapon"]] [57 :movie/cast 13]]
+     [13 :person/name "Mel Gibson"]]
+
+    [[[[[14 :person/name "Danny Glover"] [56 :movie/cast 14]] [56 :movie/title "Predator 2"]] [56 :movie/cast 36]]
+     [36 :person/name "Ruben Blades"]]
+
+    [[[[[14 :person/name "Danny Glover"] [57 :movie/cast 14]] [57 :movie/title "Lethal Weapon"]] [57 :movie/cast 15]]
+     [15 :person/name "Gary Busey"]]
+
+    [[[[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [58 :movie/title "Lethal Weapon 2"]] [58 :movie/cast 14]]
+     [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [64 :movie/cast 14]] [64 :movie/title "Lethal Weapon 3"]] [64 :movie/cast 37]]
+     [37 :person/name "Joe Pesci"]]
+
+    [[[[[14 :person/name "Danny Glover"] [56 :movie/cast 14]] [56 :movie/title "Predator 2"]] [56 :movie/cast 14]]
+     [14 :person/name "Danny Glover"]]
+
+    [[[[[14 :person/name "Danny Glover"] [58 :movie/cast 14]] [58 :movie/title "Lethal Weapon 2"]] [58 :movie/cast 13]]
+     [13 :person/name "Mel Gibson"]]}
+
+  )

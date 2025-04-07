@@ -28,9 +28,7 @@
   (vary-meta zset-item (fn [meta-map] (assoc meta-map :zset/w w))))
 
 (defn dissoc-meta-weight [meta-map]
-  (let [meta-map (dissoc meta-map :zset/w)]
-    (timbre/info "meta-map after dissoc" meta-map)
-    meta-map))
+  (dissoc meta-map :zset/w))
 
 (defn zset-sum+
   [f]
@@ -51,32 +49,22 @@
 
 ;Optimization to save (a lot!) of memory.
 ;Reuse common zset weight maps
-; TODO Can this be expanded further?
 (defonce zset-weight-of-1 {:zset/w 1})
-
-#_(defn zset-item
-    ([x]
-     (with-meta x zset-weight-of-1))
-    ([x weight]
-     ;reuse metadata map for common weights
-     (if (= 1 weight)
-       (with-meta x zset-weight-of-1)
-       (with-meta x {:zset/w weight}))))
 
 (defn zset-item
   ([x]
-   (vary-meta x (fn [m] (merge (or m {}) zset-weight-of-1))))
+   (with-meta x zset-weight-of-1))
   ([x weight]
-   ;reuse metadata map for common weights
-   (if (= 1 weight)
-     (vary-meta x (fn [m] (merge (or m {}) zset-weight-of-1)))
-     (vary-meta x (fn [m] (merge (or m {}) {:zset/w weight}))))))
-
-;(defn zset-item?
-;  [x]
-;  (and
-;    (util/can-meta? x)
-;    (int? (zset-weight x))))
+   (if (meta x)
+     ;meta exists, assoc to it
+     (vary-meta x
+       (fn [m]
+         (assoc m :zset/w weight)))
+     ;optimization:
+     ; reuse metadata map for common weights
+     (if (= 1 weight)
+       (with-meta x zset-weight-of-1)
+       (with-meta x {:zset/w weight})))))
 
 (defn zset-count-item
   "zset representing a count"
@@ -243,7 +231,7 @@
          (zset-item
            ;zset weights of internal items don't serve a purpose after multiplication - remove them
            [(vary-meta item-1 (comp internal-meta-cleanup-f dissoc-meta-weight)) ;remove weight
-            (vary-meta item-2 (comp internal-meta-cleanup-f dissoc-meta-weight))]               ;remove weight
+            (vary-meta item-2 (comp internal-meta-cleanup-f dissoc-meta-weight))] ;remove weight
            new-weight))))))
 
 (defn index-xf

@@ -131,15 +131,15 @@
 (defn zset-item-can-join?
   [zset-item clause]
   (let [zset-item-type      (input-zset-item-type zset-item)
-        _                   (timbre/info "zset-item-type" zset-item-type)
         item-clauses (::xf/clauses (meta zset-item))
         zset-item-can-join? (condp = zset-item-type
                               :relation (contains? item-clauses clause)
                               :datom true)]
-    (when (false? zset-item-can-join?)
-      (timbre/info "cannot join :::" zset-item)
-      (timbre/info "item tagged with" item-clauses)
-      (timbre/info "looking for" clause))
+    (comment
+      (when (false? zset-item-can-join?)
+        (timbre/info "cannot join :::" zset-item)
+        (timbre/info "item tagged with" item-clauses)
+        (timbre/info "looking for" clause)))
     zset-item-can-join?))
 
 (defn dissoc-meta-clause [meta-map]
@@ -224,8 +224,6 @@
                               (vary-meta
                                 zset-item
                                 (fn [m]
-                                  (when m
-                                    (timbre/info "existing meta" m))
                                   (assoc m ::xf/clauses join-xf-clauses)))))))
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]

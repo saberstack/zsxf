@@ -32,7 +32,7 @@
   ([coll index]
    (nth2 coll index nil))
   ([coll index not-found]
-   ((fpred nth (comp not vector?) nil) coll index not-found)))
+   ((fpred nth (comp not indexed?) nil) coll index not-found)))
 
 (defn key-intersection
   "Taken from clojure.set/intersection but adapted to work for maps.
@@ -90,6 +90,12 @@
   )
 
 ;util Clojure-only
+
+(defn >inst [inst-1 inst-2]
+  (condp = (compare inst-1 inst-2)
+    0 false
+    -1 false
+    1 true))
 
 #?(:clj
    (defn reducible->chan

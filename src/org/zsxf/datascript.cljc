@@ -17,12 +17,18 @@
      (let [[e a v _t add-or-retract :as datom] datom]
        [e a v])))
 
-(defn eligible-datom? [datom]
+(defn datom-like? [x]
+  (boolean
+    (and (util/nth2 x 0) (util/nth2 x 1) (util/nth2 x 2))))
+
+(defn eligible-datom? [x]
   #?(:clj
-     (instance? Datom2 datom)
+     (or
+       (instance? Datom2 x)
+       (datom-like? x))
      :cljs
      ;TODO implement Datom2 for CLJS
-     (vector? datom)))
+     (datom-like? x)))
 
 ;; End CLJC code
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

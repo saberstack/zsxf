@@ -20,6 +20,44 @@
 ; Possibly this would require maintaining the entire joined state so attempted
 ; over-retractions can be filtered out when their delta does not result in a change
 ; to the joined state
+(defn aggregate-example-xf-join-2 [query-state]
+  (comment
+    ;equivalent query
+    '[:find ?country (sum ?pts)
+      :where
+      [?e :team/name "A"]
+      [?e :event/country ?country]
+      [?e :team/points-scored ?pts]])
+
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/join-xf-2
+      '[?e :team/name "A"]
+      #(ds/datom-attr-val= % :team/name "A") ds/datom->eid
+      '[?e :event/country ?country]
+      #(ds/datom-attr= % :event/country) ds/datom->eid
+      query-state)
+    (xf/join-xf-2
+      '[?e :event/country ?country]
+      #(ds/datom-attr= (-> % (nth2 1)) :event/country) #(-> % (nth2 1) ds/datom->eid)
+      '[?e :team/points-scored ?pts]
+      #(ds/datom-attr= % :team/points-scored) ds/datom->eid
+      query-state
+      :last? true)
+    (xforms/reduce zs/zset+)
+    ;group by aggregates
+    (xf/group-by-xf
+      #(-> % (util/nth2 0) (util/nth2 1) ds/datom->val)
+      (comp
+        (xforms/transjuxt {:sum (xforms/reduce
+                                  (zs/zset-sum+
+                                    #(-> % (util/nth2 1) ds/datom->val)))
+                           :cnt (xforms/reduce zs/zset-count+)})
+        (mapcat (fn [{:keys [sum cnt]}]
+                  [(zs/zset-sum-item sum)
+                   (zs/zset-count-item cnt)]))))
+    (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+
 
 (defn aggregate-example-xf [query-state]
   (comment
@@ -58,6 +96,7 @@
 (comment
   ;example usage
   (def query-1 (q/create-query aggregate-example-xf))
+  (def query-1 (q/create-query aggregate-example-xf-join-2))
 
 
   (q/input query-1
@@ -88,63 +127,6 @@
   (q/get-state query-1)
 
   )
-
-
-
-(defn >inst [inst-1 inst-2]
-  (condp = (compare inst-1 inst-2)
-    0 false
-    -1 false
-    1 true))
-
-
-;
-;PROBLEM 1:
-; once we reach a certain :where clause, joining to a previous relation can become ambiguous
-; when using only numbered (first, second, nth, etc) paths
-;
-
-
-(comment
-  ;1. tx, datom shows up
-  [1 :person/born 1955]
-  ;waiting
-  ;2. tx, another datom shows up
-  [1 :person/name "Danny Glover"]
-  ;3. tx
-  [50 :movie/cast 1]
-
-  #{(zs/zset-item [[1 :person/name "Danny Glover"]
-                   [1 :person/born 1955]])}
-  #{(zs/zset-item [1 :person/name "Danny Glover"])}
-  )
-
-(comment
-  ;movie cast xf receives this
-  #{(zs/zset-item [[1 :person/name "Danny Glover"]
-                   [1 :person/born 1955]])}
-
-  #{(zs/zset-item [[1 :person/name "Danny Glover"]
-                   [1 :person/born 1955]])}
-  ;original datom
-  #{(zs/zset-item [1 :person/name "Danny Glover"])}
-  )
-(comment
-  ;query
-  '[:find ?actor
-    :where
-    ;danny
-    [?danny :person/name "Danny Glover"]
-    [?danny :person/born ?danny-born]
-
-    ;actors
-    [?a :person/name ?actor]
-    [?a :person/born ?actor-born]
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    [_ :movie/cast ?a]
-    ;;joins them together
-    ;[(> ?danny-born ?actor-born)]
-    ])
 
 (defn load-learn-db
   []

@@ -2,7 +2,6 @@
   (:require [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]
-            [org.zsxf.xf :as-alias xf]
             [taoensso.timbre :as timbre]))
 
 ;How to turn a zset into a proper Clojure collection

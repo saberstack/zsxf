@@ -1,5 +1,6 @@
 (ns org.zsxf.xf
-  (:require [org.zsxf.type :as t]                           ;don't remove! type import fails
+  (:require [org.zsxf.datascript :as ds]
+            [org.zsxf.type :as t]                           ;don't remove! type import fails
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [taoensso.timbre :as timbre])
@@ -126,7 +127,7 @@
     (and
       (instance? Datom2 zset-item)
       (nil? (::xf/clauses (meta zset-item)))) :datom
-    :else (throw (ex-info "invalid input-zset" {:input-zset zset-item}))))
+    :else (throw (ex-info "invalid input zset-item" {:input-zset zset-item}))))
 
 (defn zset-item-can-join?
   [zset-item clause]
@@ -220,6 +221,9 @@
                      (comp
                        return-zset-item-xf
                        (map (fn [zset-item]
+                              ;"tag" zset items with the current join-xf-clauses
+                              ;this allows join-xf to skip joining relations that are pattern-identical
+                              ; but are not linked via clause
                               (vary-meta
                                 zset-item
                                 (fn [m]
@@ -267,7 +271,6 @@
       :as   params-map}]
   (join-xf (comp pred-1 second) (comp index-k-1 second) pred-2 index-k-2 index-state params-map))
 
-
 (defn join-left-pred-1-xf
   "Joins already joined relations with a new relation.
   Modifies pred-1 and index-k-1 to point to the joined relations' first relation."
@@ -277,7 +280,6 @@
              return-zset-item-xf (map identity)}
       :as   params-map}]
   (join-xf (comp pred-1 first) (comp index-k-1 first) pred-2 index-k-2 index-state params-map))
-
 
 (defn join-right-pred-2-xf
   "Joins already joined relations with a new relation.
@@ -289,7 +291,6 @@
       :as   params-map}]
   (join-xf pred-1 index-k-1 (comp pred-2 second) (comp index-k-2 second) index-state params-map))
 
-
 (defn join-left-pred-2-xf
   "Joins already joined relations with a new relation.
   Modifies pred-2 and index-k-2 to point to the joined relations' first relation."
@@ -300,7 +301,6 @@
       :as   params-map}]
   (join-xf pred-1 index-k-1 (comp pred-2 first) (comp index-k-2 first) index-state params-map))
 
-
 (defn with-meta-f
   "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
   [f]
@@ -309,28 +309,11 @@
       (f data)
       (meta data))))
 
-
 (defn mapcat-zset-transaction-xf
   "Receives a transaction represented by a vectors of zsets.
   Returns zsets one by one"
   []
   (mapcat (fn [tx-v] (timbre/spy tx-v))))
-
-(defn init-result [result result-delta]
-  (if (nil? result)
-    ;init
-    (cond
-      (map? result-delta) [{} zs/indexed-zset+]             ;for aggregates, allow negative weights
-      (set? result-delta) [#{} zs/zset-pos+]                ;regular joins, no negative weight
-      :else (throw (ex-info "result-delta must be either map or set"
-                     {:result-delta result})))
-    ;else, existing result
-    (cond
-      (and (map? result) (map? result-delta)) [result zs/indexed-zset+] ;for aggregates, allow negative weights
-      (and (set? result) (set? result-delta)) [result zs/zset-pos+] ;regular joins no negative weights
-      :else (throw (ex-info "result and result-delta together must be either maps or sets"
-                     {:result result :result-delta result})))))
-
 
 (defn disj-irrelevant-items [zset & preds]
   (into

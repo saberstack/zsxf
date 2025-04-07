@@ -1,7 +1,6 @@
 (ns org.zsxf.query
-  (:require [org.zsxf.xf :as xf]
+  (:require [org.zsxf.zset :as zs]
             [org.zsxf.query :as-alias q]))
-
 
 (defn create-query
   "Create a query with init-xf.
@@ -14,6 +13,20 @@
      ::q/state  state
      ::q/id     (random-uuid)}))
 
+(defn init-result [result result-delta]
+  (if (nil? result)
+    ;init
+    (cond
+      (map? result-delta) [{} zs/indexed-zset+]             ;for aggregates, allow negative weights
+      (set? result-delta) [#{} zs/zset-pos+]                ;regular joins, no negative weight
+      :else (throw (ex-info "result-delta must be either map or set"
+                     {:result-delta result})))
+    ;else, existing result
+    (cond
+      (and (map? result) (map? result-delta)) [result zs/indexed-zset+] ;for aggregates, allow negative weights
+      (and (set? result) (set? result-delta)) [result zs/zset-pos+] ;regular joins no negative weights
+      :else (throw (ex-info "result and result-delta together must be either maps or sets"
+                     {:result result :result-delta result})))))
 
 (defn input
   "Takes a query (a map created via create-query) and a vector of zsets representing a transaction.
@@ -32,7 +45,7 @@
        ;side effect
        (swap! state
          (fn [{::q/keys [result] :as state-m}]
-           (let [[result result+] (xf/init-result result result-delta)]
+           (let [[result result+] (init-result result result-delta)]
              (assoc state-m ::q/result
                (result+ result result-delta)))))))
     [zsets]))

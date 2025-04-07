@@ -15,6 +15,21 @@
          (swap! result-set-state
            (fn [m] (zs/zset-pos+ m result-set-delta))))))
 
+(defn init-result [result result-delta]
+  (if (nil? result)
+    ;init
+    (cond
+      (map? result-delta) [{} zs/indexed-zset+]             ;for aggregates, allow negative weights
+      (set? result-delta) [#{} zs/zset-pos+]                ;regular joins, no negative weight
+      :else (throw (ex-info "result-delta must be either map or set"
+                     {:result-delta result})))
+    ;else, existing result
+    (cond
+      (and (map? result) (map? result-delta)) [result zs/indexed-zset+] ;for aggregates, allow negative weights
+      (and (set? result) (set? result-delta)) [result zs/zset-pos+] ;regular joins no negative weights
+      :else (throw (ex-info "result and result-delta together must be either maps or sets"
+                     {:result result :result-delta result})))))
+
 (defn query-result-state-xf
   "Saves query results to atom. Works for both zsets and indexed-zset results."
   [state]
@@ -22,7 +37,7 @@
          (timbre/spy result-delta)
          (swap! state
            (fn [{:keys [result] :as state-m}]
-             (let [[result result+] (xf/init-result result result-delta)]
+             (let [[result result+] (init-result result result-delta)]
                (assoc state-m :result
                  (result+ result result-delta))))))))
 
@@ -759,34 +774,4 @@
     [(tx-datoms->zset
        [[4 :team/points-scored 1 536870913 false]])])
 
-  #_(transduce
-      xf
-      (fn
-        ([] {})
-        ([m-final] (timbre/spy m-final))
-        ([m result-delta]
-         (timbre/spy m)
-         (timbre/spy result-delta)
-         ;side effect
-         (swap! result-state
-           (fn [result]
-             (let [[result result+] (xf/init-result result result-delta)]
-               (result+ result result-delta))))
-         ;pure
-         (timbre/spy (zs/indexed-zset-pos+ m result-delta))))
-      [#_[(tx-datoms->zset
-            [[1 :team/name 1 536870913 true]
-             [1 :event/country "Japan" 536870913 true]
-             [1 :team/points-scored 25 536870913 true]
-             [2 :team/name 1 536870913 true]
-             [2 :event/country "Japan" 536870913 true]
-             [2 :team/points-scored 18 536870913 true]
-             [3 :team/name 1 536870913 true]
-             [3 :event/country "Australia" 536870913 true]
-             [3 :team/points-scored 25 536870913 true]
-             [4 :team/name 1 536870913 true]
-             [4 :event/country "Australia" 536870913 true]
-             [4 :team/points-scored 1 536870913 true]])]
-       [(tx-datoms->zset
-          [[3 :team/points-scored 25 536870913 false]])]])
   )

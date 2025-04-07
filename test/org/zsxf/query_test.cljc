@@ -156,6 +156,24 @@
     (xforms/reduce zs/zset+)
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
 
+
+(comment
+  ;subquery explore
+  '[:find ?p
+    :where
+    [?p :person/name "Alice"]
+    [?p :person/country ?c]
+    [?c :country/continent "Europe"]
+    [?p :likes "pizza"]
+    [?p2 :person/name "Bob"]
+    ;?p2 (Bob) has the same country as ?p (Alice)
+    [?p2 :person/country ?c]
+    ;and he also must like pizza
+    ;this is one fully formed subquery (no breaks in the chain)
+    ;but without unique identifiers, are we talking about Bob or Alice here?
+    [?p2 :likes "pizza"]]
+  )
+
 (defn person-city-country-example-xf-join-2 [query-state]
   (comment
     ;equivalent query
@@ -204,8 +222,8 @@
     [(ds/tx-datoms->datoms2->zset
        [(ddb/datom 1 :country/continent "Europe" 536870913 true)
         (ddb/datom 2 :person/name "Alice" 536870913 true)
-        (ddb/datom 2 :person/country 1 536870913 true)
-        (ddb/datom 2 :likes "pizza" 536870913 true)])])
+        (ddb/datom 2 :likes "pizza" 536870913 true)
+        (ddb/datom 2 :person/country 1 536870913 true)])])
 
   (q/get-result query-1)
 

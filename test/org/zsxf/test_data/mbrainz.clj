@@ -173,8 +173,10 @@
     (comp
       (xf/mapcat-zset-transaction-xf)
       (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
-      (xf/join-xf
+      (xf/join-xf-2
+        [:c1]
         pred-1 ds/datom->eid
+        [:c2]
         pred-2 ds/datom->val
         query-state
         :last? true)
@@ -188,60 +190,32 @@
                     [(zs/zset-count-item cnt)]))))
       (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
 
-(defn init-load-all []
+(defn init-load-all
+  "Main loading fn"
+  []
   (timbre/set-min-level! :info)
-
-  (reset! *query-1 (q/create-query query-count-artists-by-country-zsxf))
-  (reset! *query-2 nil)
-  (reset! *query-3 nil)
-
-  (reset! *conn (d/create-conn schema))
-  ;setup link between query and connection via Datascript listener
-  (ds/init-query-with-conn @*query-1 @*conn)
-  ;load countries and genres
-  (d/transact! @*conn (vec (load-country-set)))
-  (d/transact! @*conn (vec (load-genre-set)))
-
-  ;load artists
-  ;(load-artists-from-json "/Users/raspasov/Downloads/artist/mbdump/artist" 10000000)
-  ;(load-artists-from-nippy "resources/mbrainz/artists_mini_set.nippy" 10000000)
-  (load-artists-from-nippy "resources/mbrainz/artists_set.nippy" 10000000))
-
-
-
-(defn init-db-fast
-  ([] (init-db-fast (d/seek-datoms @@*conn :eavt)))
-  ([datoms]
-   (let [db (d/init-db datoms schema)]
-     (reset! *conn-2 (d/conn-from-db db))
-     :done)))
-
-(comment
-  (reset! *conn-2 nil)
-
-  (let [stage-1 (time (nippy/freeze-to-file
-                        "resources/mbrainz/artists_datoms.nippy"
-                        (into
-                          []
+  (let [artist-datoms  (nippy/thaw-from-file
+                         "resources/mbrainz/artists_datoms.nippy"
+                         {:thaw-xform
                           (comp
-                            (map (fn [[e a v tx b]]
-                                   [e a v tx b])))
-                          (d/seek-datoms @@*conn :eavt))))])
-
-  (let [stage-2 (time
-                  (nippy/thaw-from-file
-                    "resources/mbrainz/artists_datoms.nippy"
-                    {:thaw-xform
-                     (comp
-                       (map (fn [thawing]
-                              (if (vector? thawing)
-                                (let [[e a v tx b] thawing]
-                                  (d/datom e a v tx b))
-                                thawing))))}))
-        state-3 (time (init-db-fast stage-2))]
+                            (map (fn [thawing]
+                                   (if (vector? thawing)
+                                     (let [[e a v tx b] thawing]
+                                       (d/datom e a v tx b))
+                                     thawing))))})
+        db             (d/init-db artist-datoms schema)
+        conn           (d/conn-from-db db)]
+    (reset! *conn conn)
     :done)
-
   )
+
+(defn init-query
+  "Main fn to setup ZSXF queries with loaded db"
+  [conn query-atom]
+  (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
+    (reset! query-atom query)
+    (ds/init-query-with-conn query conn)
+    (q/get-result query)))
 
 ;Direct Datascript queries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -318,31 +292,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn init-query [conn query-atom]
-  (do
-    (timbre/set-min-level! :info)
-    (when-let [query @query-atom]
-      (timbre/info "unlisten...")
-      (d/unlisten! conn (q/get-id query))
-      :ok)
-    (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
-      (reset! query-atom query)
-      (ds/init-query-with-conn query conn)
-      (q/get-result query))))
+
 
 (comment
-
-  (init-query @*conn-2 *query-2)
 
   (set! *print-meta* true)
   (timbre/set-min-level! :info)
   (timbre/set-min-level! :trace)
 
-  (take 10 (d/rseek-datoms @@*conn :eavt))
 
   (do
     ;add another artist
-    (d/transact! @*conn-2
+    (d/transact! @*conn
       [{:artist/name    "Eric Jordan"
         :artist/id      "eric-jordan"
         :artist/country [:country/name-alpha-2 "US"]
@@ -363,67 +324,14 @@
   )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
-  ;second query
+
   (time
-    (do
-      (timbre/set-min-level! :info)
-      (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
-        (reset! *query-2 query)
-        (ds/init-query-with-conn query @*conn)
-        (q/get-result query))))
+    (init-load-all))
 
-  (do
-    (timbre/set-min-level! :info)
-    (let [query (q/create-query query-count-artists-by-country-zsxf)]
-      (reset! *query-3 query)
-      (ds/init-query-with-conn query @*conn)
-      (q/get-result query)))
+  (ds/unlisten-all! @*conn)
 
-  ;unlisten
-  (do
-    (d/unlisten! @*conn (q/get-id @*query-2))
-    :done)
-
-  ;re-listen
-  (do
-    (ds/listen! @*conn @*query-1)
-    :done)
-
-  (do
-    (d/unlisten! @*conn (q/get-id @*query-1))
-    :done)
-
-  (do
-    (d/unlisten! @*conn (q/get-id @*query-2))
-    :done)
-
-
-
-  (do
-    (d/unlisten! @*conn (q/get-id @*query-3))
-    :done)
-
-  (ds/take-last-datoms @*conn 20)
-
-
-
-  (mm/measure *conn-2)
-
-  (mm/measure [*conn])
-
-  (mm/measure [*conn *query-1])
-
-  (q/get-id @*query-1)
-
-
-  (mm/measure [*conn-2 *conn])
-
-  )
-
-(comment
-
-  (do
-    (time (init-load-all)))
+  (time
+    (init-query @*conn *query-1))
 
   (set! *print-meta* true)
   (set! *print-meta* false)

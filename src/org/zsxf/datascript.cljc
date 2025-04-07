@@ -124,6 +124,11 @@
   [conn]
   (:listeners @(:atom conn)))
 
+(defn unlisten-all!
+  "Unlisten all Datascript listeners."
+  [conn]
+  (run! (fn [[k _]] (d/unlisten! conn k)) (conn-listeners conn)))
+
 ;examples
 (comment
   (set! *print-meta* true)

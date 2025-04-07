@@ -179,6 +179,17 @@
     [?p2 :likes "pizza"]]
   )
 
+#_(defmacro vec-to-path [v]
+  (transduce
+    (map (fn [idx#]
+           `(fn [x#] (~`util/nth2 x# idx#))))
+    (completing
+      conj
+      (fn [final-list]
+        #(-> % )))
+    '()
+    v))
+
 (defn person-city-country-example-xf-join-2 [query-state]
   (comment
     ;equivalent query
@@ -188,30 +199,29 @@
       [?p :person/country ?c]
       [?c :country/continent "Europe"]
       [?p :likes "pizza"]])
-
   (comp
     (xf/mapcat-zset-transaction-xf)
     (xf/join-xf-2
       '[?p :person/name "Alice"]
-      #(ds/datom-attr-val= % :person/name "Alice") ds/datom->eid
+      [identity #(ds/datom-attr-val= % :person/name "Alice")] ds/datom->eid
       '[?p :person/country ?c]
-      #(ds/datom-attr= % :person/country) ds/datom->eid
+      [identity #(ds/datom-attr= % :person/country)] ds/datom->eid
       query-state)
     (xf/join-xf-2
       '[?p :person/country ?c]
-      #(ds/datom-attr= (-> % (nth2 1)) :person/country) #(-> % (nth2 1) ds/datom->val)
+      [#(nth2 % 1) #(ds/datom-attr= % :person/country)] #(-> % (nth2 1) ds/datom->val)
       '[?c :country/continent "Europe"]
-      #(ds/datom-attr-val= % :country/continent "Europe") ds/datom->eid
+      [identity #(ds/datom-attr-val= % :country/continent "Europe")] ds/datom->eid
       query-state)
     (xf/join-xf-2
       ;this works but it's semantically... weird...
       ;ideally we should be able to pass [?p :person/name "Alice"]
       ;right now it only works if we pass [?c :country/continent "Europe"]
       ;i.e. a clause that identifies one of the last two joined relations
-      '[?c :country/continent "Europe"]                     ;TODO fix to be [?p :person/name "Alice"]
-      #(ds/datom-attr= (-> % (util/nth2 0) (util/nth2 0)) :person/name) #(-> % (util/nth2 0) (util/nth2 0) ds/datom->eid)
+      '[?p :person/name "Alice"]                     ;TODO fix to be [?p :person/name "Alice"]
+      [#(-> % (util/nth2 0) (timbre/spy) (util/nth2 0)) #(ds/datom-attr= % :person/name)] ds/datom->eid
       '[?p :likes "pizza"]
-      #(ds/datom-attr-val= % :likes "pizza") ds/datom->eid
+      [identity #(ds/datom-attr-val= % :likes "pizza")] ds/datom->eid
       query-state
       :last? true)
     (xforms/reduce zs/zset+)
@@ -223,6 +233,8 @@
   (def query-1 (q/create-query person-city-country-example-xf-join-2))
 
 
+  (set! *print-meta* true)
+  (timbre/set-ns-min-level! :trace)
   (q/input query-1
     [(ds/tx-datoms->datoms2->zset
        [(ddb/datom 1 :country/continent "Europe" 536870913 true)
@@ -261,69 +273,66 @@
       [?m :movie/title ?title]
       [?m :movie/cast ?a]
       [?a :person/name ?actor]
-      ;[?a :person/born ?actor-born]
-      ])
+      [?a :person/born ?actor-born]])
 
   (comp
     (xf/mapcat-zset-transaction-xf)
     ;danny
-    ;(xf/join-xf-2
-    ;  '[?danny :person/name "Danny Glover"]
-    ;  #(ds/datom-attr-val= % :person/name "Danny Glover") ds/datom->eid
-    ;  '[?danny :person/born ?danny-born]
-    ;  #(ds/datom-attr= % :person/born) ds/datom->eid
-    ;  query-state)
-    ;;danny, movie cast
-    ;(xf/join-xf-2
-    ;  '[?danny :person/born ?danny-born]
-    ;  #(ds/datom-attr= (-> % (nth2 1)) :person/born) #(-> % (nth2 1) ds/datom->eid)
-    ;  '[?m :movie/cast ?danny]
-    ;  #(ds/datom-attr= % :movie/cast) ds/datom->val
-    ;  query-state)
-    ;;movie title
-    ;(xf/join-xf-2
-    ;  '[?m :movie/cast ?danny]
-    ;  #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
-    ;  '[?m :movie/title ?title]
-    ;  #(ds/datom-attr= % :movie/title) ds/datom->eid
-    ;  query-state)
-    ;;actors, movie cast
-    ;(xf/join-xf-2
-    ;  '[?m :movie/title ?title]
-    ;  #(ds/datom-attr= (-> % (nth2 1)) :movie/title) #(-> % (nth2 1) ds/datom->eid)
-    ;  '[?m :movie/cast ?a]
-    ;  #(ds/datom-attr= % :movie/cast) ds/datom->eid
-    ;  query-state
-    ;  )
-    ;;;actors, :person/name
-    ;(xf/join-xf-2
-    ;  '[?m :movie/cast ?a]
-    ;  #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
-    ;  '[?a :person/name ?actor]
-    ;  #(ds/datom-attr= % :person/name) ds/datom->eid
-    ;  query-state)
-    ;;;actors, :person/born
-    ;(xf/join-xf-2
-    ;  '[?a :person/name ?actor]
-    ;  #(ds/datom-attr= (-> % (nth2 1)) :person/name) #(-> % (nth2 1) ds/datom->eid)
-    ;  '[?a :person/born ?actor-born]
-    ;  #(ds/datom-attr= % :person/born) ds/datom->eid
-    ;  query-state
-    ;  :last? true)
+    (xf/join-xf-2
+      '[?danny :person/name "Danny Glover"]
+      #(ds/datom-attr-val= % :person/name "Danny Glover") ds/datom->eid
+      '[?danny :person/born ?danny-born]
+      #(ds/datom-attr= % :person/born) ds/datom->eid
+      query-state)
+    ;danny, movie cast
+    (xf/join-xf-2
+      '[?danny :person/born ?danny-born]
+      #(ds/datom-attr= (-> % (nth2 1)) :person/born) #(-> % (nth2 1) ds/datom->eid)
+      '[?m :movie/cast ?danny]
+      #(ds/datom-attr= % :movie/cast) ds/datom->val
+      query-state)
+    ;movie title
+    (xf/join-xf-2
+      '[?m :movie/cast ?danny]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
+      '[?m :movie/title ?title]
+      #(ds/datom-attr= % :movie/title) ds/datom->eid
+      query-state)
+    ;actors, movie cast
+    (xf/join-xf-2
+      '[?m :movie/title ?title]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/title) #(-> % (nth2 1) ds/datom->eid)
+      '[?m :movie/cast ?a]
+      #(ds/datom-attr= % :movie/cast) ds/datom->eid
+      query-state
+      )
+    ;;actors, :person/name
+    (xf/join-xf-2
+      '[?m :movie/cast ?a]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
+      '[?a :person/name ?actor]
+      #(ds/datom-attr= % :person/name) ds/datom->eid
+      query-state)
+    ;;actors, :person/born
+    (xf/join-xf-2
+      '[?a :person/name ?actor]
+      #(ds/datom-attr= (-> % (nth2 1)) :person/name) #(-> % (nth2 1) ds/datom->eid)
+      '[?a :person/born ?actor-born]
+      #(ds/datom-attr= % :person/born) ds/datom->eid
+      query-state
+      :last? true)
     (map (fn [pre-reduce] (timbre/spy pre-reduce)))
     (xforms/reduce
       (zs/via-meta-zset-xf+
         (fn [zset-meta]
-          (when (some? zset-meta)
-            ;(timbre/info "zset-meta found::" zset-meta)
-            ;(timbre/info "clauses count::" (count (::xf/clauses zset-meta)))
-            )
           (map (xf/with-meta-f
                  (fn [joined-relation]
                    ;(timbre/info "joined-relation::" joined-relation)
                    joined-relation))))))
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))
   )
+
+
 
 (defn join-xf-with-clauses-test-2
   [query-state]

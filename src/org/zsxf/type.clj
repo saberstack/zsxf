@@ -126,8 +126,8 @@
   (binding [*out* w]
     (let [^Datom d (.-datom datom2)]
       (print-meta datom2 w)
-      (.write w "#org.zsxf.datascript/Datom2")
-      (pr [(.-e d) (.-a d) (.-v d) (ddb/datom-tx d) (ddb/datom-added d)]))))
+      ;(.write w "#D2")
+      (pr [(.-e d) (.-a d) (.-v d)]))))
 
 (defn datom-from-reader [v]
   ; This does not seem possible until this is solved:

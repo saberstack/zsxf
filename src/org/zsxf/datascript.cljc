@@ -18,11 +18,11 @@
        [e a v])))
 
 (defn eligible-datom? [datom]
-  (or
-    (vector? datom)
-    ;TODO implement Datom2 for CLJS
-    #?(:clj (instance? Datom datom))
-    #?(:clj (instance? Datom2 datom))))
+  #?(:clj
+     (instance? Datom2 datom)
+     :cljs
+     ;TODO implement Datom2 for CLJS
+     (vector? datom)))
 
 ;; End CLJC code
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

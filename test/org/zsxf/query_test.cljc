@@ -146,6 +146,12 @@
     ;[(> ?danny-born ?actor-born)]
     ])
 
+(defn load-learn-db
+  []
+  (let [schema (util/read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
+        data   (util/read-edn-file "resources/learndatalogtoday/data_datascript.edn")]
+    [schema data]))
+
 (defn join-xf-with-clauses-test-1
   [query-state]
   (comment
@@ -163,42 +169,41 @@
   (comp
     (xf/mapcat-zset-transaction-xf)
     ;danny
-    (xf/join-xf-2
-      '[?danny :person/name "Danny Glover"]
-      #(ds/datom-attr-val= % :person/name "Danny Glover") ds/datom->eid
-      '[?danny :person/born ?danny-born]
-      #(ds/datom-attr= % :person/born) ds/datom->eid
-      query-state)
-    ;danny, movie cast
-    (xf/join-xf-2
-      '[?danny :person/born ?danny-born]
-      #(ds/datom-attr= (-> % (nth2 1)) :person/born) #(-> % (nth2 1) ds/datom->eid)
-      '[?m :movie/cast ?danny]
-      #(ds/datom-attr= % :movie/cast) ds/datom->val
-      query-state)
-    ;movie title
-    (xf/join-xf-2
-      '[?m :movie/cast ?danny]
-      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
-      '[?m :movie/title ?title]
-      #(ds/datom-attr= % :movie/title) ds/datom->eid
-      query-state)
-    ;actors, movie cast
-    (xf/join-xf-2
-      '[?m :movie/title ?title]
-      #(ds/datom-attr= (-> % (nth2 1)) :movie/title) #(-> % (nth2 1) ds/datom->eid)
-      '[?m :movie/cast ?a]
-      #(ds/datom-attr= % :movie/cast) ds/datom->eid
-      query-state
-      )
-    ;;actors, :person/name
-    (xf/join-xf-2
-      '[?m :movie/cast ?a]
-      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
-      '[?a :person/name ?actor]
-      #(ds/datom-attr= % :person/name) ds/datom->eid
-      query-state
-      :last? true)
+    ;(xf/join-xf-2
+    ;  '[?danny :person/name "Danny Glover"]
+    ;  #(ds/datom-attr-val= % :person/name "Danny Glover") ds/datom->eid
+    ;  '[?danny :person/born ?danny-born]
+    ;  #(ds/datom-attr= % :person/born) ds/datom->eid
+    ;  query-state)
+    ;;danny, movie cast
+    ;(xf/join-xf-2
+    ;  '[?danny :person/born ?danny-born]
+    ;  #(ds/datom-attr= (-> % (nth2 1)) :person/born) #(-> % (nth2 1) ds/datom->eid)
+    ;  '[?m :movie/cast ?danny]
+    ;  #(ds/datom-attr= % :movie/cast) ds/datom->val
+    ;  query-state)
+    ;;movie title
+    ;(xf/join-xf-2
+    ;  '[?m :movie/cast ?danny]
+    ;  #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
+    ;  '[?m :movie/title ?title]
+    ;  #(ds/datom-attr= % :movie/title) ds/datom->eid
+    ;  query-state)
+    ;;actors, movie cast
+    ;(xf/join-xf-2
+    ;  '[?m :movie/title ?title]
+    ;  #(ds/datom-attr= (-> % (nth2 1)) :movie/title) #(-> % (nth2 1) ds/datom->eid)
+    ;  '[?m :movie/cast ?a]
+    ;  #(ds/datom-attr= % :movie/cast) ds/datom->eid
+    ;  query-state
+    ;  )
+    ;;;actors, :person/name
+    ;(xf/join-xf-2
+    ;  '[?m :movie/cast ?a]
+    ;  #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
+    ;  '[?a :person/name ?actor]
+    ;  #(ds/datom-attr= % :person/name) ds/datom->eid
+    ;  query-state)
     ;;;actors, :person/born
     ;(xf/join-xf-2
     ;  '[?a :person/name ?actor]
@@ -222,29 +227,55 @@
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))
   )
 
+(defn join-xf-with-clauses-test-2
+  [query-state]
+
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    ;danny
+    (xf/join-xf-2
+      '[?danny :person/name "Danny Glover"]
+      #(ds/datom-attr-val= % :person/name "Danny Glover") ds/datom->eid
+      '[?m :movie/cast ?danny]
+      #(ds/datom-attr= % :movie/cast) ds/datom->val
+      query-state)
+    ;movie cast
+    (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+    (xf/join-xf-2
+      '[?m :movie/cast ?danny]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
+      '[?m :movie/title ?title]
+      #(ds/datom-attr= % :movie/title) ds/datom->eid
+      query-state)
+    (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+    ;actors, movie cast
+    (xf/join-xf-2
+      '[?m :movie/title ?title]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/title) #(-> % (nth2 1) ds/datom->eid)
+      '[?m :movie/cast ?a]
+      #(ds/datom-attr= % :movie/cast) ds/datom->eid
+      query-state)
+    (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+    (xf/join-xf-2
+      '[?m :movie/cast ?a]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
+      '[?a :person/name ?actor]
+      #(ds/datom-attr= % :person/name) ds/datom->eid
+      query-state
+      :last? true)
+    (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
+    (xforms/reduce
+      (zs/via-meta-zset-xf+
+        (fn [zset-meta]
+          (timbre/spy zset-meta)
+          (map (xf/with-meta-f
+                 (fn [joined-relation]
+                   joined-relation))))))
+    (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+
 (comment
-  ;p2 looking for a joined relation like:
-  (let [rel [['[?a :person/name ?actor]
-              '[?a :person/born ?actor-born]]
-             '[_ :movie/cast ?a]]]
-    ;looking for [?a :person/born ?actor-born]
-    ; so the path is:
-    (-> rel
-      (nth2 0)
-      (nth2 1)))
-  ;=> [?a :person/born ?actor-born]
-  )
-
-(defn load-learn-db
-  []
-  (let [schema (util/read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
-        data   (util/read-edn-file "resources/learndatalogtoday/data_datascript.edn")]
-    [schema data]))
-
-(comment
-
   (do
-    ;(timbre/set-min-level! :trace)
+    (timbre/set-min-level! :trace)
     (timbre/set-min-level! :info)
     (let [[schema data] (load-learn-db)]
 
@@ -257,14 +288,30 @@
       ;    :person/name "Arnold"}])
       (d/transact! conn data)
       )
-
-    (def query-1 (q/create-query join-xf-with-clauses-test-1))
+    (def query-1 (q/create-query join-xf-with-clauses-test-2))
     (ds/init-query-with-conn query-1 conn)
     )
 
   (d/transact! conn
-    [{:movie/cast  1
-      :movie/title "Untitled"}])
+    [{:person/born #inst"2000"}])
+
+  (d/transact! conn
+    [{:db/id 1 :person/name "Danny Glover"}])
+
+  (q/get-state query-1)
+
+  (d/transact! conn
+    [{:movie/cast  1}])
+
+  (d/transact! conn
+    [{:db/id 2 :movie/title "Movie-1"}])
+
+  (d/transact! conn
+    [{:person/name "Alice"}])
+
+  (d/transact! conn
+    [{:db/id 2 :movie/cast 3}])
+
 
   (d/transact! conn
     [{:db/id       -1
@@ -276,16 +323,6 @@
 
   (q/get-result query-1)
 
-  (comment
-    '[:find ?danny ?actor ?title
-      :where
-      [?danny :person/name "Danny Glover"]
-      [?danny :person/born ?danny-born]
-      [?m :movie/cast ?danny]
-      [?m :movie/title ?title]
-      [?m :movie/cast ?a]
-      [?a :person/name ?actor]
-      ])
 
   (d/q
     '[:find ?actor
@@ -351,17 +388,14 @@
       ]
     @conn)
 
-  ;implicit join via find example
   (d/q
-    ;implicit joins via find happens here
-    '[:find ?a ?danny
-      :where
-      ;one set of clauses, seemingly independent
-      [?danny :person/name "Danny Glover"]
-      [?danny :person/born ?danny-born]
-      ;another set of clauses, seemingly independent
-      [?a :person/name ?actor]
-      [?a :person/born ?actor-born]]
+    '[:find ?danny
+       :where
+       [?danny :person/name "Danny Glover"]
+       [?danny :person/born ?danny-born]
+       [?m :movie/cast ?danny]
+       [?m :movie/title ?title]
+       [?m :movie/cast ?a]]
     @conn)
 
   conn

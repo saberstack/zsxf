@@ -1,9 +1,10 @@
 (ns org.zsxf.xf
-  (:require [datascript.core :as d]
-            [org.zsxf.util :as util]
+  (:require [org.zsxf.type :as t]                           ;don't remove! type import fails
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre])
+  #?(:clj
+     (:import (org.zsxf.type Datom2))))
 
 (defn rf-branchable
   "Helper to adapt a reducing function to a branching transducer.
@@ -113,90 +114,33 @@
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [(timbre/spy join-xf-delta) zset])))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn input-zset-item-type [zset-item]
+  (cond
+    (and
+      (vector? zset-item)
+      (= 2 (count zset-item))
+      (some? (::xf/clauses (meta zset-item)))) :relation
+    (and
+      (instance? Datom2 zset-item)
+      (nil? (::xf/clauses (meta zset-item)))) :datom
+    :else (throw (ex-info "invalid input-zset" {:input-zset zset-item}))))
+
 (defn zset-item-can-join?
-  "join-xf helper fn"
-  [zset-item input-zset-meta clause]
-  ;either a joined relation with the wanted join clause...
-  (if-let [clauses-set (::xf/clauses input-zset-meta)]
-    ;only allowed to join if the clause is in the set
-    (let [contains-and-can-join? (contains? clauses-set clause)]
-      (timbre/spy clause)
-      (timbre/spy clauses-set)
-      (timbre/info "contains-and-can-join?" contains-and-can-join?)
-      (timbre/info zset-item)
-      contains-and-can-join?)
-    ;clauses-set is nil, allowed to join
-    ;TODO this case assumes too much? better way to check?
-    (do
-      (timbre/info "zset-item joining:" zset-item)
-      true)))
-
-;(comment
-;  (zset-item-can-join?
-;    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
-;    '[?e :a2 "v2"])
-;  ;=> true
-;  (zset-item-can-join?
-;    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
-;    '[?some :other "clause"])
-;  ;=> false
-;  (zset-item-can-join?
-;    ;no zset metadata means "can join", presumably a single datom being added
-;    nil
-;    '[?some :other "clause"])
-;  ;=> true
-;  )
-
-(defn- with-meta-clauses
-  "join-xf helper fn"
-  [output-zset join-xf-clauses]
-  (if-not (empty? output-zset)
-      (vary-meta
-        output-zset
-        (fn [m]
-          (assoc m ::xf/clauses join-xf-clauses)))
-      output-zset))
-
-(defn vary-meta-with-clause [zset-item clause]
-  (vary-meta zset-item (fn [m] (assoc m :clause clause))))
-
-;(comment
-;  (set! *print-meta* true)
-;  (with-meta-clauses
-;    #{[:A :B]}
-;    {::xf/clauses #{'[?e :a1 "v"] '[?e :a2 "v2"]}}
-;    #{'[?some :other "clause"]
-;      '[_ :another "clause"]}))
-
-;(defn- zset-item->index-delta
-;  "join-xf helper fn"
-;  [zset-item input-zset-meta clause pred index-kfn]
-;  (if (and
-;        (zset-item-can-join? input-zset-meta clause)
-;        (pred zset-item))
-;    (zs/index #{zset-item} index-kfn)
-;    {}))
-
-;Glossary
-; - Clause: defines a single relation
-; - Joined relation: a pair of relations with arbitrary depth of joined relations nested inside
-;    [:R1 :R2] ;two relations (smallest possible joined relation pair)
-;    [[:R1 :R2] :R3] ;three relations
-;    [[[:R1 :R2] :R3] :R4] ;four relations
-;
-;
-;*Every* join-xf:
-; - takes a zset, outputs one or more zsets
-; - takes zset-items & joined relations (from previous join-xfs outputs)
-;    (!) Note: zset-items can be datoms but critically can also
-;       can be joined relations (a vector pair):
-;       [:R1 :R2]
-;       [[:R1 :R2] :R3]
-;       [[[:R1 :R2] :R3] :R4]
-;       Notice the top level vector count is always two (i.e. it's a pair)
-;       with more pairs potentially nested at every level
-; - outputs joined relations based on predicates and index kfns
-; - outputs zset-items, unchanged (until :last?)
+  [zset-item clause]
+  (let [zset-item-type      (input-zset-item-type zset-item)
+        _                   (timbre/info "zset-item-type" zset-item-type)
+        item-clauses (::xf/clauses (meta zset-item))
+        zset-item-can-join? (condp = zset-item-type
+                              :relation (contains? item-clauses clause)
+                              :datom true)]
+    (when (false? zset-item-can-join?)
+      (timbre/info "cannot join :::" zset-item)
+      (timbre/info "item tagged with" item-clauses)
+      (timbre/info "looking for" clause))
+    zset-item-can-join?))
 
 (defn join-xf-2
   "WIP"
@@ -210,83 +154,79 @@
     (timbre/spy index-uuid-1)
     (timbre/spy index-uuid-2)
     (timbre/spy join-xf-clauses)
-    (mapcat
-      (fn [input-zset]
-        (timbre/spy input-zset)
-        (let [input-zset-meta (meta input-zset)]
-          (when (= join-xf-clauses #{'[?m :movie/cast ?danny] '[?danny :person/born ?danny-born]})
-            (timbre/info "input-zset-meta::" input-zset-meta))
-          (->>
-            (vector input-zset)
-            (eduction
-              (comp
-                ;receives a zset, unpacks zset into individual items
-                (mapcat identity)
-                #_(mapcat
-                    (fn [zset]
-                      ;attach the zset meta to every item (zset meta needed by next step)
-                      (mapv (juxt identity (constantly (meta zset))) zset)))
-                ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
-                (map (fn [zset-item]
-                       (let [delta-1 (if (and
-                                           (zset-item-can-join? zset-item input-zset-meta clause-1)
-                                           (pred-1 zset-item))
-                                       (zs/index #{zset-item} index-kfn-1)
-                                       {})
-                             delta-2 (if (and
-                                           (zset-item-can-join? zset-item input-zset-meta clause-2)
-                                           (pred-2 zset-item))
-                                       (zs/index #{zset-item} index-kfn-2)
-                                       {})
-                             zset    (if last? #{} #{zset-item})]
-                         ;return
-                         [delta-1 delta-2 zset])))
-                (cond-branch
-                  ;does this join-xf care about the current item?
-                  (fn [[delta-1 delta-2 _zset :as delta-1+delta-2+zset]]
-                    (timbre/spy delta-1+delta-2+zset)
-                    ;if none of the predicates were true...
-                    (and (empty? delta-1) (empty? delta-2)))
-                  (map (fn [[_delta-1 _delta-2 zset]]
-                         (timbre/spy [last? zset])
-                         zset))
-                  ;else, proceed to join
-                  any?
-                  (comp
-                    (map (fn [[delta-1 delta-2 zset]]
-                           (let [index-state-1-prev (get @index-state index-uuid-1 {})
-                                 index-state-2-prev (get @index-state index-uuid-2 {})]
-                             ;advance indices
-                             (swap! index-state
-                               (fn [state]
-                                 (-> state
-                                   (update index-uuid-1 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-1))))
-                                   (update index-uuid-2 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-2)))))))
-                             ;return
-                             [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
-                    (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
-                           (timbre/spy zset)
-                           (timbre/spy [delta-1 index-state-2-prev])
-                           (timbre/spy [index-state-1-prev delta-2])
-                           ;return
-                           (vector
-                             ;add :where clauses as metadata to the joined relations (a zset)
-                             (with-meta-clauses
-                               (zs/indexed-zset->zset
-                                 (zs/indexed-zset+
-                                   ;ΔTeam ⋈ Players
-                                   (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev))
-                                   ;Teams ⋈ ΔPlayers
-                                   (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
-                                   ;ΔTeams ⋈ ΔPlayers
-                                   (timbre/spy (zs/join-indexed* delta-1 delta-2)))
-                                 ;transducer to transform zset items during conversion indexed-zset -> zset
-                                 return-zset-item-xf)
-                               join-xf-clauses)
-                             zset)))
-                    (mapcat (fn [[join-xf-delta zset]]
-                              ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
-                              [(timbre/spy join-xf-delta) zset]))))))))))))
+    (comp
+      ;receives a zset, unpacks zset into individual items
+      (mapcat identity)
+      ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
+      (map (fn [zset-item]
+
+             (let [delta-1 (if (and
+                                 (zset-item-can-join? zset-item clause-1)
+                                 (pred-1 zset-item))
+                             (zs/index #{zset-item} index-kfn-1)
+                             {})
+                   delta-2 (if (and
+                                 (zset-item-can-join? zset-item clause-2)
+                                 (pred-2 zset-item))
+                             (zs/index #{zset-item} index-kfn-2)
+                             {})
+                   zset    (if last? #{} #{zset-item})]
+               ;return
+               (timbre/spy
+                 [delta-1 delta-2 zset]))))
+      (cond-branch
+        ;does this join-xf care about the current item?
+        (fn [[delta-1 delta-2 _zset :as delta-1+delta-2+zset]]
+          (timbre/spy delta-1+delta-2+zset)
+          ;if none of the predicates were true...
+          (and (empty? delta-1) (empty? delta-2)))
+        (map (fn [[_delta-1 _delta-2 zset]]
+               (timbre/spy [last? zset])
+               ;return the zset
+               zset))
+        ;else, proceed to join
+        any?
+        (comp
+          (map (fn [[delta-1 delta-2 zset]]
+                 (let [index-state-1-prev (get @index-state index-uuid-1 {})
+                       index-state-2-prev (get @index-state index-uuid-2 {})]
+                   ;advance indices
+                   (swap! index-state
+                     (fn [state]
+                       (-> state
+                         (update index-uuid-1 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-1))))
+                         (update index-uuid-2 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-2)))))))
+                   ;return
+                   [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
+          (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
+                 (timbre/spy zset)
+                 (timbre/spy [delta-1 index-state-2-prev])
+                 (timbre/spy [index-state-1-prev delta-2])
+                 ;return
+                 (vector
+                   ;add :where clauses as metadata to the joined relations (a zset)
+                   (zs/indexed-zset->zset
+                     (zs/indexed-zset+
+                       ;ΔTeam ⋈ Players
+                       (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev))
+                       ;Teams ⋈ ΔPlayers
+                       (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
+                       ;ΔTeams ⋈ ΔPlayers
+                       (timbre/spy (zs/join-indexed* delta-1 delta-2)))
+                     ;transducer to transform zset items during conversion indexed-zset -> zset
+                     (comp
+                       return-zset-item-xf
+                       (map (fn [zset-item]
+                              (vary-meta
+                                zset-item
+                                (fn [m]
+                                  (when m
+                                    (timbre/info "existing meta" m))
+                                  (assoc m ::xf/clauses join-xf-clauses)))))))
+                   zset)))
+          (mapcat (fn [[join-xf-delta zset]]
+                    ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
+                    [(timbre/spy join-xf-delta) zset])))))))
 
 (defn group-by-count-xf
   "Takes a group-by-style function f and returns a transducer which
@@ -425,3 +365,25 @@
   ; More important differences likely exist, this is WIP.
   ;
   )
+
+
+;Glossary
+; - Clause: defines a single relation
+; - Joined relation: a pair of relations with arbitrary depth of joined relations nested inside
+;    [:R1 :R2] ;two relations (smallest possible joined relation pair)
+;    [[:R1 :R2] :R3] ;three relations
+;    [[[:R1 :R2] :R3] :R4] ;four relations
+;
+;
+;*Every* join-xf:
+; - takes a zset, outputs one or more zsets
+; - takes zset-items & joined relations (from previous join-xfs outputs)
+;    (!) Note: zset-items can be datoms but critically can also
+;       can be joined relations (a vector pair):
+;       [:R1 :R2]
+;       [[:R1 :R2] :R3]
+;       [[[:R1 :R2] :R3] :R4]
+;       Notice the top level vector count is always two (i.e. it's a pair)
+;       with more pairs potentially nested at every level
+; - outputs joined relations based on predicates and index kfns
+; - outputs zset-items, unchanged (until :last?)

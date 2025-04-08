@@ -336,7 +336,7 @@
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
                        return-zset-item-xf
-                       (map (fn [[datom-1 datom-2 :as zset-item]]
+                       (map (fn [[_datom-1 _datom-2 :as zset-item]]
                               (let [new-zset-item
                                     (-> zset-item
                                       (update

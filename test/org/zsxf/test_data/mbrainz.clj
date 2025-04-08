@@ -190,6 +190,33 @@
                     [(zs/zset-count-item cnt)]))))
       (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
 
+(defn query-count-artists-by-all-countries-zsxf-join-3
+  "Query for artist count by all countries."
+  [query-state]
+  (let [pred-1 #(ds/datom-attr= % :country/name-alpha-2)
+        pred-2 #(ds/datom-attr= % :artist/country)]
+    (comp
+      (xf/mapcat-zset-transaction-xf)
+      (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
+      (xf/join-xf-3
+        {:clause    [:c1]
+         :pred      pred-1
+         :index-kfn ds/datom->eid}
+        {:clause    [:c2]
+         :pred      pred-2
+         :index-kfn ds/datom->val}
+        query-state
+        :last? true)
+      (xforms/reduce zs/zset+)
+      ;group by aggregates
+      (xf/group-by-xf
+        #(-> % (util/nth2 0) ds/datom->val)
+        (comp
+          (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
+          (mapcat (fn [{:keys [cnt]}]
+                    [(zs/zset-count-item cnt)]))))
+      (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
+
 (defn init-load-all
   "Main loading fn"
   []
@@ -211,8 +238,8 @@
 
 (defn init-query
   "Main fn to setup ZSXF queries with loaded db"
-  [conn query-atom]
-  (let [query (q/create-query query-count-artists-by-all-countries-zsxf)]
+  [query-f conn query-atom]
+  (let [query (q/create-query query-f)]
     (reset! query-atom query)
     (ds/init-query-with-conn query conn)
     (q/get-result query)))
@@ -331,7 +358,10 @@
   (ds/unlisten-all! @*conn)
 
   (time
-    (init-query @*conn *query-1))
+    (init-query query-count-artists-by-all-countries-zsxf @*conn *query-1))
+
+  (time
+    (init-query query-count-artists-by-all-countries-zsxf-join-3 @*conn *query-2))
 
   (set! *print-meta* true)
   (set! *print-meta* false)

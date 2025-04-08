@@ -102,15 +102,17 @@
   Takes a vector of indices.
   Returns a function that takes an indexed collection and returns the value at the path."
   [v]
-  `(transduce
-     (map (fn [idx#]
-            (fn [x#] (~`nth2 x# idx#))))
-     (completing
-       conj
-       (fn [accum#]
-         (apply comp accum#)))
-     []
-     ~v))
+  (if (empty? v)
+      `identity
+      `(transduce
+        (map (fn [idx#]
+               (fn [x#] (~`nth2 x# idx#))))
+        (completing
+         conj
+         (fn [accum#]
+           (apply comp accum#)))
+        []
+        ~v)))
 
 (comment
   (macroexpand-1 '(path-f []))

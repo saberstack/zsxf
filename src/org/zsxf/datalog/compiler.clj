@@ -18,22 +18,20 @@
   (when (vector? thing)
     (second thing)))
 
+(defn clause-pred [_ a v]
+  (if (parser/variable? v)
+    `#(ds/datom-attr= % ~a)
+    `#(ds/datom-attr-val= % ~a ~v)))
 
-(defn clause-pred [[f & _ :as locator-vec] a v]
+(defn path-f [[f & _ :as locator-vec]]
   (condp = (count locator-vec)
     0
-    (if (parser/variable? v)
-      `#(ds/datom-attr= % ~a)
-      `#(ds/datom-attr-val= % ~a ~v))
+    `identity
 
     1
-    (if (parser/variable? v)
-      `#(ds/datom-attr= (~f %) ~a)
-      `#(ds/datom-attr-val= (~f %) ~a ~v))
+    `~f
 
-    (if (parser/variable? v)
-      `#(ds/datom-attr= ((comp ~@locator-vec) %)  ~a)
-      `#(ds/datom-attr-val= ((comp ~@locator-vec) %)  ~a ~v))))
+    `(comp ~@locator-vec)))
 
 (defmacro sprinkle-dbsp-on [datalog-query]
   (let [{where-clauses# :where find-vars# :find} (parser/query->map datalog-query)
@@ -45,7 +43,7 @@
                             [from-node to-node])
         [first-clause# & remaining-clauses#] (keys named-clauses#)
         state (gensym 'state) ]
-    (loop [preds# []
+    (loop [preds# #{}
            xf-steps# []
            covered-nodes# #{first-clause#}
            remaining-nodes# (set remaining-clauses#)
@@ -78,17 +76,22 @@
                                          adjacency-tuples#)
 
                   common-var# (get-in adjacency-list# [from# to#])
-                  [[_ a1# v1# ] [_ a2# v2#]] (map named-clauses# edge#)
+                  [[e1# a1# v1# :as c1#] [e2# a2# v2# :as c2#]] (map named-clauses# edge#)
+                  pred1# (clause-pred e1# a1# v1#)
+                  pred2# (clause-pred e2# a2# v2#)
                   locator-vec# (from# locators#)
-                  p1# (clause-pred locator-vec# a1# v1#)
-                  p2# (clause-pred [] a2# v2#)
-                  new-join `(xf/join-xf ~p1#
-                                        (comp ~((get-in variable-index# [common-var# from#]) pos->getter) ~@(from# locators#))
-                                        ~p2#
-                                        ~((get-in variable-index# [common-var# to#]) pos->getter)
-                                        ~state
-                                        :last? ~(= #{to#} remaining-nodes#))]
-              (recur (conj preds# p1# p2#)
+                  new-join `(xf/join-xf-3
+                             {:clause (quote ~c1#)
+                              :pred ~pred1#
+                              :path ~(path-f locator-vec#)
+                              :index-kfn ~((get-in variable-index# [common-var# from#]) pos->getter)}
+                             {:clause (quote ~c2#)
+                              :pred ~pred2#
+                              :path identity
+                              :index-kfn ~((get-in variable-index# [common-var# to#]) pos->getter) }
+                             ~state
+                             :last? ~(= #{to#} remaining-nodes#))]
+              (recur (conj preds# pred1# pred2#)
                      (conj xf-steps# new-join)
                      (conj covered-nodes# to#)
                      (disj remaining-nodes# to#)

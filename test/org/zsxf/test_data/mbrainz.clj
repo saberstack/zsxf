@@ -1,13 +1,10 @@
 (ns org.zsxf.test-data.mbrainz
   (:require [clojure.core.async :as a]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.data.json]
             [charred.api :as charred]
-            [medley.core :as medley]
             [clj-memory-meter.core :as mm]
-            [ham-fisted.api :as hf]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.datascript :as ds]
             [taoensso.nippy :as nippy]
@@ -136,59 +133,6 @@
       (map (fn [genre-name] {:genre/name genre-name})))
     data))
 
-(defn load-country-set []
-  (util/read-edn-file "resources/mbrainz/country_set.edn"))
-(defn load-genre-set []
-  (util/read-edn-file "resources/mbrainz/genre_set.edn"))
-
-
-(defn query-count-artists-by-country-zsxf
-  "Query for artist count by a specific country."
-  [query-state]
-  (let [pred-1 #(ds/datom-attr-val= % :country/name-alpha-2 "US")
-        pred-2 #(ds/datom-attr= % :artist/country)]
-    (comp
-      (xf/mapcat-zset-transaction-xf)
-      (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
-      (xf/join-xf
-        pred-1 ds/datom->eid
-        pred-2 ds/datom->val
-        query-state
-        :last? true)
-      (xforms/reduce zs/zset+)
-      ;group by aggregates
-      (xf/group-by-xf
-        #(-> % (util/nth2 0) ds/datom->val)
-        (comp
-          (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
-          (mapcat (fn [{:keys [cnt]}]
-                    [(zs/zset-count-item cnt)]))))
-      (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
-
-(defn query-count-artists-by-all-countries-zsxf
-  "Query for artist count by all countries."
-  [query-state]
-  (let [pred-1 #(ds/datom-attr= % :country/name-alpha-2)
-        pred-2 #(ds/datom-attr= % :artist/country)]
-    (comp
-      (xf/mapcat-zset-transaction-xf)
-      (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
-      (xf/join-xf-2
-        [:c1]
-        pred-1 ds/datom->eid
-        [:c2]
-        pred-2 ds/datom->val
-        query-state
-        :last? true)
-      (xforms/reduce zs/zset+)
-      ;group by aggregates
-      (xf/group-by-xf
-        #(-> % (util/nth2 0) ds/datom->val)
-        (comp
-          (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
-          (mapcat (fn [{:keys [cnt]}]
-                    [(zs/zset-count-item cnt)]))))
-      (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
 
 (defn query-count-artists-by-all-countries-zsxf-join-3
   "Query for artist count by all countries."
@@ -357,8 +301,6 @@
 
   (ds/unlisten-all! @*conn)
 
-  (time
-    (init-query query-count-artists-by-all-countries-zsxf @*conn *query-1))
 
   (time
     (init-query query-count-artists-by-all-countries-zsxf-join-3 @*conn *query-2))

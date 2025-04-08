@@ -7,8 +7,7 @@
 
 (defn init []
   (println "Hello ClojureScript! ...")
-  (timbre/spy (zs/zset [[1] [2] [3]]))
-  xf/join-xf)
+  (timbre/spy (zs/zset [[1] [2] [3]])))
 
 (defn -main [& args]
   (init))

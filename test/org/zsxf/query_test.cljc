@@ -422,24 +422,24 @@
         [schema data] (load-learn-db)
         conn    (d/create-conn schema)
         _       (d/transact! conn data)
-        query-1 (q/create-query new-join-xf-3)]
-
-    (ds/init-query-with-conn query-1 conn)
+        query-1 (q/create-query new-join-xf-3)
+        _       (ds/init-query-with-conn query-1 conn)
+        result  (q/get-result query-1)]
     (is (=
           (count (d/q datalog-query-1 @conn))
-          (count (q/get-result query-1))))))
+          (count result)))))
 
 (deftest join-xf-2-with-fix
   (let [_       (timbre/set-min-level! :info)
         [schema data] (load-learn-db)
         conn    (d/create-conn schema)
         _       (d/transact! conn data)
-        query-1 (q/create-query new-join-xf-with-clauses-test-2)]
-
-    (ds/init-query-with-conn query-1 conn)
+        query-1 (q/create-query new-join-xf-with-clauses-test-2)
+        _       (ds/init-query-with-conn query-1 conn)
+        result  (q/get-result query-1)]
     (is (=
           (count (d/q datalog-query-1 @conn))
-          (count (q/get-result query-1))))))
+          (count result)))))
 
 (deftest join-xf-old-problem
   (let [_       (timbre/set-min-level! :info)

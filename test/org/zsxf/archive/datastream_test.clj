@@ -1,10 +1,10 @@
-(ns org.zsxf.experimental.datastream-test
+(ns org.zsxf.archive.datastream-test
   (:require
    [clojure.test :refer [deftest testing is are]]
    [datascript.core :as d]
    [org.zsxf.zset :as zset]
    [org.zsxf.test-data.states :as states-data]
-   [org.zsxf.experimental.datastream :as subject]))
+   [org.zsxf.archive.datastream :as subject]))
 
 (def empty-db-conn (partial d/create-conn states-data/schema))
 

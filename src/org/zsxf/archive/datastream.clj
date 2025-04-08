@@ -1,4 +1,4 @@
-(ns org.zsxf.experimental.datastream
+(ns org.zsxf.archive.datastream
   (:require [org.zsxf.zset :as zset]
             [datascript.core :as d]))
 

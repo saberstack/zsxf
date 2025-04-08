@@ -309,39 +309,7 @@
       state30619
       :last?
       true)
-    (net.cgrand.xforms/reduce
-      (org.zsxf.zset/zset-xf+
-        (map
-          (org.zsxf.xf/with-meta-f
-            (juxt
-              (comp
-                ds/datom->eid
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first)
-              (comp
-                ds/datom->eid
-                org.zsxf.datalog.compiler/safe-second
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first)
-              (comp
-                ds/datom->val
-                org.zsxf.datalog.compiler/safe-second
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first)
-              (comp
-                ds/datom->eid
-                org.zsxf.datalog.compiler/safe-second
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first
-                org.zsxf.datalog.compiler/safe-first)
-              (comp
-                ds/datom->val
-                org.zsxf.datalog.compiler/safe-second
-                org.zsxf.datalog.compiler/safe-first))))))))
+    (net.cgrand.xforms/reduce zs/zset+)))
 
 (comment
   ;example usage

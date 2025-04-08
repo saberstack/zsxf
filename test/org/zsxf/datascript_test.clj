@@ -17,11 +17,9 @@
          data (util/read-edn-file   "resources/learndatalogtoday/data_datascript.edn")
          conn (d/create-conn schema)]
      (when listen-atom
-       (data-stream/listen-datom-stream conn listen-atom ds/tx-datoms->zset))
+       (data-stream/listen-datom-stream conn listen-atom ds/tx-datoms->datoms2->zset))
      (d/transact! conn data)
      conn)))
-
-
 
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"
   (let [txn-atom (atom [])

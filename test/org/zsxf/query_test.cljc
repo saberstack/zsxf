@@ -8,21 +8,10 @@
    [org.zsxf.datascript :as ds]
    [org.zsxf.query :as q]
    [org.zsxf.datalog.compiler]
-   [org.zsxf.util :as util :refer [nth2]]
+   [org.zsxf.util :as util :refer [nth2 path-f]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
    [taoensso.timbre :as timbre]))
-
-(defmacro path-f [v]
-  (transduce
-    (map (fn [idx#]
-           `(fn [x#] (~`util/nth2 x# ~idx#))))
-    (completing
-      conj
-      (fn [accum]
-        (conj accum `comp)))
-    '()
-    v))
 
 ; Aggregates current limitation: retractions (deletes) have to be precise!
 ; An _over-retraction_ by trying to retract a datom that doesn't exist will result in
@@ -213,7 +202,7 @@
       query-state)
     (xf/join-xf-3
       {:clause    '[?p :person/country ?c]
-       :path      (path-f [1])
+       :path      (util/path-f [1])
        :pred      #(ds/datom-attr= % :person/country)
        :index-kfn ds/datom->val}
       {:clause    '[?c :country/continent "Europe"]

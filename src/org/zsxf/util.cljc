@@ -97,6 +97,25 @@
     -1 false
     1 true))
 
+(defmacro path-f
+  "Macro to create a path function.
+  Takes a vector of indices.
+  Returns a function that takes an indexed collection and returns the value at the path."
+  [v]
+  (transduce
+    (map (fn [idx#]
+           `(fn [x#] (~`nth2 x# ~idx#))))
+    (completing
+      conj
+      (fn [accum]
+        (conj accum `comp)))
+    '()
+    v))
+
+(comment
+  (macroexpand-1 '(path-f []))
+  (macroexpand-1 '(path-f [1 2 3])))
+
 #?(:clj
    (defn reducible->chan
      "Take the rows from the reducible and put them onto a channel. Return the channel.

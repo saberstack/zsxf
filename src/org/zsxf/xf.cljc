@@ -239,7 +239,6 @@
 
 
 (defn detect-join-type [zset-item path-f clause]
-  (timbre/info "type ---- " (type zset-item))
   (cond
     (instance? Datom2 zset-item) :datom
     (true? (::xf/relation (meta zset-item))) :relation
@@ -254,11 +253,12 @@
         item-can-join? (condp = jt
                          :datom true
                          :relation (= clause (::xf/clause (meta (path-f zset-item)))))]
-    (when (false? item-can-join?)
-      (timbre/info "cannot join !!!")
-      (timbre/info "zset-item is :::" zset-item)
-      (timbre/info "datom tagged with" (::xf/clause (meta (path-f zset-item))))
-      (timbre/info "looking for clause" clause))
+    (comment
+      (when (false? item-can-join?)
+        (timbre/info "cannot join !!!")
+        (timbre/info "zset-item is :::" zset-item)
+        (timbre/info "datom tagged with" (::xf/clause (meta (path-f zset-item))))
+        (timbre/info "looking for clause" clause)))
     item-can-join?))
 
 (defn join-xf-3

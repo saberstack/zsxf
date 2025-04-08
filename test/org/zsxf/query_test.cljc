@@ -250,67 +250,6 @@
     (def q query)
     (q/get-result query)))
 
-(defn compiler-join-xf-1 [state30619]
-  (comp
-    (org.zsxf.xf/mapcat-zset-transaction-xf)
-
-    (org.zsxf.xf/join-xf
-      #(ds/datom-attr-val= % :person/name "Danny Glover")
-      (comp ds/datom->eid)
-      #(ds/datom-attr= % :person/born)
-      ds/datom->eid
-      state30619
-      :last?
-      false)
-    (org.zsxf.xf/join-xf
-      #(ds/datom-attr-val=
-         (org.zsxf.datalog.compiler/safe-first %)
-         :person/name
-         "Danny Glover")
-      (comp ds/datom->eid org.zsxf.datalog.compiler/safe-first)
-      #(ds/datom-attr= % :movie/cast)
-      ds/datom->val
-      state30619
-      :last?
-      false)
-    (org.zsxf.xf/join-xf
-      #(ds/datom-attr=
-         (org.zsxf.datalog.compiler/safe-second %)
-         :movie/cast)
-      (comp ds/datom->eid org.zsxf.datalog.compiler/safe-second)
-      #(ds/datom-attr= % :movie/title)
-      ds/datom->eid
-      state30619
-      :last?
-      false)
-    (org.zsxf.xf/join-xf
-      #(ds/datom-attr=
-         ((comp
-            org.zsxf.datalog.compiler/safe-second
-            org.zsxf.datalog.compiler/safe-first)
-          %)
-         :movie/cast)
-      (comp
-        ds/datom->eid
-        org.zsxf.datalog.compiler/safe-second
-        org.zsxf.datalog.compiler/safe-first)
-      #(ds/datom-attr= % :movie/cast)
-      ds/datom->eid
-      state30619
-      :last?
-      false)
-    (org.zsxf.xf/join-xf
-      #(ds/datom-attr=
-         (org.zsxf.datalog.compiler/safe-second %)
-         :movie/cast)
-      (comp ds/datom->val org.zsxf.datalog.compiler/safe-second)
-      #(ds/datom-attr= % :person/name)
-      ds/datom->eid
-      state30619
-      :last?
-      true)
-    (net.cgrand.xforms/reduce zs/zset+)))
-
 (comment
   ;example usage
   (def query-1 (q/create-query person-city-country-example-xf))
@@ -420,35 +359,46 @@
     (xf/mapcat-zset-transaction-xf)
     ;danny
     (xf/join-xf-3
-      '[?danny :person/name "Danny Glover"]
-      [(path-f [])
-       #(ds/datom-attr-val= % :person/name "Danny Glover")] ds/datom->eid
-      '[?m :movie/cast ?danny]
-      [(path-f [])
-       #(ds/datom-attr= % :movie/cast)] ds/datom->val
+      {:clause    '[?danny :person/name "Danny Glover"]
+       :path      (path-f [])
+       :pred      #(ds/datom-attr-val= % :person/name "Danny Glover")
+       :index-kfn ds/datom->eid}
+      {:clause    '[?m :movie/cast ?danny]
+       :path      (path-f [])
+       :pred      #(ds/datom-attr= % :movie/cast)
+       :index-kfn ds/datom->val}
       query-state)
     ;movie cast
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
-    (xf/join-xf-2
-      '[?m :movie/cast ?danny]
-      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
-      '[?m :movie/title ?title]
-      #(ds/datom-attr= % :movie/title) ds/datom->eid
+    (xf/join-xf-3
+      {:clause    '[?m :movie/cast ?danny]
+       :path      (path-f [1])
+       :pred      #(ds/datom-attr= % :movie/cast)
+       :index-kfn ds/datom->eid}
+      {:clause    '[?m :movie/title ?title]
+       :pred      #(ds/datom-attr= % :movie/title)
+       :index-kfn ds/datom->eid}
       query-state)
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
     ;actors, movie cast
-    (xf/join-xf-2
-      '[?m :movie/title ?title]
-      #(ds/datom-attr= (-> % (nth2 1)) :movie/title) #(-> % (nth2 1) ds/datom->eid)
-      '[?m :movie/cast ?a]
-      #(ds/datom-attr= % :movie/cast) ds/datom->eid
+    (xf/join-xf-3
+      {:clause    '[?m :movie/title ?title]
+       :path      (path-f [1])
+       :pred      #(ds/datom-attr= % :movie/title)
+       :index-kfn ds/datom->eid}
+      {:clause    '[?m :movie/cast ?a]
+       :pred      #(ds/datom-attr= % :movie/cast)
+       :index-kfn ds/datom->eid}
       query-state)
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
-    (xf/join-xf-2
-      '[?m :movie/cast ?a]
-      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
-      '[?a :person/name ?actor]
-      #(ds/datom-attr= % :person/name) ds/datom->eid
+    (xf/join-xf-3
+      {:clause    '[?m :movie/cast ?a]
+       :path      (path-f [1])
+       :pred      #(ds/datom-attr= % :movie/cast)
+       :index-kfn ds/datom->val}
+      {:clause    '[?a :person/name ?actor]
+       :pred      #(ds/datom-attr= % :person/name)
+       :index-kfn ds/datom->eid}
       query-state
       :last? true)
     (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
@@ -465,6 +415,18 @@
     [?m :movie/cast ?a]
     [?a :person/name ?actor]
     ])
+
+(deftest join-xf-3-with-another-fix
+  (let [_       (timbre/set-min-level! :info)
+        [schema data] (load-learn-db)
+        conn    (d/create-conn schema)
+        _       (d/transact! conn data)
+        query-1 (q/create-query new-join-xf-3)]
+
+    (ds/init-query-with-conn query-1 conn)
+    (is (=
+          (count (d/q datalog-query-1 @conn))
+          (count (q/get-result query-1))))))
 
 (deftest join-xf-2-with-fix
   (let [_       (timbre/set-min-level! :info)

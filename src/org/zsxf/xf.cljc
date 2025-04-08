@@ -3,7 +3,8 @@
             [org.zsxf.type :as t]                           ;don't remove! type import fails
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
-            [taoensso.timbre :as timbre])
+            [taoensso.timbre :as timbre]
+            [clojure.spec.alpha :as s])
   #?(:clj
      (:import (org.zsxf.type Datom2))))
 
@@ -260,6 +261,22 @@
         (timbre/info "datom tagged with" (::xf/clause (meta (path-f zset-item))))
         (timbre/info "looking for clause" clause)))
     item-can-join?))
+
+(s/def ::xf/path fn?)
+(s/def ::xf/clause vector?)
+(s/def ::xf/index-kfn fn?)
+(s/def ::xf/pred fn?)
+(s/def ::xf/join-xf-rel-arg-map
+  (s/keys :req [::clause ::pred ::index-kfn]))
+
+(s/def :datom/e pos-int?)
+(s/def :datom/a keyword?)
+(s/def :datom/v (s/or :string string? :integer pos-int?))
+(s/def :datom/datom (s/tuple :datom/e :datom/a :datom/v))
+
+(comment
+  ;generating datoms poc
+  (s/exercise :datom/datom 30))
 
 (defn join-xf-3
   "WIP, another fix"

@@ -12,6 +12,17 @@
    [org.zsxf.zset :as zs]
    [taoensso.timbre :as timbre]))
 
+(defmacro path-f [v]
+  (transduce
+    (map (fn [idx#]
+           `(fn [x#] (~`util/nth2 x# ~idx#))))
+    (completing
+      conj
+      (fn [accum]
+        (conj accum `comp)))
+    '()
+    v))
+
 ; Aggregates current limitation: retractions (deletes) have to be precise!
 ; An _over-retraction_ by trying to retract a datom that doesn't exist will result in
 ; an incorrect index state.
@@ -179,7 +190,7 @@
     [?p2 :likes "pizza"]]
   )
 
-(defn person-city-country-example-xf-join-2 [query-state]
+(defn person-city-country-example-xf-join-3 [query-state]
   (comment
     ;equivalent query
     '[:find ?p
@@ -191,36 +202,151 @@
 
   (comp
     (xf/mapcat-zset-transaction-xf)
-    (xf/join-xf-2
-      '[?p :person/name "Alice"]
-      #(ds/datom-attr-val= % :person/name "Alice") ds/datom->eid
-      '[?p :person/country ?c]
-      #(ds/datom-attr= % :person/country) ds/datom->eid
+    (xf/join-xf-3
+      {:clause    '[?p :person/name "Alice"]
+       :pred      #(ds/datom-attr-val= % :person/name "Alice")
+       :index-kfn ds/datom->eid}
+      {:clause    '[?p :person/country ?c]
+       :pred      #(ds/datom-attr= % :person/country)
+       :index-kfn ds/datom->eid}
       query-state)
-    (xf/join-xf-2
-      '[?p :person/country ?c]
-      #(ds/datom-attr= (-> % (nth2 1)) :person/country) #(-> % (nth2 1) ds/datom->val)
-      '[?c :country/continent "Europe"]
-      #(ds/datom-attr-val= % :country/continent "Europe") ds/datom->eid
-      query-state)
-    (xf/join-xf-2
-      ;this works but it's semantically... weird...
-      ;ideally we should be able to pass [?p :person/name "Alice"]
-      ;right now it only works if we pass [?c :country/continent "Europe"]
-      ;i.e. a clause that identifies one of the last two joined relations
-      '[?c :country/continent "Europe"]                     ;TODO fix to be [?p :person/name "Alice"]
-      #(ds/datom-attr= (-> % (util/nth2 0) (util/nth2 0)) :person/name) #(-> % (util/nth2 0) (util/nth2 0) ds/datom->eid)
-      '[?p :likes "pizza"]
-      #(ds/datom-attr-val= % :likes "pizza") ds/datom->eid
+    (xf/join-xf-3
+      {:clause    '[?p :person/country ?c]
+       :path      (path-f [1])
+       :pred      #(ds/datom-attr= % :person/country)
+       :index-kfn ds/datom->val}
+      {:clause    '[?c :country/continent "Europe"]
+       :pred      #(ds/datom-attr-val= % :country/continent "Europe")
+       :index-kfn ds/datom->eid}
       query-state
       :last? true)
+    ;(xf/join-xf-3
+    ;  '[?p :person/name "Alice"]
+    ;  [(path-f [0 0])
+    ;   #(ds/datom-attr= % :person/name)] ds/datom->eid
+    ;  '[?p :likes "pizza"]
+    ;  [(path-f [])
+    ;   #(ds/datom-attr-val= % :likes "pizza")] ds/datom->eid
+    ;  query-state
+    ;  :last? true)
     (xforms/reduce zs/zset+)
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+
+
+
+(deftest join-xf-3-test-1
+  (let [_      (timbre/set-min-level! :trace)
+        query  (q/create-query person-city-country-example-xf-join-3)
+        datoms [(ds/tx-datoms->datoms2->zset
+                  [(ddb/datom 1 :country/continent "Europe" 536870913 true)
+                   (ddb/datom 2 :person/name "Alice" 536870913 true)
+                   (ddb/datom 2 :likes "pizza" 536870913 true)
+                   (ddb/datom 2 :person/country 1 536870913 true)])]
+        datoms (ds/tx-datoms->zsets2
+                 [(ddb/datom 2 :person/country 1 536870913 true)
+                  (ddb/datom 2 :person/name "Alice" 536870913 true)
+                  (ddb/datom 1 :country/continent "Europe" 536870913 true)])]
+    (q/input query datoms)
+    (def q query)
+    (q/get-result query)))
+
+(defn compiler-join-xf-1 [state30619]
+  (comp
+    (org.zsxf.xf/mapcat-zset-transaction-xf)
+
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr-val= % :person/name "Danny Glover")
+      (comp ds/datom->eid)
+      #(ds/datom-attr= % :person/born)
+      ds/datom->eid
+      state30619
+      :last?
+      false)
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr-val=
+         (org.zsxf.datalog.compiler/safe-first %)
+         :person/name
+         "Danny Glover")
+      (comp ds/datom->eid org.zsxf.datalog.compiler/safe-first)
+      #(ds/datom-attr= % :movie/cast)
+      ds/datom->val
+      state30619
+      :last?
+      false)
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr=
+         (org.zsxf.datalog.compiler/safe-second %)
+         :movie/cast)
+      (comp ds/datom->eid org.zsxf.datalog.compiler/safe-second)
+      #(ds/datom-attr= % :movie/title)
+      ds/datom->eid
+      state30619
+      :last?
+      false)
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr=
+         ((comp
+            org.zsxf.datalog.compiler/safe-second
+            org.zsxf.datalog.compiler/safe-first)
+          %)
+         :movie/cast)
+      (comp
+        ds/datom->eid
+        org.zsxf.datalog.compiler/safe-second
+        org.zsxf.datalog.compiler/safe-first)
+      #(ds/datom-attr= % :movie/cast)
+      ds/datom->eid
+      state30619
+      :last?
+      false)
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr=
+         (org.zsxf.datalog.compiler/safe-second %)
+         :movie/cast)
+      (comp ds/datom->val org.zsxf.datalog.compiler/safe-second)
+      #(ds/datom-attr= % :person/name)
+      ds/datom->eid
+      state30619
+      :last?
+      true)
+    (net.cgrand.xforms/reduce
+      (org.zsxf.zset/zset-xf+
+        (map
+          (org.zsxf.xf/with-meta-f
+            (juxt
+              (comp
+                ds/datom->eid
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first)
+              (comp
+                ds/datom->eid
+                org.zsxf.datalog.compiler/safe-second
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first)
+              (comp
+                ds/datom->val
+                org.zsxf.datalog.compiler/safe-second
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first)
+              (comp
+                ds/datom->eid
+                org.zsxf.datalog.compiler/safe-second
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first
+                org.zsxf.datalog.compiler/safe-first)
+              (comp
+                ds/datom->val
+                org.zsxf.datalog.compiler/safe-second
+                org.zsxf.datalog.compiler/safe-first))))))))
 
 (comment
   ;example usage
   (def query-1 (q/create-query person-city-country-example-xf))
-  (def query-1 (q/create-query person-city-country-example-xf-join-2))
+  (def query-1 (q/create-query person-city-country-example-xf-join-3))
 
 
   (q/input query-1
@@ -320,6 +446,47 @@
     (xforms/reduce zs/zset+)
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
 
+(defn new-join-xf-3
+  [query-state]
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    ;danny
+    (xf/join-xf-3
+      '[?danny :person/name "Danny Glover"]
+      [(path-f [])
+       #(ds/datom-attr-val= % :person/name "Danny Glover")] ds/datom->eid
+      '[?m :movie/cast ?danny]
+      [(path-f [])
+       #(ds/datom-attr= % :movie/cast)] ds/datom->val
+      query-state)
+    ;movie cast
+    (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+    (xf/join-xf-2
+      '[?m :movie/cast ?danny]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->eid)
+      '[?m :movie/title ?title]
+      #(ds/datom-attr= % :movie/title) ds/datom->eid
+      query-state)
+    (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+    ;actors, movie cast
+    (xf/join-xf-2
+      '[?m :movie/title ?title]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/title) #(-> % (nth2 1) ds/datom->eid)
+      '[?m :movie/cast ?a]
+      #(ds/datom-attr= % :movie/cast) ds/datom->eid
+      query-state)
+    (map (fn [zset-in-between] (timbre/spy zset-in-between)))
+    (xf/join-xf-2
+      '[?m :movie/cast ?a]
+      #(ds/datom-attr= (-> % (nth2 1)) :movie/cast) #(-> % (nth2 1) ds/datom->val)
+      '[?a :person/name ?actor]
+      #(ds/datom-attr= % :person/name) ds/datom->eid
+      query-state
+      :last? true)
+    (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))
+    (xforms/reduce zs/zset+)
+    (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+
 (def datalog-query-1
   '[:find ?danny ?m ?title ?m ?a
     :where
@@ -354,6 +521,19 @@
     (is (=
           (count (d/q datalog-query-1 @conn))
           (count (q/get-result query-1))))))
+
+(deftest join-xf-compiler
+  (let [_       (timbre/set-min-level! :info)
+        [schema data] (load-learn-db)
+        conn    (d/create-conn schema)
+        _       (d/transact! conn data)
+        query-1 (q/create-query compiler-join-xf-1)]
+
+    (ds/init-query-with-conn query-1 conn)
+    (=
+      (count (d/q datalog-query-1 @conn))
+      (count (q/get-result query-1)))
+    (q/get-result query-1)))
 
 (comment
   ;old wrong output, 16 items, badly formed

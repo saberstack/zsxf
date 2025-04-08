@@ -53,7 +53,7 @@
 (defn get-result
   "View the current query result"
   [query]
-  (set! *print-meta* true)
+  ;(set! *print-meta* true)
   (::q/result @(get query ::q/state)))
 
 (defn get-state [query]

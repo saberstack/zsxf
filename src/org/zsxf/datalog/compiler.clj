@@ -1,6 +1,7 @@
 (ns org.zsxf.datalog.compiler
   (:require [medley.core :as medley]
             [org.zsxf.datalog.parser :as parser]
+            [org.zsxf.datascript :as ds]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as xf]
             [net.cgrand.xforms :as xforms]

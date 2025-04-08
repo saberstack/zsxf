@@ -7,6 +7,7 @@
    [net.cgrand.xforms :as xforms]
    [org.zsxf.datascript :as ds]
    [org.zsxf.query :as q]
+   [org.zsxf.datalog.compiler]
    [org.zsxf.util :as util :refer [nth2]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
@@ -451,6 +452,67 @@
     (is (=
           (count (d/q datalog-query-1 @conn))
           (count (q/get-result query-1))))))
+
+(defn compiler-join-xf-1 [state30619]
+  (comp
+    (org.zsxf.xf/mapcat-zset-transaction-xf)
+
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr-val= % :person/name "Danny Glover")
+      (comp ds/datom->eid)
+      #(ds/datom-attr= % :person/born)
+      ds/datom->eid
+      state30619
+      :last?
+      false)
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr-val=
+         (org.zsxf.datalog.compiler/safe-first %)
+         :person/name
+         "Danny Glover")
+      (comp ds/datom->eid org.zsxf.datalog.compiler/safe-first)
+      #(ds/datom-attr= % :movie/cast)
+      ds/datom->val
+      state30619
+      :last?
+      false)
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr=
+         (org.zsxf.datalog.compiler/safe-second %)
+         :movie/cast)
+      (comp ds/datom->eid org.zsxf.datalog.compiler/safe-second)
+      #(ds/datom-attr= % :movie/title)
+      ds/datom->eid
+      state30619
+      :last?
+      false)
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr=
+         ((comp
+            org.zsxf.datalog.compiler/safe-second
+            org.zsxf.datalog.compiler/safe-first)
+          %)
+         :movie/cast)
+      (comp
+        ds/datom->eid
+        org.zsxf.datalog.compiler/safe-second
+        org.zsxf.datalog.compiler/safe-first)
+      #(ds/datom-attr= % :movie/cast)
+      ds/datom->eid
+      state30619
+      :last?
+      false)
+    (org.zsxf.xf/join-xf
+      #(ds/datom-attr=
+         (org.zsxf.datalog.compiler/safe-second %)
+         :movie/cast)
+      (comp ds/datom->val org.zsxf.datalog.compiler/safe-second)
+      #(ds/datom-attr= % :person/name)
+      ds/datom->eid
+      state30619
+      :last?
+      true)
+    (net.cgrand.xforms/reduce zs/zset+)))
 
 (deftest join-xf-compiler
   (let [_       (timbre/set-min-level! :info)

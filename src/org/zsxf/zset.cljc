@@ -193,8 +193,6 @@
      (fn
        ([accum] accum)
        ([accum new-item]
-        (timbre/spy accum)
-        (timbre/spy new-item)
         (if-let [existing-item (accum new-item)]
           (let [accum'      (disj accum existing-item)
                 existing-m' (update-zset-item-weight existing-item
@@ -202,7 +200,7 @@
                                 ; fnil is used to handle the case where the weight is not present
                                 ; in the meta, aka it is nil
                                 ((fnil + 0) (zset-weight new-item) prev-w)))
-                _           (timbre/spy existing-m')
+                _           existing-m'
                 zset-w'     (zset-weight existing-m')]
             (if (zero? zset-w')
               accum'

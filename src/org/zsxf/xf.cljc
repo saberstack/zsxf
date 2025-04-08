@@ -67,12 +67,11 @@
         item-can-join? (condp = jt
                          :datom true
                          :relation (= clause (::xf/clause (meta (path-f zset-item)))))]
-    (comment
-      (when (false? item-can-join?)
+    #_(when (false? item-can-join?)
         (timbre/info "cannot join !!!")
         (timbre/info "zset-item is :::" zset-item)
         (timbre/info "datom tagged with" (::xf/clause (meta (path-f zset-item))))
-        (timbre/info "looking for clause" clause)))
+        (timbre/info "looking for clause" clause))
     item-can-join?))
 
 
@@ -86,10 +85,10 @@
              return-zset-item-xf (map identity)}}]
   (let [index-uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
         index-uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
-        join-xf-clauses #{clause-1 clause-2}]
-    (timbre/spy index-uuid-1)
-    (timbre/spy index-uuid-2)
-    (timbre/spy join-xf-clauses)
+        join-xf-clauses [clause-1 clause-2]]
+    (timbre/info index-uuid-1)
+    (timbre/info index-uuid-2)
+    (timbre/info join-xf-clauses)
     (comp
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
@@ -107,16 +106,15 @@
                              {})
                    zset    (if last? #{} #{zset-item})]
                ;return
-               (timbre/spy
-                 [delta-1 delta-2 zset]))))
+               [delta-1 delta-2 zset])))
       (cond-branch
         ;does this join-xf care about the current item?
-        (fn [[delta-1 delta-2 _zset :as delta-1+delta-2+zset]]
-          (timbre/spy delta-1+delta-2+zset)
+        (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
+          ;(timbre/spy delta-1+delta-2+zset)
           ;if none of the predicates were true...
           (and (empty? delta-1) (empty? delta-2)))
         (map (fn [[_delta-1 _delta-2 zset]]
-               (timbre/spy [last? zset])
+               ;(timbre/spy [last? zset])
                ;return the zset
                zset))
         ;else, proceed to join
@@ -129,25 +127,25 @@
                    (swap! index-state
                      (fn [state]
                        (-> state
-                         (update index-uuid-1 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-1))))
-                         (update index-uuid-2 (fn [index] (timbre/spy (zs/indexed-zset-pos+ index delta-2)))))))
+                         (update index-uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
+                         (update index-uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
                    ;return
                    [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
           (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
-                 (timbre/spy zset)
-                 (timbre/spy [delta-1 index-state-2-prev])
-                 (timbre/spy [index-state-1-prev delta-2])
+                 ;(timbre/spy zset)
+                 ;(timbre/spy [delta-1 index-state-2-prev])
+                 ;(timbre/spy [index-state-1-prev delta-2])
                  ;return
                  (vector
                    ;add :where clauses as metadata to the joined relations (a zset)
                    (zs/indexed-zset->zset
                      (zs/indexed-zset+
-                       ;ΔTeam ⋈ Players
-                       (timbre/spy (zs/join-indexed* delta-1 index-state-2-prev))
-                       ;Teams ⋈ ΔPlayers
-                       (timbre/spy (zs/join-indexed* index-state-1-prev delta-2))
-                       ;ΔTeams ⋈ ΔPlayers
-                       (timbre/spy (zs/join-indexed* delta-1 delta-2)))
+                       ;ΔA ⋈ B
+                       (zs/join-indexed* delta-1 index-state-2-prev)
+                       ;A ⋈ ΔB
+                       (zs/join-indexed* index-state-1-prev delta-2)
+                       ;ΔA ⋈ ΔB
+                       (zs/join-indexed* delta-1 delta-2))
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
                        return-zset-item-xf
@@ -163,12 +161,11 @@
                                       (vary-meta
                                         (fn [v]
                                           (assoc v ::xf/relation true))))]
-
                                 new-zset-item)))))
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
-                    [(timbre/spy join-xf-delta) zset])))))))
+                    [join-xf-delta zset])))))))
 
 (defn group-by-count-xf
   "Takes a group-by-style function f and returns a transducer which

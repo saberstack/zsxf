@@ -123,7 +123,7 @@
 
   (comp
     (xf/mapcat-zset-transaction-xf)
-    (xf/join-xf-3
+    (xf/join-xf
       {:clause    '[?p :person/name "Alice"]
        :pred      #(ds/datom-attr-val= % :person/name "Alice")
        :index-kfn ds/datom->eid}
@@ -131,7 +131,7 @@
        :pred      #(ds/datom-attr= % :person/country)
        :index-kfn ds/datom->eid}
       query-state)
-    (xf/join-xf-3
+    (xf/join-xf
       {:clause    '[?p :person/country ?c]
        :path      (util/path-f [1])
        :pred      #(ds/datom-attr= % :person/country)
@@ -203,7 +203,7 @@
   (comp
     (xf/mapcat-zset-transaction-xf)
     ;danny
-    (xf/join-xf-3
+    (xf/join-xf
       {:clause    '[?danny :person/name "Danny Glover"]
        :path      (path-f [])
        :pred      #(ds/datom-attr-val= % :person/name "Danny Glover")
@@ -215,7 +215,7 @@
       query-state)
     ;movie cast
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
-    (xf/join-xf-3
+    (xf/join-xf
       {:clause    '[?m :movie/cast ?danny]
        :path      (path-f [1])
        :pred      #(ds/datom-attr= % :movie/cast)
@@ -226,7 +226,7 @@
       query-state)
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
     ;actors, movie cast
-    (xf/join-xf-3
+    (xf/join-xf
       {:clause    '[?m :movie/title ?title]
        :path      (path-f [1])
        :pred      #(ds/datom-attr= % :movie/title)
@@ -236,7 +236,7 @@
        :index-kfn ds/datom->eid}
       query-state)
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
-    (xf/join-xf-3
+    (xf/join-xf
       {:clause    '[?m :movie/cast ?a]
        :path      (path-f [1])
        :pred      #(ds/datom-attr= % :movie/cast)

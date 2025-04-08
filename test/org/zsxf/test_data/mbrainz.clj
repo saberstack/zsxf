@@ -142,7 +142,7 @@
     (comp
       (xf/mapcat-zset-transaction-xf)
       (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
-      (xf/join-xf-3
+      (xf/join-xf
         {:clause    [:c1]
          :pred      pred-1
          :index-kfn ds/datom->eid}

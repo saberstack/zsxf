@@ -76,7 +76,7 @@
     item-can-join?))
 
 
-(defn join-xf-3
+(defn join-xf
   "WIP, another fix"
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}

@@ -81,7 +81,7 @@
                   pred1# (clause-pred e1# a1# v1#)
                   pred2# (clause-pred e2# a2# v2#)
                   locator-vec# (from# locators#)
-                  new-join `(xf/join-xf-3
+                  new-join `(xf/join-xf
                              {:clause (quote ~c1#)
                               :pred ~pred1#
                               :path ~(path-f locator-vec#)

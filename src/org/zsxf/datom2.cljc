@@ -36,3 +36,44 @@
 
 (defn datom->datom2->zset-item [datom]
   (zs/zset-item (datom2 datom) (datom->weight datom)))
+
+(defn datom->eid [datom]
+  (if (datom? datom)
+    (nth datom 0 nil)))
+
+(defn datom->attr [datom]
+  (if (datom? datom)
+    (nth datom 1 nil)))
+
+(defn datom-attr= [datom attr]
+  (= (datom->attr datom) attr))
+
+(defn datom->val [datom]
+  (if (datom? datom)
+    (nth datom 2 nil)))
+
+(defn datom-val= [datom value]
+  (= (datom->val datom) value))
+
+(defn datom-attr-val= [datom attr value]
+  (and (datom-attr= datom attr) (datom-val= datom value)))
+
+(defn tx-datoms->datoms2->zset
+  "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
+  [datoms]
+  (transduce
+    (map datom->datom2->zset-item)
+    conj
+    #{}
+    datoms))
+
+(defn tx-datoms->datoms2->zsets
+  "Transforms datoms into datoms2, and then into a vector of zsets.
+  Useful to maintain inter-transaction order of datoms."
+  [datoms]
+  (into
+    []
+    (comp
+      (map datom->datom2->zset-item)
+      (map hash-set))
+    datoms))

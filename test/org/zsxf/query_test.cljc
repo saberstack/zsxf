@@ -6,6 +6,7 @@
    [datascript.db :as ddb]
    [net.cgrand.xforms :as xforms]
    [org.zsxf.datascript :as ds]
+   [org.zsxf.datom2 :as d2]
    [org.zsxf.query :as q]
    [org.zsxf.datalog.compiler]
    [org.zsxf.util :as util :refer [nth2 path-f]]
@@ -35,22 +36,22 @@
   (comp
     (xf/mapcat-zset-transaction-xf)
     (xf/join-xf
-      #(ds/datom-attr-val= % :team/name "A") ds/datom->eid
-      #(ds/datom-attr= % :event/country) ds/datom->eid
+      #(d2/datom-attr-val= % :team/name "A") d2/datom->eid
+      #(d2/datom-attr= % :event/country) d2/datom->eid
       query-state)
     (xf/join-right-pred-1-xf
-      #(ds/datom-attr= % :event/country) ds/datom->eid
-      #(ds/datom-attr= % :team/points-scored) ds/datom->eid
+      #(d2/datom-attr= % :event/country) d2/datom->eid
+      #(d2/datom-attr= % :team/points-scored) d2/datom->eid
       query-state
       :last? true)
     (xforms/reduce zs/zset+)
     ;group by aggregates
     (xf/group-by-xf
-      #(-> % (util/nth2 0) (util/nth2 1) ds/datom->val)
+      #(-> % (util/nth2 0) (util/nth2 1) d2/datom->val)
       (comp
         (xforms/transjuxt {:sum (xforms/reduce
                                   (zs/zset-sum+
-                                    #(-> % (util/nth2 1) ds/datom->val)))
+                                    #(-> % (util/nth2 1) d2/datom->val)))
                            :cnt (xforms/reduce zs/zset-count+)})
         (mapcat (fn [{:keys [sum cnt]}]
                   [(zs/zset-sum-item sum)
@@ -63,7 +64,7 @@
   (def query-1 (q/create-query aggregate-example-xf))
 
   (q/input query-1
-    [(ds/tx-datoms->datoms2->zset
+    [(d2/tx-datoms->datoms2->zset
        [(ddb/datom 1 :team/name "A" 536870913 true)
         (ddb/datom 1 :event/country "Japan" 536870913 true)
         (ddb/datom 1 :team/points-scored 25 536870913 true)
@@ -80,7 +81,7 @@
   (q/get-result query-1)
 
   (q/input query-1
-    [(ds/tx-datoms->datoms2->zset
+    [(d2/tx-datoms->datoms2->zset
        [(ddb/datom 1 :team/name "A" 536870913 false)
         (ddb/datom 2 :team/name "A" 536870913 false)
         (ddb/datom 3 :team/name "A" 536870913 false)])])
@@ -125,26 +126,26 @@
     (xf/mapcat-zset-transaction-xf)
     (xf/join-xf
       {:clause    '[?p :person/name "Alice"]
-       :pred      #(ds/datom-attr-val= % :person/name "Alice")
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr-val= % :person/name "Alice")
+       :index-kfn d2/datom->eid}
       {:clause    '[?p :person/country ?c]
-       :pred      #(ds/datom-attr= % :person/country)
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr= % :person/country)
+       :index-kfn d2/datom->eid}
       query-state)
     (xf/join-xf
       {:clause    '[?p :person/country ?c]
        :path      (util/path-f [1])
-       :pred      #(ds/datom-attr= % :person/country)
-       :index-kfn ds/datom->val}
+       :pred      #(d2/datom-attr= % :person/country)
+       :index-kfn d2/datom->val}
       {:clause    '[?c :country/continent "Europe"]
-       :pred      #(ds/datom-attr-val= % :country/continent "Europe")
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr-val= % :country/continent "Europe")
+       :index-kfn d2/datom->eid}
       query-state
       :last? true)
     ;(xf/join-xf-3
     ;  '[?p :person/name "Alice"]
     ;  [(path-f [0 0])
-    ;   #(ds/datom-attr= % :person/name)] ds/datom->eid
+    ;   #(d2/datom-attr= % :person/name)] ds/datom->eid
     ;  '[?p :likes "pizza"]
     ;  [(path-f [])
     ;   #(ds/datom-attr-val= % :likes "pizza")] ds/datom->eid
@@ -158,7 +159,7 @@
 (deftest join-xf-3-test-1
   (let [_      (timbre/set-min-level! :trace)
         query  (q/create-query person-city-country-example-xf-join-3)
-        datoms (ds/tx-datoms->datoms2->zsets
+        datoms (d2/tx-datoms->datoms2->zsets
                  [(ddb/datom 2 :person/country 1 536870913 true)
                   (ddb/datom 2 :person/name "Alice" 536870913 true)
                   (ddb/datom 1 :country/continent "Europe" 536870913 true)])]
@@ -172,7 +173,7 @@
 
 
   (q/input query-1
-    [(ds/tx-datoms->datoms2->zset
+    [(d2/tx-datoms->datoms2->zset
        [(ddb/datom 1 :country/continent "Europe" 536870913 true)
         (ddb/datom 2 :person/name "Alice" 536870913 true)
         (ddb/datom 2 :likes "pizza" 536870913 true)
@@ -181,7 +182,7 @@
   (q/get-result query-1)
 
   (q/input query-1
-    [(ds/tx-datoms->datoms2->zset
+    [(d2/tx-datoms->datoms2->zset
        [(ddb/datom 1 :team/name "A" 536870913 false)
         (ddb/datom 2 :team/name "A" 536870913 false)
         (ddb/datom 3 :team/name "A" 536870913 false)])])
@@ -206,44 +207,44 @@
     (xf/join-xf
       {:clause    '[?danny :person/name "Danny Glover"]
        :path      (path-f [])
-       :pred      #(ds/datom-attr-val= % :person/name "Danny Glover")
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr-val= % :person/name "Danny Glover")
+       :index-kfn d2/datom->eid}
       {:clause    '[?m :movie/cast ?danny]
        :path      (path-f [])
-       :pred      #(ds/datom-attr= % :movie/cast)
-       :index-kfn ds/datom->val}
+       :pred      #(d2/datom-attr= % :movie/cast)
+       :index-kfn d2/datom->val}
       query-state)
     ;movie cast
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
     (xf/join-xf
       {:clause    '[?m :movie/cast ?danny]
        :path      (path-f [1])
-       :pred      #(ds/datom-attr= % :movie/cast)
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr= % :movie/cast)
+       :index-kfn d2/datom->eid}
       {:clause    '[?m :movie/title ?title]
-       :pred      #(ds/datom-attr= % :movie/title)
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
       query-state)
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
     ;actors, movie cast
     (xf/join-xf
       {:clause    '[?m :movie/title ?title]
        :path      (path-f [1])
-       :pred      #(ds/datom-attr= % :movie/title)
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
       {:clause    '[?m :movie/cast ?a]
-       :pred      #(ds/datom-attr= % :movie/cast)
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr= % :movie/cast)
+       :index-kfn d2/datom->eid}
       query-state)
     (map (fn [zset-in-between] (timbre/spy zset-in-between)))
     (xf/join-xf
       {:clause    '[?m :movie/cast ?a]
        :path      (path-f [1])
-       :pred      #(ds/datom-attr= % :movie/cast)
-       :index-kfn ds/datom->val}
+       :pred      #(d2/datom-attr= % :movie/cast)
+       :index-kfn d2/datom->val}
       {:clause    '[?a :person/name ?actor]
-       :pred      #(ds/datom-attr= % :person/name)
-       :index-kfn ds/datom->eid}
+       :pred      #(d2/datom-attr= % :person/name)
+       :index-kfn d2/datom->eid}
       query-state
       :last? true)
     (map (fn [zset-in-between-last] (timbre/spy zset-in-between-last)))

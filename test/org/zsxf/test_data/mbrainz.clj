@@ -7,6 +7,7 @@
             [clj-memory-meter.core :as mm]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.datascript :as ds]
+            [org.zsxf.datom2 :as d2]
             [taoensso.nippy :as nippy]
             [org.zsxf.query :as q]
             [org.zsxf.util :as util]
@@ -137,24 +138,24 @@
 (defn query-count-artists-by-all-countries-zsxf-join-3
   "Query for artist count by all countries."
   [query-state]
-  (let [pred-1 #(ds/datom-attr= % :country/name-alpha-2)
-        pred-2 #(ds/datom-attr= % :artist/country)]
+  (let [pred-1 #(d2/datom-attr= % :country/name-alpha-2)
+        pred-2 #(d2/datom-attr= % :artist/country)]
     (comp
       (xf/mapcat-zset-transaction-xf)
       (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
       (xf/join-xf
         {:clause    [:c1]
          :pred      pred-1
-         :index-kfn ds/datom->eid}
+         :index-kfn d2/datom->eid}
         {:clause    [:c2]
          :pred      pred-2
-         :index-kfn ds/datom->val}
+         :index-kfn d2/datom->val}
         query-state
         :last? true)
       (xforms/reduce zs/zset+)
       ;group by aggregates
       (xf/group-by-xf
-        #(-> % (util/nth2 0) ds/datom->val)
+        #(-> % (util/nth2 0) d2/datom->val)
         (comp
           (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
           (mapcat (fn [{:keys [cnt]}]

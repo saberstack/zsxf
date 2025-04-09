@@ -1,50 +1,8 @@
 (ns org.zsxf.datascript
   (:require [org.zsxf.query :as q]
-            [org.zsxf.zset :as zs]
             [org.zsxf.datom2 :as d2]
             [datascript.core :as d]
             [taoensso.timbre :as timbre]))
-
-(defn tx-datoms->datoms2->zset
-  "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
-  [datoms]
-  (transduce
-    (map d2/datom->datom2->zset-item)
-    conj
-    #{}
-    datoms))
-
-(defn tx-datoms->datoms2->zsets
-  "Transforms datoms into datoms2, and then into a vector of zsets.
-  Useful to maintain inter-transaction order of datoms."
-  [datoms]
-  (into
-    []
-    (comp
-      (map d2/datom->datom2->zset-item)
-      (map hash-set))
-    datoms))
-
-(defn datom->eid [datom]
-  (if (d2/datom? datom)
-    (nth datom 0 nil)))
-
-(defn datom->attr [datom]
-  (if (d2/datom? datom)
-    (nth datom 1 nil)))
-
-(defn datom-attr= [datom attr]
-  (= (datom->attr datom) attr))
-
-(defn datom->val [datom]
-  (if (d2/datom? datom)
-    (nth datom 2 nil)))
-
-(defn datom-val= [datom value]
-  (= (datom->val datom) value))
-
-(defn datom-attr-val= [datom attr value]
-  (and (datom-attr= datom attr) (datom-val= datom value)))
 
 (defn listen!
   "Initialize a listener for a given query and connection.
@@ -53,7 +11,7 @@
   [conn query]
   (d/listen! conn (q/get-id query)
     (fn [tx-report]
-      (q/input query (timbre/spy (tx-datoms->datoms2->zsets (:tx-data tx-report))))))
+      (q/input query (timbre/spy (d2/tx-datoms->datoms2->zsets (:tx-data tx-report))))))
   ;return
   true)
 
@@ -65,7 +23,7 @@
   (let [db      @conn
         ;load all existing data from a stable db state
         _result (q/input query
-                  (tx-datoms->datoms2->zsets
+                  (d2/tx-datoms->datoms2->zsets
                     (d/seek-datoms db :eavt)))]
     ;setup listener
     (listen! conn query)))

@@ -1,15 +1,15 @@
 (ns org.zsxf.datalog.compiler
   (:require [medley.core :as medley]
             [org.zsxf.datalog.parser :as parser]
-            [org.zsxf.datascript :as ds]
+            [org.zsxf.datom2 :as d2]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as xf]
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
 
 (def pos->getter
-  {:entity `ds/datom->eid
-   :value `ds/datom->val})
+  {:entity `d2/datom->eid
+   :value  `d2/datom->val})
 
 (defn safe-first [thing]
   (when (vector? thing)
@@ -21,8 +21,8 @@
 
 (defn clause-pred [_ a v]
   (if (parser/variable? v)
-    `#(ds/datom-attr= % ~a)
-    `#(ds/datom-attr-val= % ~a ~v)))
+    `#(d2/datom-attr= % ~a)
+    `#(d2/datom-attr-val= % ~a ~v)))
 
 (defn path-f [[f & _ :as locator-vec]]
   (condp = (count locator-vec)

@@ -1,6 +1,9 @@
 (ns org.zsxf.zset
   (:require [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
+            [clojure.test.check :as check]
+            [clojure.test.check.generators :as gen]
+            [clojure.spec.gen.alpha :as gen-alpha]
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
 
@@ -9,6 +12,7 @@
 
 (set! *print-meta* true)
 (declare zset)
+(declare zset+)
 
 (timbre/set-ns-min-level! :trace)
 
@@ -37,14 +41,14 @@
     ([accum item]
      (let [w (zset-weight item)
            n (f item)]
-       (+ accum (* w n))))))
+       (+' accum (*' w n))))))
 
 (defn zset-count+
   ([] 0)
   ([accum] accum)
   ([accum item]
    (let [w (zset-weight item)]
-     (+ accum w))))
+     (+' accum w))))
 
 ;Optimization to save (a lot!) of memory.
 ;Reuse common zset weight maps
@@ -83,10 +87,29 @@
     false
     (coll? coll)))
 
-(s/def ::zset (s/and
-                (s/coll-of (fn [x] (or (coll? x) (symbol? x))))
-                (s/every (fn [set-item-map]
-                           (some? (zset-weight set-item-map))))))
+(s/def :zset/w int?)
+
+(s/def ::weight-map
+  (s/keys :req [:zset/w]))
+
+(s/def ::has-metadata?
+  (s/with-gen
+    (fn [x] (not (nil? (meta x))))
+    (fn []
+      (gen/let [base     (gen/one-of [(gen/vector gen/small-integer)
+                                      (gen/map gen/keyword gen/small-integer)
+                                      (gen/set gen/small-integer)
+                                      gen/symbol])
+                meta-map (gen/hash-map :zset/w gen/large-integer)]
+        (with-meta base meta-map)))))
+
+(s/def ::zset-item
+  (s/and
+    ::has-metadata?
+    (s/or :coll coll? :sym symbol?)))
+
+(s/def ::zset
+  (s/coll-of ::zset-item :kind set?))
 
 (defn zset?
   "Check if x conforms to the zset spec"
@@ -102,13 +125,14 @@
   ([zset-1 zset-2]
    (zset+ zset-1 zset-2 (map identity)))
   ([zset-1 zset-2 xf]
+   ;{:pre [(zset? zset-1) (zset? zset-2)]}
    (transduce
      ;get set items one by one
      (comp cat xf)
      (completing
        (fn [s new-zset-item]
          (if-let [zset-item (s new-zset-item)]
-           (let [new-weight (+ (zset-weight zset-item) (zset-weight new-zset-item))]
+           (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
              (if (zero? new-weight)
                (disj s zset-item)
                (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
@@ -155,7 +179,7 @@
      (completing
        (fn [s new-zset-item]
          (if-let [zset-item (s new-zset-item)]
-           (let [new-weight (+ (zset-weight zset-item) (zset-weight new-zset-item))]
+           (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
              (if (or (zero? new-weight) (neg-int? new-weight))
                (disj s zset-item)
                (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
@@ -175,7 +199,7 @@
     (map (fn [item]
            (update-zset-item-weight
              item
-             (fn [prev-w] (* -1 prev-w)))))
+             (fn [prev-w] (*' -1 prev-w)))))
     conj
     #{}
     zset))
@@ -224,7 +248,7 @@
      (for [item-1 zset-1 item-2 zset-2]
        (let [weight-1   (zset-weight item-1)
              weight-2   (zset-weight item-2)
-             new-weight (* weight-1 weight-2)]
+             new-weight (*' weight-1 weight-2)]
          (zset-item
            ;zset weights of internal items don't serve a purpose after multiplication - remove them
            [(vary-meta item-1 (comp internal-meta-cleanup-f dissoc-meta-weight)) ;remove weight

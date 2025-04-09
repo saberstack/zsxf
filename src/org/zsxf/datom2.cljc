@@ -1,7 +1,9 @@
 (ns org.zsxf.datom2
   (:require [org.zsxf.util :as util]
-            #?(:clj [org.zsxf.type :as t]))
-  (:import (org.zsxf.type Datom2)))
+            #?(:clj [org.zsxf.type :as t])
+            [org.zsxf.zset :as zs])
+  #?(:clj
+     (:import (org.zsxf.type Datom2))))
 
 
 (defn datom2
@@ -17,7 +19,9 @@
 
 (defn datom-like? [x]
   (boolean
-    (and (util/nth2 x 0) (util/nth2 x 1) (util/nth2 x 2))))
+    (and (util/nth2 x 0) (util/nth2 x 1) (util/nth2 x 2)
+      (int? (util/nth2 x 0))
+      (keyword? (util/nth2 x 1)))))
 
 (defn datom? [x]
   #?(:clj
@@ -25,3 +29,10 @@
      :cljs
      ;TODO implement Datom2 for CLJS
      (datom-like? x)))
+
+(defn datom->weight [datom]
+  (let [weight (condp = (nth datom 4) true 1 false -1)]
+    weight))
+
+(defn datom->datom2->zset-item [datom]
+  (zs/zset-item (datom2 datom) (datom->weight datom)))

@@ -1,6 +1,7 @@
 (ns org.zsxf.xf
   (:require [org.zsxf.datascript :as ds]
-            [org.zsxf.type :as t]                           ;don't remove! type import fails
+            [org.zsxf.datom2 :as d2]
+            #?(:clj [org.zsxf.type :as t])                  ;don't remove! type import fails
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [taoensso.timbre :as timbre])
@@ -54,7 +55,8 @@
 
 (defn detect-join-type [zset-item path-f clause]
   (cond
-    (instance? Datom2 zset-item) :datom
+    #?(:clj  (instance? Datom2 zset-item)
+       :cljs (d2/datom-like? zset-item)) :datom
     (true? (::xf/relation (meta zset-item))) :relation
     :else
     (throw (ex-info "invalid input zset-item" {:zset-item           zset-item

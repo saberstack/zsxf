@@ -5,42 +5,23 @@
             [datascript.core :as d]
             [taoensso.timbre :as timbre]))
 
-(defn datom->weight [datom]
-  (let [weight (condp = (nth datom 4) true 1 false -1)]
-    weight))
-
-(defn datom->zset-item [[e a v _t add-or-retract :as datom]]
-  (zs/zset-item [e a v] (datom->weight datom)))
-
-(defn datom->datom2->zset-item [datom]
-  (zs/zset-item (d2/datom2 datom) (datom->weight datom)))
-
-(defn tx-datoms->zset
-  "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
-  [datoms]
-  (transduce
-    (map datom->zset-item)
-    conj
-    #{}
-    datoms))
-
 (defn tx-datoms->datoms2->zset
   "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
   [datoms]
   (transduce
-    (map datom->datom2->zset-item)
+    (map d2/datom->datom2->zset-item)
     conj
     #{}
     datoms))
 
-(defn tx-datoms->zsets2
+(defn tx-datoms->datoms2->zsets
   "Transforms datoms into datoms2, and then into a vector of zsets.
   Useful to maintain inter-transaction order of datoms."
   [datoms]
   (into
     []
     (comp
-      (map datom->datom2->zset-item)
+      (map d2/datom->datom2->zset-item)
       (map hash-set))
     datoms))
 
@@ -72,7 +53,7 @@
   [conn query]
   (d/listen! conn (q/get-id query)
     (fn [tx-report]
-      (q/input query (timbre/spy (tx-datoms->zsets2 (:tx-data tx-report))))))
+      (q/input query (timbre/spy (tx-datoms->datoms2->zsets (:tx-data tx-report))))))
   ;return
   true)
 
@@ -84,7 +65,7 @@
   (let [db      @conn
         ;load all existing data from a stable db state
         _result (q/input query
-                  (tx-datoms->zsets2
+                  (tx-datoms->datoms2->zsets
                     (d/seek-datoms db :eavt)))]
     ;setup listener
     (listen! conn query)))

@@ -158,7 +158,7 @@
 (deftest join-xf-3-test-1
   (let [_      (timbre/set-min-level! :trace)
         query  (q/create-query person-city-country-example-xf-join-3)
-        datoms (ds/tx-datoms->zsets2
+        datoms (ds/tx-datoms->datoms2->zsets
                  [(ddb/datom 2 :person/country 1 536870913 true)
                   (ddb/datom 2 :person/name "Alice" 536870913 true)
                   (ddb/datom 1 :country/continent "Europe" 536870913 true)])]

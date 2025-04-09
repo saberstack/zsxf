@@ -129,6 +129,27 @@
       ;(.write w "#D2")
       (pr [(.-e d) (.-a d) (.-v d)]))))
 
+;New print
+;(defn- print-meta-arg [o, ^Writer w]
+;  (when-let [m (meta o)]
+;    (when (and (pos? (count m))
+;            (or *print-dup*
+;              (and *print-meta* *print-readably*)))
+;      (.write w " ")
+;      (if (and (= (count m) 1) (:tag m))
+;        (pr-on (:tag m) w)
+;        (pr-on m w))
+;      (.write w " "))))
+;
+;(defmethod print-method Datom2 [^Datom2 datom2, ^Writer w]
+;  (binding [*out* w]
+;    (let [^Datom d (.-datom datom2)]
+;      (.write w "(org.zsxf.datom2/datom2 (datascript.core/datom ")
+;      (pr (.-e d) (.-a d) (.-v d))
+;      (.write w ")")
+;      (print-meta-arg datom2 w)
+;      (.write w ")"))))
+
 (defn datom-from-reader [v]
   ; This does not seem possible until this is solved:
   ; https://clojure.atlassian.net/jira/software/c/projects/CLJ/issues/CLJ-2904

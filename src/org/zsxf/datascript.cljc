@@ -1,37 +1,9 @@
 (ns org.zsxf.datascript
   (:require [org.zsxf.query :as q]
-            [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
+            [org.zsxf.datom2 :as d2]
             [datascript.core :as d]
-            [taoensso.timbre :as timbre]
-            #?(:clj [org.zsxf.type :as t]))
-  #?(:clj
-     (:import (datascript.db Datom)
-              (org.zsxf.type Datom2))))
-
-(defn datom2 [datom]
-  #?(:clj
-     (t/->Datom2 datom nil)
-     :cljs
-     ;TODO implement Datom2 for CLJS
-     (let [[e a v _t add-or-retract :as datom] datom]
-       [e a v])))
-
-(defn datom-like? [x]
-  (boolean
-    (and (util/nth2 x 0) (util/nth2 x 1) (util/nth2 x 2))))
-
-(defn eligible-datom? [x]
-  #?(:clj
-     (or
-       (instance? Datom2 x)
-       (datom-like? x))
-     :cljs
-     ;TODO implement Datom2 for CLJS
-     (datom-like? x)))
-
-;; End CLJC code
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            [taoensso.timbre :as timbre]))
 
 (defn datom->weight [datom]
   (let [weight (condp = (nth datom 4) true 1 false -1)]
@@ -41,7 +13,7 @@
   (zs/zset-item [e a v] (datom->weight datom)))
 
 (defn datom->datom2->zset-item [datom]
-  (zs/zset-item (datom2 datom) (datom->weight datom)))
+  (zs/zset-item (d2/datom2 datom) (datom->weight datom)))
 
 (defn tx-datoms->zset
   "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
@@ -73,18 +45,18 @@
     datoms))
 
 (defn datom->eid [datom]
-  (if (eligible-datom? datom)
+  (if (d2/datom? datom)
     (nth datom 0 nil)))
 
 (defn datom->attr [datom]
-  (if (eligible-datom? datom)
+  (if (d2/datom? datom)
     (nth datom 1 nil)))
 
 (defn datom-attr= [datom attr]
   (= (datom->attr datom) attr))
 
 (defn datom->val [datom]
-  (if (eligible-datom? datom)
+  (if (d2/datom? datom)
     (nth datom 2 nil)))
 
 (defn datom-val= [datom value]
@@ -140,8 +112,8 @@
   (set! *print-meta* true)
   (=
     (with-meta
-      (datom2 (d/datom 1 :a "v"))
+      (d2/datom2 (d/datom 1 :a "v"))
       {:mmmm 42})
     (with-meta
-      (datom2 (d/datom 1 :a "v"))
+      (d2/datom2 (d/datom 1 :a "v"))
       {:mmmm 43})))

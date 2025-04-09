@@ -1,5 +1,6 @@
 (ns org.zsxf.core
   (:require [nrepl.server :as nrepl-server]
+            [org.zsxf.datom2]
             [org.zsxf.util :as util]
             [taoensso.timbre :as timbre]))
 

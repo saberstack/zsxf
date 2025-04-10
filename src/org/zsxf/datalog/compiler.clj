@@ -99,3 +99,23 @@
                      (-> (medley/map-vals #(conj % `safe-first) locators#)
                          (assoc to# [`safe-second]))
                      (inc n#)))))))
+
+(defn runtime-compile
+  "Runtime compile a datalog query.
+  Returns a ZSXf-compatible transducer.
+
+  IMPORTANT: Use only with trusted sources.
+  runtime-compile can execute arbitrary code."
+  [datalog-query]
+  (eval `(sprinkle-dbsp-on ~datalog-query)))
+
+(comment
+  ;Runtime compilation of a query
+  ; Use only with trusted sources!
+  ; Example of a random code execution:
+  (runtime-compile
+    (do
+      (println "executing!")
+      '[:find ?a ?c
+        :where
+        [?a :b ?c]])))

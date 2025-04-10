@@ -29,3 +29,13 @@
   ; More important differences likely exist, this is WIP.
   ;
   )
+
+(comment
+  ;streams of streams WIP
+  (eduction
+    (map
+      (fn [v]
+        (eduction (map inc) v)))
+    [[1 2 3]
+     [4 5 6]])
+  )

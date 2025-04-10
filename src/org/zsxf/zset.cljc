@@ -232,14 +232,15 @@
             (if (zero? zset-w')
               accum'
               (conj accum' existing-m')))
-          ;new item
           ; most new items do not have an existing weight but if they do, we use it
           (if-let [existing-weight (zset-weight new-item)]
             ;skip if existing weight is zero
             (if (zero? existing-weight)
               accum
               ;else, add item with existing weight
-              (conj accum (zset-item new-item existing-weight)))))))
+              (conj accum (zset-item new-item existing-weight)))
+            ;new item
+            (conj accum (zset-item new-item weight))))))
      #{}
      coll)))
 

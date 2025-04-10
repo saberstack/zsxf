@@ -208,7 +208,7 @@
   "Receives a transaction represented by a vectors of zsets.
   Returns zsets one by one"
   []
-  (mapcat (fn [tx-v] (timbre/spy tx-v))))
+  (mapcat (fn [tx-v] tx-v)))
 
 (defn disj-irrelevant-items [zset & preds]
   (into

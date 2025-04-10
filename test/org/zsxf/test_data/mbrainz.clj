@@ -16,7 +16,8 @@
             [org.zsxf.zset :as zs]
             [criterium.core :as criterium]
             [datascript.core :as d]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre])
+  (:import (clojure.lang IAtom)))
 
 (set! *print-meta* true)
 
@@ -135,7 +136,7 @@
     data))
 
 
-(defn query-count-artists-by-all-countries-zsxf-join-3
+(defn count-artists-by-countries-all
   "Query for artist count by all countries."
   [query-state]
   (let [pred-1 #(d2/datom-attr= % :country/name-alpha-2)
@@ -162,23 +163,30 @@
                     [(zs/zset-count-item cnt)]))))
       (map (fn [final-xf-delta] (timbre/spy final-xf-delta))))))
 
+(defn thaw-artist-datoms!
+  "Returns a vector of thawed datoms from the nippy file."
+  []
+  (nippy/thaw-from-file
+    "resources/mbrainz/artists_datoms.nippy"
+    {:thaw-xform
+     (comp
+       (map (fn [thawing]
+              (if (vector? thawing)
+                (let [[e a v tx b] thawing]
+                  (d/datom e a v tx b))
+                thawing))))}))
+
+(defn init-artist-db->conn []
+  (d/conn-from-db
+    (d/init-db (thaw-artist-datoms!) schema)))
+
 (defn init-load-all
   "Main loading fn"
-  []
-  (timbre/set-min-level! :info)
-  (let [artist-datoms  (nippy/thaw-from-file
-                         "resources/mbrainz/artists_datoms.nippy"
-                         {:thaw-xform
-                          (comp
-                            (map (fn [thawing]
-                                   (if (vector? thawing)
-                                     (let [[e a v tx b] thawing]
-                                       (d/datom e a v tx b))
-                                     thawing))))})
-        db             (d/init-db artist-datoms schema)
-        conn           (d/conn-from-db db)]
-    (reset! *conn conn)
-    :done)
+  ([^IAtom an-atom]
+   (timbre/set-min-level! :info)
+   (let [conn (init-artist-db->conn)]
+     (reset! an-atom conn)
+     :done))
   )
 
 (defn init-query
@@ -298,13 +306,13 @@
 (comment
 
   (time
-    (init-load-all))
+    (init-load-all *conn))
 
   (ds/unlisten-all! @*conn)
 
 
   (time
-    (init-query query-count-artists-by-all-countries-zsxf-join-3 @*conn *query-2))
+    (init-query count-artists-by-countries-all @*conn *query-2))
 
   (set! *print-meta* true)
   (set! *print-meta* false)

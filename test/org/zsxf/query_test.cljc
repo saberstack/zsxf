@@ -12,6 +12,7 @@
    [org.zsxf.util :as util :refer [nth2 path-f]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
+   #?(:clj [taoensso.nippy :as nippy])
    [taoensso.timbre :as timbre]))
 
 ; Aggregates current limitation: retractions (deletes) have to be precise!
@@ -25,70 +26,70 @@
 
 ;TODO use join-xf-3
 #_(defn aggregate-example-xf [query-state]
-  (comment
-    ;equivalent query
-    '[:find ?country (sum ?pts)
-      :where
-      [?e :team/name "A"]
-      [?e :event/country ?country]
-      [?e :team/points-scored ?pts]])
+    (comment
+      ;equivalent query
+      '[:find ?country (sum ?pts)
+        :where
+        [?e :team/name "A"]
+        [?e :event/country ?country]
+        [?e :team/points-scored ?pts]])
 
-  (comp
-    (xf/mapcat-zset-transaction-xf)
-    (xf/join-xf
-      #(d2/datom-attr-val= % :team/name "A") d2/datom->eid
-      #(d2/datom-attr= % :event/country) d2/datom->eid
-      query-state)
-    (xf/join-right-pred-1-xf
-      #(d2/datom-attr= % :event/country) d2/datom->eid
-      #(d2/datom-attr= % :team/points-scored) d2/datom->eid
-      query-state
-      :last? true)
-    (xforms/reduce zs/zset+)
-    ;group by aggregates
-    (xf/group-by-xf
-      #(-> % (util/nth2 0) (util/nth2 1) d2/datom->val)
-      (comp
-        (xforms/transjuxt {:sum (xforms/reduce
-                                  (zs/zset-sum+
-                                    #(-> % (util/nth2 1) d2/datom->val)))
-                           :cnt (xforms/reduce zs/zset-count+)})
-        (mapcat (fn [{:keys [sum cnt]}]
-                  [(zs/zset-sum-item sum)
-                   (zs/zset-count-item cnt)]))))
-    (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+    (comp
+      (xf/mapcat-zset-transaction-xf)
+      (xf/join-xf
+        #(d2/datom-attr-val= % :team/name "A") d2/datom->eid
+        #(d2/datom-attr= % :event/country) d2/datom->eid
+        query-state)
+      (xf/join-right-pred-1-xf
+        #(d2/datom-attr= % :event/country) d2/datom->eid
+        #(d2/datom-attr= % :team/points-scored) d2/datom->eid
+        query-state
+        :last? true)
+      (xforms/reduce zs/zset+)
+      ;group by aggregates
+      (xf/group-by-xf
+        #(-> % (util/nth2 0) (util/nth2 1) d2/datom->val)
+        (comp
+          (xforms/transjuxt {:sum (xforms/reduce
+                                    (zs/zset-sum+
+                                      #(-> % (util/nth2 1) d2/datom->val)))
+                             :cnt (xforms/reduce zs/zset-count+)})
+          (mapcat (fn [{:keys [sum cnt]}]
+                    [(zs/zset-sum-item sum)
+                     (zs/zset-count-item cnt)]))))
+      (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
 
 ;TODO use join-xf-3
 #_(comment
-  ;example usage
-  (def query-1 (q/create-query aggregate-example-xf))
+    ;example usage
+    (def query-1 (q/create-query aggregate-example-xf))
 
-  (q/input query-1
-    [(d2/tx-datoms->datoms2->zset
-       [(ddb/datom 1 :team/name "A" 536870913 true)
-        (ddb/datom 1 :event/country "Japan" 536870913 true)
-        (ddb/datom 1 :team/points-scored 25 536870913 true)
-        (ddb/datom 2 :team/name "A" 536870913 true)
-        (ddb/datom 2 :event/country "Japan" 536870913 true)
-        (ddb/datom 2 :team/points-scored 18 536870913 true)
-        (ddb/datom 3 :team/name "A" 536870913 true)
-        (ddb/datom 3 :event/country "Australia" 536870913 true)
-        (ddb/datom 3 :team/points-scored 25 536870913 true)
-        (ddb/datom 4 :team/name "A" 536870913 true)
-        (ddb/datom 4 :event/country "Australia" 536870913 true)
-        (ddb/datom 4 :team/points-scored 4 536870913 true)])])
+    (q/input query-1
+      [(d2/tx-datoms->datoms2->zset
+         [(ddb/datom 1 :team/name "A" 536870913 true)
+          (ddb/datom 1 :event/country "Japan" 536870913 true)
+          (ddb/datom 1 :team/points-scored 25 536870913 true)
+          (ddb/datom 2 :team/name "A" 536870913 true)
+          (ddb/datom 2 :event/country "Japan" 536870913 true)
+          (ddb/datom 2 :team/points-scored 18 536870913 true)
+          (ddb/datom 3 :team/name "A" 536870913 true)
+          (ddb/datom 3 :event/country "Australia" 536870913 true)
+          (ddb/datom 3 :team/points-scored 25 536870913 true)
+          (ddb/datom 4 :team/name "A" 536870913 true)
+          (ddb/datom 4 :event/country "Australia" 536870913 true)
+          (ddb/datom 4 :team/points-scored 4 536870913 true)])])
 
-  (q/get-result query-1)
+    (q/get-result query-1)
 
-  (q/input query-1
-    [(d2/tx-datoms->datoms2->zset
-       [(ddb/datom 1 :team/name "A" 536870913 false)
-        (ddb/datom 2 :team/name "A" 536870913 false)
-        (ddb/datom 3 :team/name "A" 536870913 false)])])
+    (q/input query-1
+      [(d2/tx-datoms->datoms2->zset
+         [(ddb/datom 1 :team/name "A" 536870913 false)
+          (ddb/datom 2 :team/name "A" 536870913 false)
+          (ddb/datom 3 :team/name "A" 536870913 false)])])
 
-  (q/get-result query-1)
+    (q/get-result query-1)
 
-  (q/get-state query-1))
+    (q/get-state query-1))
 
 (comment
   ;subquery explore
@@ -273,3 +274,77 @@
     (is (=
           (count (d/q datalog-query-1 @conn))
           (count result)))))
+
+(defn count-artists-by-countries-all
+  "Query for artist count by all countries."
+  [query-state]
+  (let [pred-1 #(d2/datom-attr= % :country/name-alpha-2)
+        pred-2 #(d2/datom-attr= % :artist/country)]
+    (comp
+      (xf/mapcat-zset-transaction-xf)
+      (map (fn [zset] (xf/disj-irrelevant-items zset pred-1 pred-2)))
+      (xf/join-xf
+        {:clause    [:c1]
+         :pred      pred-1
+         :index-kfn d2/datom->eid}
+        {:clause    [:c2]
+         :pred      pred-2
+         :index-kfn d2/datom->val}
+        query-state
+        :last? true)
+      (xforms/reduce zs/zset+)
+      ;group by aggregates
+      (xf/group-by-xf
+        #(-> % (util/nth2 0) d2/datom->val)
+        (comp
+          (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
+          (mapcat (fn [{:keys [cnt]}]
+                    [(zs/zset-count-item cnt)])))))))
+
+#?(:clj
+   (defn thaw-artist-datoms!
+     "Returns a vector of thawed datoms from the nippy file."
+     []
+     (try
+       (nippy/thaw-from-file
+         "resources/mbrainz/artists_datoms.nippy"
+         {:thaw-xform
+          (comp
+            (map (fn [thawing]
+                   (if (vector? thawing)
+                     (let [[e a v tx b] thawing]
+                       (d/datom e a v tx b))
+                     thawing))))})
+       (catch Throwable e (timbre/info "Cannot load artist datoms. Missing a nippy data file?") nil))))
+
+#?(:clj
+   (defn init-artist-db->conn [artists-datoms]
+     (d/conn-from-db
+       (d/init-db artists-datoms
+         {:artist/name          {:db/cardinality :db.cardinality/one}
+          :artist/id            {:db/cardinality :db.cardinality/one
+                                 :db/unique      :db.unique/identity}
+          :artist/genres        {:db/cardinality :db.cardinality/many
+                                 :db/valueType   :db.type/ref}
+          :genre/name           {:db/cardinality :db.cardinality/one
+                                 :db/unique      :db.unique/identity}
+          :artist/type          {:db/cardinality :db.cardinality/one}
+          :artist/country       {:db/cardinality :db.cardinality/one
+                                 :db/valueType   :db.type/ref}
+          :country/name-alpha-2 {:db/cardinality :db.cardinality/one
+                                 :db/unique      :db.unique/identity}}))))
+
+#?(:clj
+   (deftest mbrainz-aggregates-test
+     (if-let [artist-datoms (thaw-artist-datoms!)]
+       (let [conn             (init-artist-db->conn artist-datoms)
+             query            (q/create-query count-artists-by-countries-all)
+             _                (time (ds/init-query-with-conn query conn :listen? false))
+             result           (q/get-result query)
+             result-edn-path  "resources/mbrainz/expected_result/count-artists-by-countries-all.edn"
+             result-from-file (util/read-edn-file result-edn-path)]
+         result
+         (is (= result result-from-file)))
+       (do
+         (timbre/info "Test will skip, no artist datoms found.")
+         true))))

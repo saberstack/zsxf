@@ -18,15 +18,27 @@
 (defn init-query-with-conn
   "Initial naive implementation.
   Assumes no writes are incoming during initialization.
-  WIP"
-  [query conn & {:keys [time-f] :or {time-f identity}}]
+  WIP
+
+   Args:
+    - query: a ZSXF query created with (q/create-query ...)
+    - conn: a Datascript connection
+
+   Opts
+  `:listen?` defaults to true
+    false can be used for testing/REPL purposes,
+    or whenever we need the result of a query just once without continuous updates."
+  [query conn & {:keys [listen?] :or {listen? true}}]
   (let [db      @conn
         ;load all existing data from a stable db state
         _result (q/input query
                   (d2/tx-datoms->datoms2->zsets
                     (d/seek-datoms db :eavt)))]
     ;setup listener
-    (listen! conn query)))
+    (when listen?
+      (listen! conn query))
+    ;return
+    true))
 
 (defn take-last-datoms
   "Helper to see recently added datoms"
@@ -42,7 +54,10 @@
   (:listeners @(:atom conn)))
 
 (defn unlisten-all!
-  "Unlisten all Datascript listeners."
+  "Unlisten all Datascript listeners.
+  Args:
+    - conn: a Datascript connection
+  "
   [conn]
   (run! (fn [[k _]] (d/unlisten! conn k)) (conn-listeners conn)))
 

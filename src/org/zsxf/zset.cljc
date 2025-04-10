@@ -87,7 +87,9 @@
     false
     (coll? coll)))
 
-(s/def :zset/w int?)
+(s/def :zset/w (s/or
+                 :pos-int pos-int?
+                 :neg-int neg-int?))
 
 (s/def ::weight-map
   (s/keys :req [:zset/w]))
@@ -100,7 +102,7 @@
                                       (gen/map gen/keyword gen/small-integer)
                                       (gen/set gen/small-integer)
                                       gen/symbol])
-                meta-map (gen/hash-map :zset/w gen/large-integer)]
+                meta-map (gen/hash-map :zset/w (s/gen :zset/w))]
         (with-meta base meta-map)))))
 
 (s/def ::zset-item
@@ -218,6 +220,7 @@
        ([accum] accum)
        ([accum new-item]
         (if-let [existing-item (accum new-item)]
+          ;existing item
           (let [accum'      (disj accum existing-item)
                 existing-m' (update-zset-item-weight existing-item
                               (fn [prev-w]
@@ -229,7 +232,14 @@
             (if (zero? zset-w')
               accum'
               (conj accum' existing-m')))
-          (conj accum (zset-item new-item weight)))))
+          ;new item
+          ; most new items do not have an existing weight but if they do, we use it
+          (if-let [existing-weight (zset-weight new-item)]
+            ;skip if existing weight is zero
+            (if (zero? existing-weight)
+              accum
+              ;else, add item with existing weight
+              (conj accum (zset-item new-item existing-weight)))))))
      #{}
      coll)))
 

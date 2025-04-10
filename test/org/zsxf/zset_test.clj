@@ -1,6 +1,9 @@
 (ns org.zsxf.zset-test
   (:require
    [clojure.spec.alpha :as s]
+   [clojure.test.check :as check]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
    [medley.core :as medley]
    [org.zsxf.zset :as zs]
    [clojure.test :refer :all]
@@ -44,6 +47,9 @@
                   item))))
     conj
     zsets))
+
+(defn faulty-set->fixed-set [faulty-set]
+  (into #{} faulty-set))
 
 (defn generate-zsets []
   "Generates a vector of zsets with random but valid zset items based on a spec"
@@ -89,3 +95,23 @@
     (timbre/spy zset-sum-result)
     (timbre/spy zset-summed)
     (is (= zset-sum-result weight-sum))))
+
+(def property-no-zero-weights-zset+
+  (prop/for-all [zset-1 (s/gen ::zs/zset)
+                 zset-2 (s/gen ::zs/zset)
+                 zset-3 (s/gen ::zs/zset)]
+    ;we must fix the fault sets or the results will be all off!
+    (let [zset-1            (faulty-set->fixed-set zset-1)
+          zset-2            (faulty-set->fixed-set zset-2)
+          zset-3            (faulty-set->fixed-set zset-3)
+          zset-result       (transduce (map identity) zs/zset+ [zset-1 zset-2 zset-3])
+          zset-item-weights (mapv (fn [zset-item] (zs/zset-weight zset-item)) zset-result)]
+      ;expect no zero weights
+      (is (nil? (medley/find-first zero? zset-item-weights)))
+      ;expect #{} when we zset+ a zset with the negation of itself
+      (is (= #{} (zs/zset+ zset-1 (zs/zset-negate zset-1))))
+      (is (= #{} (zs/zset+ zset-2 (zs/zset-negate zset-2))))
+      (is (= #{} (zs/zset+ zset-3 (zs/zset-negate zset-3)))))))
+
+(deftest no-zero-weights-after-zset+
+  (check/quick-check 100 property-no-zero-weights-zset+))

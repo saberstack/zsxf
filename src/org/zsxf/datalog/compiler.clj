@@ -102,7 +102,7 @@
 
 (defn runtime-compile
   "Runtime compile a datalog query.
-  Returns a ZSXf-compatible transducer.
+  Returns a ZSXF-compatible transducer.
 
   IMPORTANT: Use only with trusted sources.
   runtime-compile can execute arbitrary code."

@@ -100,7 +100,7 @@
   (prop/for-all [zset-1 (s/gen ::zs/zset)
                  zset-2 (s/gen ::zs/zset)
                  zset-3 (s/gen ::zs/zset)]
-    ;we must fix the fault sets or the results will be all off!
+    ;we must fix the faulty sets or the results will be all off!
     (let [zset-1            (faulty-set->fixed-set zset-1)
           zset-2            (faulty-set->fixed-set zset-2)
           zset-3            (faulty-set->fixed-set zset-3)

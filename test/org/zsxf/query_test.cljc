@@ -194,12 +194,6 @@
 
   )
 
-(defn load-learn-db
-  []
-  (let [schema (util/read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
-        data   (util/read-edn-file "resources/learndatalogtoday/data_datascript.edn")]
-    [schema data]))
-
 (defn new-join-xf-3
   [query-state]
   (comp
@@ -265,9 +259,7 @@
 
 (deftest join-xf-3-with-another-fix
   (let [_       (timbre/set-min-level! :info)
-        [schema data] (load-learn-db)
-        conn    (d/create-conn schema)
-        _       (d/transact! conn data)
+        [conn _schema] (util/load-learn-db)
         query-1 (q/create-query new-join-xf-3)
         _       (ds/init-query-with-conn query-1 conn)
         result  (q/get-result query-1)]

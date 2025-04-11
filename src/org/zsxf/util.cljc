@@ -1,6 +1,7 @@
 (ns org.zsxf.util
   (:require [clojure.core.async :as a]
             [clojure.edn :as edn]
+            [datascript.core :as d]
             [taoensso.timbre :as timbre]
             #?(:clj [clojure.java.io :as io])
             #?(:clj [taoensso.encore :as enc]))
@@ -103,16 +104,16 @@
   Returns a function that takes an indexed collection and returns the value at the path."
   [v]
   (if (empty? v)
-      `identity
-      `(transduce
-        (map (fn [idx#]
-               (fn [x#] (~`nth2 x# idx#))))
-        (completing
+    `identity
+    `(transduce
+       (map (fn [idx#]
+              (fn [x#] (~`nth2 x# idx#))))
+       (completing
          conj
          (fn [accum#]
            (apply comp accum#)))
-        []
-        ~v)))
+       []
+       ~v)))
 
 (comment
   (macroexpand-1 '(path-f []))
@@ -214,6 +215,15 @@
               (when-not (get output-opts :no-stacktrace?)   ; Back compatibility
                 (str enc/system-newline
                   (ef data))))))))))
+
+#?(:clj
+   (defn load-learn-db
+     []
+     (let [schema (read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
+           data   (read-edn-file "resources/learndatalogtoday/data_datascript.edn")
+           conn   (d/create-conn schema)
+           _      (d/transact! conn data)]
+       [conn schema])))
 
 (comment
   (scaffold clojure.lang.IPersistentMap))

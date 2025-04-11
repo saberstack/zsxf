@@ -21,6 +21,7 @@
                            (sprinkle-dbsp-on [~@query]))]
      (ds/init-query-with-conn query# conn#)
      (is (= (q/get-result query#)
+            (d/q (quote ~query) @conn#)
             ~result))))
 
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"

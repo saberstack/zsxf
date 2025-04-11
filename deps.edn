@@ -41,6 +41,7 @@
            com.cnuernber/ham-fisted                  {:mvn/version "2.026"}
            com.aphyr/bifurcan-clj                    {:mvn/version "0.1.3"}
            criterium/criterium                       {:mvn/version "0.4.6"}
+           town.lilac/cascade                        {:mvn/version "2.0.1"}
            }
  :aliases {:add-opens
            {:jvm-opts ["-Djdk.attach.allowAttachSelf"

@@ -52,8 +52,8 @@
                    (map (fn [[item-name -pattern]]
                           ; return a vector of item-name and the result of calling trampoline
                           [item-name
-                           ; call itself recursively via trampoline
-                           (trampoline result-set-xf grouped-maps-vector -pattern)]))
+                           ;for shallow recursion only, can blow up the stack!
+                           (result-set-xf grouped-maps-vector -pattern)]))
                    link-ops)))))
       conj
       []

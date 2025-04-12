@@ -76,9 +76,47 @@
         (timbre/info "looking for clause" clause))
     item-can-join?))
 
-
 (defn join-xf
-  "WIP, another fix"
+  "Takes two maps and index-state.
+  Returns a ZSXF-compatible transducer.
+
+  Glossary
+   - clause: defines a relation, or a part of a relation
+   - set of unified clauses: a set of clauses that are unified via common variables
+     Example:
+      [?m :movie/direction ?p]
+      [?p :person/name ?name]
+     ... is unified by the common variable ?p
+
+   -  joined pair: a pair of relations, optionally nested
+      [:R1 :R2] ;two relations (smallest possible joined pair)
+      [[:R1 :R2] :R3] ;three relations (still a pair!)
+      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
+      ...etc.
+
+   *Every* join-xf:
+   - Takes a zset, and outputs one or more(!) zsets
+     Each zset is expanded (via mapcat) at the beginning of join-xf into
+     zset-items & joined pairs from previous join-xfs outputs
+       Note: zset-items can be datoms but critically can also
+       can be joined pairs like [:R1 :R2], [[:R1 :R2] :R3] etc.
+   - Returns both:
+    - joined pairs
+    - zset-items, unchanged, unless ?last is true when they are not returned
+        Note: the reason for returning zset-items is to allow downstream transducers
+        to process and integrate those items; in many cases, the zset-items are used by
+        multiple transducers during query execution.
+        This happens until the :last? join-xf is reached, at which point
+        the zset-items are not returned since every transducer has already processed them if needed.
+
+  Options:
+  - :return-zset-item-xf
+      a transducer to transform each item (a datom or a joined pair)
+      before final inclusion for downstream processing.
+      Examples:
+      (map (fn [item] ...))
+      (filter (fn [item] ...))
+  "
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
    index-state
@@ -150,7 +188,6 @@
                        (zs/join-indexed* delta-1 delta-2))
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
-                       return-zset-item-xf
                        (map (fn [[_datom-1 _datom-2 :as zset-item]]
                               (let [new-zset-item
                                     (-> zset-item
@@ -163,7 +200,8 @@
                                       (vary-meta
                                         (fn [v]
                                           (assoc v ::xf/relation true))))]
-                                new-zset-item)))))
+                                new-zset-item)))
+                       return-zset-item-xf))
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
@@ -215,54 +253,3 @@
     #{}
     (filter (apply some-fn preds))
     zset))
-
-(defn pull-join-xf []
-  ; A pull pattern is similar to a join but differs in important ways.
-  ; Given a query like:
-  '[:find (pull ?p [:person/name
-                    {:person/born [:country/name]}])
-    :where
-    [?p :person/name ?name]
-    [?m :movie/title _]
-    [?m :movie/director ?p]]
-  ; ... we can see that the pull starts as typical at ?p (entity id)
-  ; It _pulls_ the following:
-  ;   :person/name  – which was already requested in the main :where join
-  ;   :person/born  - new piece of data... which is actually a ref (a join!)
-  ;      ... which points to ...
-  ;   :country/name - new data also.
-  ;
-  ; (!) An important difference between a :where join and a (pull ...) "join":
-  ;
-  ; Even when a certain (pull ?p ...) "lacks" any (or all!) of the data requested by the (pull ...) pattern
-  ; the number of returned items in the result does not change (the query can return a list like
-  '([nil] [nil])                                            ; ... if nothing in the pattern is found
-  ; or if found (more typically):
-  '([#:person{:born #:country{:name "USA"} :name "Alice"}]
-    [#:person{:born #:country{:name "Monaco"} :name "Bob"}])
-  ;
-  ; More important differences likely exist, this is WIP.
-  ;
-  )
-
-
-;Glossary
-; - Clause: defines a single relation
-; - Joined relation: a pair of relations with arbitrary depth of joined relations nested inside
-;    [:R1 :R2] ;two relations (smallest possible joined relation pair)
-;    [[:R1 :R2] :R3] ;three relations
-;    [[[:R1 :R2] :R3] :R4] ;four relations
-;
-;
-;*Every* join-xf:
-; - takes a zset, outputs one or more zsets
-; - takes zset-items & joined relations (from previous join-xfs outputs)
-;    (!) Note: zset-items can be datoms but critically can also
-;       can be joined relations (a vector pair):
-;       [:R1 :R2]
-;       [[:R1 :R2] :R3]
-;       [[[:R1 :R2] :R3] :R4]
-;       Notice the top level vector count is always two (i.e. it's a pair)
-;       with more pairs potentially nested at every level
-; - outputs joined relations based on predicates and index kfns
-; - outputs zset-items, unchanged (until :last?)

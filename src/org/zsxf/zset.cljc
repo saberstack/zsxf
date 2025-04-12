@@ -361,6 +361,13 @@
       #{}
       (keys m1))))
 
+(defn key-union
+  "Taken from clojure.set/union but adapted to work for maps."
+  [m1 m2]
+  (if (< (count m1) (count m2))
+    (recur m2 m1)
+    (reduce conj m1 m2)))
+
 (defn join-indexed*
   "Join and multiply two indexed zsets (indexed zsets are maps)"
   ([indexed-zset-1 indexed-zset-2]

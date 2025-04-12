@@ -1,4 +1,5 @@
-(ns org.zsxf.experimental.y)
+(ns org.zsxf.experimental.y
+  "Experimental recursion approaches.")
 
 (defn Y
   [gen-f]

@@ -3,13 +3,12 @@
             [bifurcan-clj.map :as bfm]
             [bifurcan-clj.util]
             [bifurcan-clj.core :as bfc]
-            [ham-fisted.api]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative Counted ILookup IPersistentCollection IPersistentMap MapEntry Seqable)
            (io.lacuna.bifurcan IMap Maps$Entry Maps$HashEntry)
            (java.io Writer)))
 
-(timbre/set-ns-min-level! :info)
+;(timbre/set-ns-min-level! :info)
 
 (defn- empty-bf-map [] (bfm/map))
 

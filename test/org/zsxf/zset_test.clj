@@ -2,7 +2,6 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.test.check :as check]
-   [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [medley.core :as medley]
    [org.zsxf.zset :as zs]

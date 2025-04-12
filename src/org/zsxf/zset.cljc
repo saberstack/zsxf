@@ -1,9 +1,7 @@
 (ns org.zsxf.zset
-  (:require [clojure.core.async :as a]
-            [clojure.spec.alpha :as s]
-            [clojure.test.check :as check]
-            [clojure.test.check.generators :as gen]
-            [clojure.spec.gen.alpha :as gen-alpha]
+  (:require [clojure.spec.alpha :as s]
+            [org.zsxf.zset :as-alias zs]
+            [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
 
@@ -11,10 +9,6 @@
 ; Follow the example from https://github.com/clj-commons/ordered/blob/master/src/flatland/ordered/set.clj
 
 (set! *print-meta* true)
-(declare zset)
-(declare zset+)
-
-(timbre/set-ns-min-level! :trace)
 
 (defn zset-weight
   "Get the weight of a zset item.
@@ -87,38 +81,50 @@
     false
     (coll? coll)))
 
-(s/def :zset/w (s/or
-                 :pos-int pos-int?
-                 :neg-int neg-int?))
-
-(s/def ::weight-map
-  (s/keys :req [:zset/w]))
-
-(s/def ::has-metadata?
-  (s/with-gen
-    (fn [x] (not (nil? (meta x))))
-    (fn []
-      (gen/let [base     (gen/one-of [(gen/vector gen/small-integer)
-                                      (gen/map gen/keyword gen/small-integer)
-                                      (gen/set gen/small-integer)
-                                      gen/symbol])
-                meta-map (gen/hash-map :zset/w (s/gen :zset/w))]
-        (with-meta base meta-map)))))
-
-(s/def ::zset-item
-  (s/and
-    ::has-metadata?
-    (s/or :coll coll? :sym symbol?)))
-
-(s/def ::zset
-  (s/coll-of ::zset-item :kind set?))
-
 (defn zset?
   "Check if x conforms to the zset spec"
   [x]
-  (let [result (s/valid? ::zset x)]
-    (when-not result (timbre/error (s/explain-data ::zset x)))
+  (let [result (s/valid? ::zs/zset x)]
+    (when-not result (timbre/error (s/explain-data ::zs/zset x)))
     result))
+
+(defn zset
+  "Collection to zset as per https://www.feldera.com/blog/Implementing%20Z-sets/#converting-a-collection-to-a-z-set"
+  ([coll]
+   (zset coll (map identity)))
+  ([coll xf]
+   (zset coll xf 1))
+  ([coll xf weight]
+   ;{:pre [(s/valid? (s/coll-of eligible-coll?) coll)]}
+   (transduce
+     xf
+     (fn
+       ([accum] accum)
+       ([accum new-item]
+        (if-let [existing-item (accum new-item)]
+          ;existing item
+          (let [accum'      (disj accum existing-item)
+                existing-m' (update-zset-item-weight existing-item
+                              (fn [prev-w]
+                                ; fnil is used to handle the case where the weight is not present
+                                ; in the meta, aka it is nil
+                                ((fnil + 0) (zset-weight new-item) prev-w)))
+                _           existing-m'
+                zset-w'     (zset-weight existing-m')]
+            (if (zero? zset-w')
+              accum'
+              (conj accum' existing-m')))
+          ; most new items do not have an existing weight, but if they do, we use it
+          (if-let [existing-weight (zset-weight new-item)]
+            ;skip if existing weight is zero
+            (if (zero? existing-weight)
+              accum
+              ;else, add item with existing weight
+              (conj accum (zset-item new-item existing-weight)))
+            ;new item, no weight, add the item with default weight
+            (conj accum (zset-item new-item weight))))))
+     #{}
+     coll)))
 
 (defn zset+
   "Adds two zsets"
@@ -155,17 +161,6 @@
     ([zset-1] zset-1)
     ([zset-1 zset-2]
      (zset+ zset-1 zset-2 xf))))
-
-(defn via-meta-zset-xf+
-  "->xf-meta is a fn of one argument which accept the zset-2 metadata and returns a transducer.
-  Returns a function with the same signature as zset+.
-  The transducer is applied to each new zset item from the second zset before adding it to the first zset."
-  [->xf-meta]
-  (fn
-    ([] (zset #{}))
-    ([zset-1] zset-1)
-    ([zset-1 zset-2]
-     (zset+ zset-1 zset-2 (->xf-meta (meta zset-2))))))
 
 (defn zset-pos+
   "Same as zset+ but does not maintain items with negative weight after +"
@@ -205,44 +200,6 @@
     conj
     #{}
     zset))
-
-(defn zset
-  "Collection to zset as per https://www.feldera.com/blog/Implementing%20Z-sets/#converting-a-collection-to-a-z-set"
-  ([coll]
-   (zset coll (map identity)))
-  ([coll xf]
-   (zset coll xf 1))
-  ([coll xf weight]
-   ;{:pre [(s/valid? (s/coll-of eligible-coll?) coll)]}
-   (transduce
-     xf
-     (fn
-       ([accum] accum)
-       ([accum new-item]
-        (if-let [existing-item (accum new-item)]
-          ;existing item
-          (let [accum'      (disj accum existing-item)
-                existing-m' (update-zset-item-weight existing-item
-                              (fn [prev-w]
-                                ; fnil is used to handle the case where the weight is not present
-                                ; in the meta, aka it is nil
-                                ((fnil + 0) (zset-weight new-item) prev-w)))
-                _           existing-m'
-                zset-w'     (zset-weight existing-m')]
-            (if (zero? zset-w')
-              accum'
-              (conj accum' existing-m')))
-          ; most new items do not have an existing weight, but if they do, we use it
-          (if-let [existing-weight (zset-weight new-item)]
-            ;skip if existing weight is zero
-            (if (zero? existing-weight)
-              accum
-              ;else, add item with existing weight
-              (conj accum (zset-item new-item existing-weight)))
-            ;new item, no weight, add the item with default weight
-            (conj accum (zset-item new-item weight))))))
-     #{}
-     coll)))
 
 (defn zset-negative
   "Represents a deletion change"
@@ -429,26 +386,7 @@
     (zset [{:name "P" :person/team 1} {:name "P_2" :person/team 1}]))
   )
 
-;Next
-; https://www.feldera.com/blog/Implementing%20Z-sets/
-; https://www.feldera.com/blog/SQL-on-Zsets/
-; Use core.async to achieve incremental computation
-
 ;Misc
 ; Calcite functionality that (potentially) supports incremental view maintenance
 ; https://youtu.be/iT4k5DCnvPU?t=890
 ; https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/stream/Delta.html (differentiation)
-
-;; Incremental computation via core.async
-
-(defonce *computation-state (atom {}))
-
-(defn register-computation! [xf atom]
-
-  (a/chan xf))
-
-(defn insert->zset [& maps]
-  (zset `#{~@maps}))
-
-(defn delete->zset [& maps]
-  (zset `#{~@maps}))

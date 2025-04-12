@@ -80,43 +80,53 @@
   "Takes two maps and index-state.
   Returns a ZSXF-compatible transducer.
 
-  Glossary
-   - clause: defines a relation, or a part of a relation
-   - set of unified clauses: a set of clauses that are unified via common variables
+  # Glossary
+
+   `Clause`: defines a relation, or a part of a relation
+
+   `Set of unified clauses`: a set of clauses that are unified via common variables
      Example:
       [?m :movie/direction ?p]
       [?p :person/name ?name]
      ... is unified by the common variable ?p
 
-   -  joined pair: a pair of relations, optionally nested
-      [:R1 :R2] ;two relations (smallest possible joined pair)
-      [[:R1 :R2] :R3] ;three relations (still a pair!)
-      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
-      ...etc.
+   `Joined pair`: a pair of relations, optionally nested
+     [:R1 :R2] ;two relations (smallest possible joined pair)
+     [[:R1 :R2] :R3] ;three relations (still a pair!)
+     [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
+     ... etc.
 
-   *Every* join-xf:
-   - Takes a zset, and outputs one or more(!) zsets
+   ## join-xf
+
+    Receives:
+
+    A single zset (at a time)
+
      Each zset is expanded (via mapcat) at the beginning of join-xf into
-     zset-items & joined pairs from previous join-xfs outputs
-       Note: zset-items can be datoms but critically can also
-       can be joined pairs like [:R1 :R2], [[:R1 :R2] :R3] etc.
-   - Returns both:
-    - joined pairs
-    - zset-items, unchanged, unless ?last is true when they are not returned
-        Note: the reason for returning zset-items is to allow downstream transducers
-        to process and integrate those items; in many cases, the zset-items are used by
-        multiple transducers during query execution.
-        This happens until the :last? join-xf is reached, at which point
-        the zset-items are not returned since every transducer has already processed them if needed.
+     zset-items and joined pairs from previous join-xfs outputs
+     zset-items can be
+     - `datoms`
+     - `joined pairs`, i.e. [:R1 :R2], [[:R1 :R2] :R3] etc.
 
-  Options:
-  - :return-zset-item-xf
-      a transducer to transform each item (a datom or a joined pair)
+    Returns (via mapcat):
+
+    zset(s), each consisting of:
+    - new `joined pairs`
+    - each input zset-item unchanged, wrapped as a single item zset, unless ?last is true when it is not returned
+      The reason for returning zset-items is to allow downstream transducers
+      to process and integrate those items; in many cases, the zset-items are used by
+      multiple transducers during query execution.
+      This happens until the :last? join-xf is reached, at which point
+      the zset-items are not returned since every transducer has already processed them if needed.
+
+    Options:
+
+    - :return-zset-item-xf
+      A transducer to transform each item (a datom or a joined pair)
       before final inclusion for downstream processing.
-      Examples:
+      Example:
       (map (fn [item] ...))
-      (filter (fn [item] ...))
-  "
+      (filter (fn [item] ...))"
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
    index-state

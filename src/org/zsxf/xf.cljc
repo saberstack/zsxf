@@ -77,6 +77,22 @@
         (timbre/info "looking for clause" clause))
     item-can-join?))
 
+(defn- join-intersect [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] xf]
+  (zs/indexed-zset->zset
+    (zs/indexed-zset+
+      ;ΔA ⋈ B
+      (zs/intersect-indexed* delta-1 index-state-2-prev)
+      ;A ⋈ ΔB
+      (zs/intersect-indexed* index-state-1-prev delta-2)
+      ;ΔA ⋈ ΔB
+      (zs/intersect-indexed* delta-1 delta-2))
+    ;transducer to transform zset items during conversion indexed-zset -> zset
+    xf))
+
+(defn- join-union [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] xf]
+  ;TODO wip
+  )
+
 (defn join-xf
   "Takes two maps and index-state.
   Returns a ZSXF-compatible transducer.
@@ -189,14 +205,8 @@
                  ;return
                  (vector
                    ;add :where clauses as metadata to the joined relations (a zset)
-                   (zs/indexed-zset->zset
-                     (zs/indexed-zset+
-                       ;ΔA ⋈ B
-                       (zs/join-indexed* delta-1 index-state-2-prev)
-                       ;A ⋈ ΔB
-                       (zs/join-indexed* index-state-1-prev delta-2)
-                       ;ΔA ⋈ ΔB
-                       (zs/join-indexed* delta-1 delta-2))
+                   (join-intersect
+                     [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
                        (map (fn [[_datom-1 _datom-2 :as zset-item]]
@@ -213,6 +223,7 @@
                                           (assoc v ::xf/relation true))))]
                                 new-zset-item)))
                        return-zset-item-xf))
+                   ;original zset-item wrapped in a zset
                    zset)))
           (mapcat (fn [[join-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat

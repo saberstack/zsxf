@@ -318,27 +318,30 @@
       #{}
       (keys m1))))
 
-(defn key-union
+(defn intersect-indexed*
+  "Intersect/join two indexed zsets (indexed zsets are maps)
+  Returns an indexed zset.
+
+  The weight of a common item in the return is the product (via zset*)
+  of the weights of the same item in indexed-zset-1 and indexed-zset-2."
+  [indexed-zset-1 indexed-zset-2]
+  (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
+    (into
+      {}
+      (map (fn [common]
+             [common (zset*
+                       (indexed-zset-1 common)
+                       (indexed-zset-2 common))]))
+      commons)))
+
+;TODO Potentially not needed?
+#_(defn key-union
   "Taken from clojure.set/union but adapted to work for maps."
   [m1 m2]
   (if (< (count m1) (count m2))
     (recur m2 m1)
     (reduce conj m1 m2)))
 
-(defn join-indexed*
-  "Join and multiply two indexed zsets (indexed zsets are maps)"
-  ([indexed-zset-1 indexed-zset-2]
-   (join-indexed* indexed-zset-1 indexed-zset-2 identity))
-  ([indexed-zset-1 indexed-zset-2 internal-meta-cleanup-f]
-   (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
-     (into
-       {}
-       (map (fn [common]
-              [common (zset*
-                        (indexed-zset-1 common)
-                        (indexed-zset-2 common)
-                        internal-meta-cleanup-f)]))
-       commons))))
 
 (comment
 

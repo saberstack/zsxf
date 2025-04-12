@@ -1,7 +1,6 @@
 (ns org.zsxf.archive.scratch
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
-            [tech.v3.dataset :as ds]
             [datascript.core :as d]
             [datascript.db :as ddb]))
 
@@ -226,10 +225,3 @@
         m'    (transduce (xforms/by-key kfn (xforms/into #{})) conj {} m)
         five' (second (some (fn [x] (when (= 5 (first x)) x)) (m' true)))]
     (identical? five' five)))
-
-(comment
-  ;complex column names seem to be supported
-  (ds/row-map
-    (ds/->>dataset [{#{:a 1} 1} {#{:a 2} 2}])
-    (fn [row] (update-vals row inc)))
-  )

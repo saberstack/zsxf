@@ -15,7 +15,8 @@
   is invalid and this transducer will do that after its child xforms have been
   completed."
   [rf]
-  (fn ([result] result)
+  (fn
+    ([result] result)
     ([result item] (rf result item))))
 
 (defn cond-branch

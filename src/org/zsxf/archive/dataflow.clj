@@ -3,7 +3,6 @@
             [net.cgrand.xforms :as x]
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre]
-            [ss.loop :as ss.loop]
             [pangloss.transducers :as pxf]))
 
 (defonce index-1-atom (atom {}))
@@ -168,13 +167,6 @@
     )
 
   )
-
-
-(defn go-loop-test []
-  (ss.loop/go-loop []
-    (a/<! (a/timeout 1000))
-    (println "Loop 1")
-    (recur)))
 
 (def mix-out-1 (a/chan 42 (map (fn [x]
                                  (condp = x

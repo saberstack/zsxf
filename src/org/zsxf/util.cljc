@@ -225,6 +225,10 @@
            _      (d/transact! conn data)]
        [conn schema])))
 
+#?(:clj
+   (defn jvm-version []
+     (parse-long (System/getProperty "java.vm.specification.version"))))
+
 (defn megabytes [num-of-bytes]
   (double
     (/ num-of-bytes 1000000)))

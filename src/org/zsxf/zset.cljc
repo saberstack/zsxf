@@ -1,4 +1,7 @@
 (ns org.zsxf.zset
+  ;clojurescript does not have +' and *' yet (arbitrary precision + and *)
+  ;rename to match Clojure
+  #?(:cljs (:refer-clojure :rename {+ +' * *'}))
   (:require [clojure.spec.alpha :as s]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs

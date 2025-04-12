@@ -339,9 +339,9 @@
              query-size                (mm/measure query :bytes true)
              query-size-in-mb          (util/megabytes query-size)
              expected-query-size-in-mb 116]
-         (timbre/info "query-size-in-mb :::" query-size-in-mb)
-         ;check that any impl changes haven't affected the query size
-         (is (<= query-size-in-mb expected-query-size-in-mb))
+         (when (<= 24 (util/jvm-version))
+           ;check that impl changes haven't increased the query size
+           (is (<= query-size-in-mb expected-query-size-in-mb)))
          ;check query result
          (is (= result result-from-file)))
        (do

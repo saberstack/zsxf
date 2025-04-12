@@ -166,7 +166,6 @@
                   (ddb/datom 2 :person/name "Alice" 536870913 true)
                   (ddb/datom 1 :country/continent "Europe" 536870913 true)])]
     (q/input query datoms)
-    (def q query)
     (q/get-result query)))
 
 (comment
@@ -288,7 +287,7 @@
       (xforms/reduce zs/zset+)
       ;group by aggregates
       (xf/group-by-xf
-        #(-> % (util/nth2 0) d2/datom->val)
+        #(-> % (nth2 0) d2/datom->val)
         (comp
           (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
           (mapcat (fn [{:keys [cnt]}]
@@ -308,7 +307,7 @@
                      (let [[e a v tx b] thawing]
                        (d/datom e a v tx b))
                      thawing))))})
-       (catch Throwable e (timbre/info "Cannot load artist datoms. Missing a nippy data file?") nil))))
+       (catch Throwable _e (timbre/info "Cannot load artist datoms. Missing a nippy data file?") nil))))
 
 #?(:clj
    (defn init-artist-db->conn [artists-datoms]

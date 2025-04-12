@@ -1,1 +1,1 @@
-clj -M:dev:add-opens -m org.zsxf.core
+clj -M:dev:add-opens:jvm-heap-32gb -m org.zsxf.core

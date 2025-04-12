@@ -225,5 +225,9 @@
            _      (d/transact! conn data)]
        [conn schema])))
 
+(defn megabytes [num-of-bytes]
+  (double
+    (/ num-of-bytes 1000000)))
+
 (comment
   (scaffold clojure.lang.IPersistentMap))

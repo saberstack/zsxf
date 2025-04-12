@@ -26,7 +26,11 @@
            ; use this alias for clj-memory-meter to work
            ; clj -M:add-opens -m org.zsxf.core
            :add-opens
-           {:jvm-opts ["-Djdk.attach.allowAttachSelf"
+           {:jvm-opts ["-XX:+EnableDynamicAgentLoading"
+                       "-XX:+PrintCommandLineFlags"
+                       "-XX:+UnlockExperimentalVMOptions"
+                       "-XX:+UseCompactObjectHeaders"
+                       "-Djdk.attach.allowAttachSelf"
                        "--add-opens=java.base/java.io=ALL-UNNAMED"
                        "--add-opens=java.base/java.lang=ALL-UNNAMED"
                        "--add-opens=java.base/java.lang.annotation=ALL-UNNAMED"
@@ -80,4 +84,8 @@
                        "--add-opens=java.desktop/sun.java2d.marlin=ALL-UNNAMED"
                        "--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED"
                        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-                       "--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED"]}}}
+                       "--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED"]}
+           :jvm-max-heap-32gb
+           {:jvm-opts ["-Xmx32g"]}
+           :jvm-heap-32gb
+           {:jvm-opts ["-Xms32g" "-Xmx32g"]}}}

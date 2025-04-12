@@ -1,6 +1,7 @@
 (ns org.zsxf.query-test
   (:require
    #?(:clj [clojure.test :refer [deftest is]])
+   #?(:clj [clj-memory-meter.core :as mm])
    #?(:cljs [cljs.test :refer-macros [deftest is]])
    [datascript.core :as d]
    [datascript.db :as ddb]
@@ -329,13 +330,19 @@
 #?(:clj
    (deftest mbrainz-aggregates-test
      (if-let [artist-datoms (thaw-artist-datoms!)]
-       (let [conn             (init-artist-db->conn artist-datoms)
-             query            (q/create-query count-artists-by-countries-all)
-             _                (time (ds/init-query-with-conn query conn :listen? false))
-             result           (q/get-result query)
-             result-edn-path  "resources/mbrainz/expected_result/count-artists-by-countries-all.edn"
-             result-from-file (util/read-edn-file result-edn-path)]
-         result
+       (let [conn                      (init-artist-db->conn artist-datoms)
+             query                     (q/create-query count-artists-by-countries-all)
+             _                         (time (ds/init-query-with-conn query conn :listen? false))
+             result                    (q/get-result query)
+             result-edn-path           "resources/mbrainz/expected_result/count-artists-by-countries-all.edn"
+             result-from-file          (util/read-edn-file result-edn-path)
+             query-size                (mm/measure query :bytes true)
+             query-size-in-mb          (util/megabytes query-size)
+             expected-query-size-in-mb 116]
+         (timbre/info "query-size-in-mb :::" query-size-in-mb)
+         ;check that any impl changes haven't affected the query size
+         (is (<= query-size-in-mb expected-query-size-in-mb))
+         ;check query result
          (is (= result result-from-file)))
        (do
          (timbre/info "Test will skip, no artist datoms found.")

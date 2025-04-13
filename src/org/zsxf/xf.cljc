@@ -146,15 +146,15 @@
       (filter (fn [item] ...))"
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
-   index-state
+   query-state
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [index-uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
-        index-uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
+  (let [uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
+        uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
         join-xf-clauses [clause-1 clause-2]]
-    (timbre/info index-uuid-1)
-    (timbre/info index-uuid-2)
+    (timbre/info uuid-1)
+    (timbre/info uuid-2)
     (timbre/info join-xf-clauses)
     (comp
       ;receives a zset, unpacks zset into individual items
@@ -187,14 +187,14 @@
         (comp
 
           (map (fn [[delta-1 delta-2 zset]]
-                 (let [index-state-1-prev (get @index-state index-uuid-1 {})
-                       index-state-2-prev (get @index-state index-uuid-2 {})]
+                 (let [index-state-1-prev (get @query-state uuid-1 {})
+                       index-state-2-prev (get @query-state uuid-2 {})]
                    ;advance indices
-                   (swap! index-state
+                   (swap! query-state
                      (fn [state]
                        (-> state
-                         (update index-uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
-                         (update index-uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
+                         (update uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
+                         (update uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
                    ;return
                    [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
 
@@ -232,15 +232,15 @@
    WIP"
   [{clause-1 :clause path-f-1 :path pred-1 :pred}
    {clause-2 :clause path-f-2 :path pred-2 :pred}
-   index-state
+   query-state
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [index-uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
-        index-uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
+  (let [uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
+        uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
         cartesian-xf-clauses [clause-1 clause-2]]
-    (timbre/info index-uuid-1)
-    (timbre/info index-uuid-2)
+    (timbre/info uuid-1)
+    (timbre/info uuid-2)
     (timbre/info cartesian-xf-clauses)
     (comp
       ;receives a zset, unpacks zset into individual items
@@ -272,24 +272,24 @@
         any?
         (comp
           (map (fn [[delta-1 delta-2 zset]]
-                 (let [index-state-1-prev (get @index-state index-uuid-1 {})
-                       index-state-2-prev (get @index-state index-uuid-2 {})]
+                 (let [sub-state-1-prev (get @query-state uuid-1 {})
+                       sub-state-2-prev (get @query-state uuid-2 {})]
                    ;advance indices
-                   (swap! index-state
+                   (swap! query-state
                      (fn [state]
                        (-> state
-                         (update index-uuid-1 (fn [index] (zs/zset-pos+ (or index #{}) delta-1)))
-                         (update index-uuid-2 (fn [index] (zs/zset-pos+ (or index #{}) delta-2))))))
+                         (update uuid-1 (fn [index] (zs/zset-pos+ (or index #{}) delta-1)))
+                         (update uuid-2 (fn [index] (zs/zset-pos+ (or index #{}) delta-2))))))
                    ;return
-                   [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
-          (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
+                   [sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]])))
+          (map (fn [[sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]]]
                  ;return
                  (vector
                    (zs/zset-more+
                      ;ΔA ⋈ B
-                     (zs/zset* delta-1 index-state-2-prev)
+                     (zs/zset* delta-1 sub-state-2-prev)
                      ;A ⋈ ΔB
-                     (zs/zset* index-state-1-prev delta-2)
+                     (zs/zset* sub-state-1-prev delta-2)
                      ;ΔA ⋈ ΔB
                      (zs/zset* delta-1 delta-2))
                    ;original zset-item wrapped in a zset

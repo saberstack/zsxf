@@ -77,7 +77,8 @@
         (timbre/info "looking for clause" clause))
     item-can-join?))
 
-(defn- join-intersect [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] xf]
+(defn- join-intersect
+  [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]] xf]
   (zs/indexed-zset->zset
     (zs/indexed-zset+
       ;ΔA ⋈ B
@@ -92,6 +93,23 @@
 (defn- join-union [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] xf]
   ;TODO wip
   )
+
+(defn relation-xf
+  "Add metadata to zset-items to indicate that they are part of a relation."
+  [clause-1 clause-2]
+  (map (fn [[_datom-1 _datom-2 :as zset-item]]
+         (let [new-zset-item
+               (-> zset-item
+                 (update
+                   0 (fn [datom-1]
+                       (vary-meta datom-1 (fn [m] (assoc m ::xf/clause clause-1)))))
+                 (update
+                   1 (fn [datom-2]
+                       (vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))))
+                 (vary-meta
+                   (fn [v]
+                     (assoc v ::xf/relation true))))]
+           new-zset-item))))
 
 (defn join-xf
   "Takes two maps and index-state.
@@ -206,19 +224,7 @@
                      [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
-                       (map (fn [[_datom-1 _datom-2 :as zset-item]]
-                              (let [new-zset-item
-                                    (-> zset-item
-                                      (update
-                                        0 (fn [datom-1]
-                                            (vary-meta datom-1 (fn [m] (assoc m ::xf/clause clause-1)))))
-                                      (update
-                                        1 (fn [datom-2]
-                                            (vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))))
-                                      (vary-meta
-                                        (fn [v]
-                                          (assoc v ::xf/relation true))))]
-                                new-zset-item)))
+                       (relation-xf clause-1 clause-2)
                        return-zset-item-xf))
                    ;original zset-item wrapped in a zset
                    zset)))
@@ -230,18 +236,14 @@
 (defn cartesian-xf
   "Cartesian product, aka cross join
    WIP"
-  [{clause-1 :clause path-f-1 :path pred-1 :pred}
-   {clause-2 :clause path-f-2 :path pred-2 :pred}
+  [{clause-1 :clause path-f-1 :path pred-1 :pred :or {path-f-1 identity}}
+   {clause-2 :clause path-f-2 :path pred-2 :pred :or {path-f-2 identity}}
    query-state
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
   (let [uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
-        uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
-        cartesian-xf-clauses [clause-1 clause-2]]
-    (timbre/info uuid-1)
-    (timbre/info uuid-2)
-    (timbre/info cartesian-xf-clauses)
+        uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})]
     (comp
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
@@ -285,7 +287,9 @@
           (map (fn [[sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]]]
                  ;return
                  (vector
-                   (zs/zset-more+
+                   (zs/zset+
+                     (relation-xf clause-1 clause-2)
+                     #{}
                      ;ΔA ⋈ B
                      (zs/zset* delta-1 sub-state-2-prev)
                      ;A ⋈ ΔB

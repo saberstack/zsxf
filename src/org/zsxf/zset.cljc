@@ -134,8 +134,8 @@
   ([] (zset #{}))
   ([zset-1] zset-1)
   ([zset-1 zset-2]
-   (zset+ zset-1 zset-2 (map identity)))
-  ([zset-1 zset-2 xf]
+   (zset+ (map identity) zset-1 zset-2))
+  ([xf zset-1 & more]
    ;{:pre [(zset? zset-1) (zset? zset-2)]}
    (transduce
      ;get set items one by one
@@ -153,16 +153,6 @@
        (fn [accum]
          accum))
      zset-1
-     [zset-2])))
-
-(defn zset-more+
-  "Helper fn. Same as zset+"
-  ([] (zset #{}))
-  ([zset-1 & more]
-   (transduce
-     (map identity)
-     zs/zset+
-     zset-1
      more)))
 
 (defn zset-xf+
@@ -173,7 +163,7 @@
     ([] (zset #{}))
     ([zset-1] zset-1)
     ([zset-1 zset-2]
-     (zset+ zset-1 zset-2 xf))))
+     (zset+ xf zset-1 zset-2))))
 
 (defn zset-pos+
   "Same as zset+ but does not maintain items with negative weight after +"
@@ -222,19 +212,19 @@
 (defn zset*
   "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"
   ([zset-1 zset-2]
-   (zset* zset-1 zset-2 identity))
-  ([zset-1 zset-2 internal-meta-cleanup-f]
+   (zset* zset-1 zset-2 identity identity identity))
+  ([zset-1 zset-2 item-1-f item-2-f pair-f]
    #_{:pre [(zset? zset-1) (zset? zset-2)]}
    (set
      (for [item-1 zset-1 item-2 zset-2]
        (let [weight-1   (zset-weight item-1)
              weight-2   (zset-weight item-2)
              new-weight (*' weight-1 weight-2)]
-         (zset-item
-           ;zset weights of internal items don't serve a purpose after multiplication - remove them
-           [(vary-meta item-1 (comp internal-meta-cleanup-f dissoc-meta-weight)) ;remove weight
-            (vary-meta item-2 (comp internal-meta-cleanup-f dissoc-meta-weight))] ;remove weight
-           new-weight))))))
+         (pair-f
+           (zset-item
+             [(vary-meta item-1 (comp dissoc-meta-weight item-1-f)) ;remove weight
+              (vary-meta item-2 (comp dissoc-meta-weight item-2-f))] ;remove weight
+             new-weight)))))))
 
 (defn index-xf
   "Returns a group-by-style transducer.

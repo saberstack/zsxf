@@ -288,7 +288,9 @@
                    (zs/zset+
                      ;TODO do we need to tag cartesian products with relation metadata?
                      ; Do they need to be referenced from downstream transducers?
-                     (relation-xf clause-1 clause-2)
+                     (comp
+                       (relation-xf clause-1 clause-2)
+                       return-zset-item-xf)
                      #{}
                      ;ΔA ⋈ B
                      (zs/zset* delta-1 sub-state-2-prev)

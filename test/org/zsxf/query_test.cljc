@@ -366,11 +366,44 @@
                                    (comp d2/datom->eid (util/path-f [1])))]
                    (juxt-find zset-item)))))))))
 
+(defn cartesian-product-movie-movie-zsxf [query-state]
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/cartesian-xf
+      {:clause '[?m :movie/title _]
+       :pred   #(d2/datom-attr= % :movie/title)}
+      {:clause '[?m :movie/title _]
+       :pred   #(d2/datom-attr= % :movie/title)}
+      query-state
+      :last? true)
+    (xforms/reduce
+      (zs/zset-xf+
+        (map (xf/with-meta-f
+               (fn [zset-item]
+                 (let [juxt-find (juxt
+                                   (comp d2/datom->eid (util/path-f [0]))
+                                   (comp d2/datom->eid (util/path-f [1])))]
+                   (juxt-find zset-item)))))))))
+
 (def cartesian-product-movie-person-ds
   '[:find ?m ?p
     :where
     [?m :movie/title _]
     [?p :person/name _]])
+
+(def cartesian-product-movie-movie-ds
+  '[:find ?m ?m2
+    :where
+    [?m :movie/title _]
+    [?m2 :movie/title _]])
+
+(deftest cartesian-product-movie-movie
+  (let [[conn _] (util/load-learn-db)
+        query       (q/create-query cartesian-product-movie-movie-zsxf)
+        _           (ds/init-query-with-conn query conn)
+        result-zsxf (q/get-result query)
+        result-ds   (d/q cartesian-product-movie-movie-ds @conn)]
+    (is (= result-ds result-zsxf))))
 
 (deftest cartesian-product-movie-person
   (let [[conn _] (util/load-learn-db)

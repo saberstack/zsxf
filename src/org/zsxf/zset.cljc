@@ -155,6 +155,16 @@
      zset-1
      [zset-2])))
 
+(defn zset-more+
+  "Helper fn. Same as zset+"
+  ([] (zset #{}))
+  ([zset-1 & more]
+   (transduce
+     (map identity)
+     zs/zset+
+     zset-1
+     more)))
+
 (defn zset-xf+
   "Takes a transducers and returns a function with the same signature as zset+.
   The transducer is applied to each new zset item from the second zset before adding it to the first zset."

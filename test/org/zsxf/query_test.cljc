@@ -346,3 +346,79 @@
        (do
          (timbre/info "Test will skip, no artist datoms found.")
          true))))
+
+(comment
+  (let [[conn _] (util/load-learn-db)]
+    (d/q
+      '[:find ?p ?m
+        :where
+        [?p :person/name _]
+        [?m :movie/title _]
+        ]
+      @conn)))
+
+(defn cartesian-product-query [query-state]
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/join-xf
+      {:clause    '[?m :movie/title _]
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      {:clause    '[?m :movie/title _]
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      query-state)
+    (xf/join-xf
+      {:clause    '[?p :person/name _]
+       :pred      #(d2/datom-attr= % :person/name)
+       :index-kfn d2/datom->eid}
+      {:clause    '[?p :person/name _]
+       :pred      #(d2/datom-attr= % :person/name)
+       :index-kfn d2/datom->eid}
+      query-state
+      ;:last? true
+      )
+    (xf/join-xf
+      {:path      identity
+       :clause    '[?m :movie/title _]
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      {:path      (path-f [0])
+       :clause    '[?p :person/name _]
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      query-state
+      :last? true)
+    (xforms/reduce zs/zset+)
+    (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+
+(comment
+  (set! *print-meta* false)
+  (let [[conn _] (util/load-learn-db)
+        query (q/create-query cartesian-product-query)
+        _     (ds/init-query-with-conn query conn)]
+    (q/get-state query)
+    (q/get-result query)
+    )
+
+  )
+
+
+(comment
+  (zs/zset*
+    (zs/zset [[100 :person/name "Danny Glover"]])
+    (zs/zset []))
+
+  (zs/zset*
+    (zs/zset [[100 :person/name "Danny Glover"]])
+    (zs/zset [[1 :movie/title "Terminator 1"]]))
+  ;=>
+  #{^#:zset{:w 1} [[100 :person/name "Danny Glover"] [1 :movie/title "Terminator 1"]]}
+
+  (zs/zset*
+    (zs/zset [[101 :person/name "Arnold"]])
+    (zs/zset [[1 :movie/title "Terminator 1"]]))
+  ;=>
+  #{^#:zset{:w 1} [[101 :person/name "Arnold"] [1 :movie/title "Terminator 1"]]}
+
+  )

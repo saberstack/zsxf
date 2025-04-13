@@ -177,16 +177,15 @@
       (cond-branch
         ;does this join-xf care about the current item?
         (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
-          ;(timbre/spy delta-1+delta-2+zset)
           ;if none of the predicates were true...
           (and (empty? delta-1) (empty? delta-2)))
         (map (fn [[_delta-1 _delta-2 zset]]
-               ;(timbre/spy [last? zset])
                ;return the zset
                zset))
         ;else, proceed to join
         any?
         (comp
+
           (map (fn [[delta-1 delta-2 zset]]
                  (let [index-state-1-prev (get @index-state index-uuid-1 {})
                        index-state-2-prev (get @index-state index-uuid-2 {})]
@@ -198,10 +197,8 @@
                          (update index-uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
                    ;return
                    [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
+
           (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
-                 ;(timbre/spy zset)
-                 ;(timbre/spy [delta-1 index-state-2-prev])
-                 ;(timbre/spy [index-state-1-prev delta-2])
                  ;return
                  (vector
                    ;add :where clauses as metadata to the joined relations (a zset)
@@ -225,9 +222,81 @@
                        return-zset-item-xf))
                    ;original zset-item wrapped in a zset
                    zset)))
+
           (mapcat (fn [[join-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
+
+(defn cartesian-xf
+  "Cartesian product, aka cross join
+   WIP"
+  [{clause-1 :clause path-f-1 :path pred-1 :pred}
+   {clause-2 :clause path-f-2 :path pred-2 :pred}
+   index-state
+   & {:keys [last? return-zset-item-xf]
+      :or   {last?               false
+             return-zset-item-xf (map identity)}}]
+  (let [index-uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
+        index-uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
+        cartesian-xf-clauses [clause-1 clause-2]]
+    (timbre/info index-uuid-1)
+    (timbre/info index-uuid-2)
+    (timbre/info cartesian-xf-clauses)
+    (comp
+      ;receives a zset, unpacks zset into individual items
+      (mapcat identity)
+      ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
+      (map (fn [zset-item]
+             (let [delta-1 (if (and
+                                 (can-join? zset-item path-f-1 clause-1)
+                                 (pred-1 (path-f-1 zset-item)))
+                             #{zset-item}
+                             {})
+                   delta-2 (if (and
+                                 (can-join? zset-item path-f-2 clause-2)
+                                 (pred-2 (path-f-2 zset-item)))
+                             #{zset-item}
+                             {})
+                   zset    (if last? #{} #{zset-item})]
+               ;return
+               [delta-1 delta-2 zset])))
+      (cond-branch
+        ;does this join-xf care about the current item?
+        (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
+          ;if none of the predicates were true...
+          (and (empty? delta-1) (empty? delta-2)))
+        (map (fn [[_delta-1 _delta-2 zset]]
+               ;return the zset
+               zset))
+        ;else, proceed to join
+        any?
+        (comp
+          (map (fn [[delta-1 delta-2 zset]]
+                 (let [index-state-1-prev (get @index-state index-uuid-1 {})
+                       index-state-2-prev (get @index-state index-uuid-2 {})]
+                   ;advance indices
+                   (swap! index-state
+                     (fn [state]
+                       (-> state
+                         (update index-uuid-1 (fn [index] (zs/zset-pos+ (or index #{}) delta-1)))
+                         (update index-uuid-2 (fn [index] (zs/zset-pos+ (or index #{}) delta-2))))))
+                   ;return
+                   [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
+          (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
+                 ;return
+                 (vector
+                   (zs/zset-more+
+                     ;ΔA ⋈ B
+                     (zs/zset* delta-1 index-state-2-prev)
+                     ;A ⋈ ΔB
+                     (zs/zset* index-state-1-prev delta-2)
+                     ;ΔA ⋈ ΔB
+                     (zs/zset* delta-1 delta-2))
+                   ;original zset-item wrapped in a zset
+                   zset)))
+          (mapcat (fn [[cartesian-xf-delta zset]]
+                    ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
+                    [cartesian-xf-delta zset])))))))
 
 (defn group-by-count-xf
   "Takes a group-by-style function f and returns a transducer which

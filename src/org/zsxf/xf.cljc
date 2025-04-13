@@ -234,8 +234,7 @@
                     [join-xf-delta zset])))))))
 
 (defn cartesian-xf
-  "Cartesian product, aka cross join
-   WIP"
+  "Cartesian product, aka cross join"
   [{clause-1 :clause path-f-1 :path pred-1 :pred :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred :or {path-f-2 identity}}
    query-state
@@ -288,6 +287,8 @@
                  ;return
                  (vector
                    (zs/zset+
+                     ;TODO do we need to tag cartesian products with relation metadata?
+                     ; Do they need to be referenced from downstream transducers?
                      (relation-xf clause-1 clause-2)
                      #{}
                      ;ΔA ⋈ B

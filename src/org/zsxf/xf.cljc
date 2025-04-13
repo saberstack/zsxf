@@ -1,6 +1,5 @@
 (ns org.zsxf.xf
-  (:require [org.zsxf.datascript :as ds]
-            [org.zsxf.datom2 :as d2]
+  (:require [org.zsxf.datom2 :as d2]
             #?(:clj [org.zsxf.type :as t])                  ;don't remove! type import fails
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
@@ -94,7 +93,7 @@
   ;TODO wip
   )
 
-(defn relation-xf
+(defn- relation-xf
   "Add metadata to zset-items to indicate that they are part of a relation."
   [clause-1 clause-2]
   (map (fn [[_datom-1 _datom-2 :as zset-item]]

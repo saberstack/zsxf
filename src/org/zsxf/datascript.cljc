@@ -1,8 +1,7 @@
 (ns org.zsxf.datascript
   (:require [org.zsxf.query :as q]
             [org.zsxf.datom2 :as d2]
-            [datascript.core :as d]
-            [taoensso.timbre :as timbre]))
+            [datascript.core :as d]))
 
 (defn listen!
   "Initialize a listener for a given query and connection.
@@ -11,7 +10,7 @@
   [conn query]
   (d/listen! conn (q/get-id query)
     (fn [tx-report]
-      (q/input query (timbre/spy (d2/tx-datoms->datoms2->zsets (:tx-data tx-report))))))
+      (q/input query (d2/tx-datoms->datoms2->zsets (:tx-data tx-report)))))
   ;return
   true)
 

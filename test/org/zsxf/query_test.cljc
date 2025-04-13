@@ -379,3 +379,16 @@
         result-zsxf (q/get-result query)
         result-ds   (d/q cartesian-product-movie-person-ds @conn)]
     (is (= result-ds result-zsxf))))
+
+(deftest cartesian-product-movie-person-retraction
+  (let [[conn _schema] (util/load-learn-db)
+        query         (q/create-query cartesian-product-movie-person-zsxf)
+        _             (ds/init-query-with-conn query conn)
+        result-ds-1   (d/q cartesian-product-movie-person-ds @conn)
+        result-zsxf-1 (q/get-result query)
+        eid-retract   (first (d/q '[:find [?p] :where [?p :person/name "Danny Glover"]] @conn))
+        _             (d/transact! conn [[:db/retract eid-retract :person/name "Danny Glover"]])
+        result-ds-2   (d/q cartesian-product-movie-person-ds @conn)
+        result-zsxf-2 (q/get-result query)]
+    (is (= result-ds-1 result-zsxf-1))
+    (is (= result-ds-2 result-zsxf-2))))

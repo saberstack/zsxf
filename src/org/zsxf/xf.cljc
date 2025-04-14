@@ -300,8 +300,8 @@
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [cartesian-xf-delta zset])))))))
 
-(defn union-xf
-  "Cartesian product, aka cross join"
+(defn pull-join-xf
+  ;TODO WIP
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
    query-state
@@ -309,7 +309,6 @@
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
 
-  ;WIP
   )
 
 (defn group-by-count-xf

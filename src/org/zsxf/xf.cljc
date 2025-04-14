@@ -240,7 +240,8 @@
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
   (comment
-    (pull-join-impl [...])))
+    ;TODO use pull-join-xf-impl
+    ))
 
 (defn cartesian-xf
   "Cartesian product, aka cross join"

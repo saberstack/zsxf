@@ -17,12 +17,13 @@
            nrepl/nrepl               {:mvn/version "1.0.0"}}
 
  :aliases {:dev
-           {:extra-paths ["test"]
+           {:extra-paths ["test" "dev"]
             :extra-deps  {com.taoensso/nippy                        {:mvn/version "3.4.2"}
                           criterium/criterium                       {:mvn/version "0.4.6"}
                           com.cnuernber/charred                     {:mvn/version "1.036"}
                           com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}
-                          com.clojure-goes-fast/clj-java-decompiler {:mvn/version "0.3.4"}}}
+                          com.clojure-goes-fast/clj-java-decompiler {:mvn/version "0.3.4"}
+                          org.clojars.abhinav/snitch                {:mvn/version "0.1.15"}}}
            ; use this alias for clj-memory-meter to work
            ; clj -M:add-opens -m org.zsxf.core
            :add-opens

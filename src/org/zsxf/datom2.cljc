@@ -17,21 +17,12 @@
       (let [[e a v _t add-or-retract :as datom] datascript-datom]
         [e a v]))))
 
-#?(:cljs
-   (defn datom-like?
-     ;TODO remove this once there's Datom2 for CLJS
-     [x]
-     (boolean
-       (and (util/nth2 x 0) (util/nth2 x 1) (util/nth2 x 2)
-         (int? (util/nth2 x 0))
-         (keyword? (util/nth2 x 1))))))
-
 (defn datom? [x]
   #?(:clj
      (instance? Datom2 x)
      :cljs
      ;TODO implement Datom2 for CLJS
-     (datom-like? x)))
+     (util/datom-like? x)))
 
 (defn datom->weight [datom]
   (let [weight (condp = (nth datom 4) true 1 false -1)]

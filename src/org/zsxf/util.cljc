@@ -233,5 +233,14 @@
   (double
     (/ num-of-bytes 1000000)))
 
+#?(:cljs
+   (defn datom-like?
+     ;TODO remove this once there's Datom2 for CLJS
+     [x]
+     (boolean
+       (and (nth2 x 0) (nth2 x 1) (nth2 x 2)
+         (int? (nth2 x 0))
+         (keyword? (nth2 x 1))))))
+
 (comment
   (scaffold clojure.lang.IPersistentMap))

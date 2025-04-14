@@ -62,3 +62,24 @@
                             [dest v]))))))
      {}
      named-clauses)))
+
+(defn connected-to [already-connected adjacency-list clause]
+  (let [degree-one (clojure.set/difference (set (keys (get adjacency-list clause))) already-connected)]
+    (if (empty? degree-one)
+      #{clause}
+      (clojure.set/union
+       #{clause}
+       degree-one
+       (reduce clojure.set/union (map (partial connected-to (conj degree-one clause) adjacency-list) degree-one))))))
+
+#_(defn find-connected-components [adjacency-list]
+    (let [all-clauses (set (keys adjacency-list))]
+      (loop [clause (first (keys adjacency-list))
+             all-components []
+             current-component #{clause}
+             covered #{clause}
+             remaining (disj all-clauses clause)]
+        (cond
+          (empty? remaining)
+
+          ))))

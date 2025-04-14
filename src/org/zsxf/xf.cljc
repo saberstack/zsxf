@@ -93,22 +93,25 @@
         (timbre/info "looking for clause" clause))
     item-can-join?))
 
-(defn- indexed-join-intersect
-  [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]] xf]
-  (zs/indexed-zset->zset
-    (zs/indexed-zset+
-      ;ΔA ⋈ B
-      (zs/intersect-indexed* delta-1 index-state-2-prev)
-      ;A ⋈ ΔB
-      (zs/intersect-indexed* index-state-1-prev delta-2)
-      ;ΔA ⋈ ΔB
-      (zs/intersect-indexed* delta-1 delta-2))
-    ;transducer to transform zset items during conversion indexed-zset -> zset
-    xf))
+(defn- join-xf-impl
+  [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]]]
+  (zs/indexed-zset+
+    ;ΔA ⋈ B
+    (zs/intersect-indexed* delta-1 index-state-2-prev)
+    ;A ⋈ ΔB
+    (zs/intersect-indexed* index-state-1-prev delta-2)
+    ;ΔA ⋈ ΔB
+    (zs/intersect-indexed* delta-1 delta-2)))
 
-(defn- join-union [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] xf]
-  ;TODO wip
-  )
+(defn- pull-join-xf-impl
+  [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]]]
+  (zs/indexed-zset+
+    ;TODO check if correct:
+    ;start with entire previous state of the "left" side of the index
+    ;this allows us to always keep the "left" side regardless of whether there's anything to join with
+    index-state-1-prev
+    ;add the same data as join-xf impl
+    (join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]])))
 
 (defn- relation-xf
   "Add metadata to zset-items to indicate that they are part of a relation."
@@ -215,8 +218,8 @@
                  ;return
                  (vector
                    ;add :where clauses as metadata to the joined relations (a zset)
-                   (indexed-join-intersect
-                     [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]
+                   (zs/indexed-zset->zset
+                     (join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
                        (relation-xf clause-1 clause-2)
@@ -227,6 +230,17 @@
           (mapcat (fn [[join-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
+
+(defn pull-join-xf
+  ;TODO WIP
+  [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
+   {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
+   query-state
+   & {:keys [last? return-zset-item-xf]
+      :or   {last?               false
+             return-zset-item-xf (map identity)}}]
+  (comment
+    (pull-join-impl [...])))
 
 (defn cartesian-xf
   "Cartesian product, aka cross join"
@@ -299,17 +313,6 @@
           (mapcat (fn [[cartesian-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [cartesian-xf-delta zset])))))))
-
-(defn pull-join-xf
-  ;TODO WIP
-  [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
-   {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
-   query-state
-   & {:keys [last? return-zset-item-xf]
-      :or   {last?               false
-             return-zset-item-xf (map identity)}}]
-
-  )
 
 (defn group-by-count-xf
   "Takes a group-by-style function f and returns a transducer which

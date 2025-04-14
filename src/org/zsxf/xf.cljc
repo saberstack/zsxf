@@ -1,4 +1,21 @@
 (ns org.zsxf.xf
+  "ZSXF-compatible transducers (they receive and return zsets)
+
+    # Glossary
+
+   `Clause`: defines a relation, or a part of a relation
+
+   `Set of unified clauses`: a set of clauses that are unified via common variables
+     Example:
+      [?m :movie/direction ?p]
+      [?p :person/name ?name]
+     ... is unified by the common variable ?p
+
+   `Joined pair`: a pair of relations, optionally nested
+     [:R1 :R2] ;two relations (smallest possible joined pair)
+     [[:R1 :R2] :R3] ;three relations (still a pair!)
+     [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
+     ... etc."
   (:require [org.zsxf.datom2 :as d2]
             #?(:clj [org.zsxf.type :as t])                  ;don't remove! type import fails
             [org.zsxf.zset :as zs]
@@ -76,7 +93,7 @@
         (timbre/info "looking for clause" clause))
     item-can-join?))
 
-(defn- join-intersect
+(defn- indexed-join-intersect
   [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]] xf]
   (zs/indexed-zset->zset
     (zs/indexed-zset+
@@ -111,28 +128,7 @@
            new-zset-item))))
 
 (defn join-xf
-  "Takes two maps and index-state.
-  Returns a ZSXF-compatible transducer.
-
-  # Glossary
-
-   `Clause`: defines a relation, or a part of a relation
-
-   `Set of unified clauses`: a set of clauses that are unified via common variables
-     Example:
-      [?m :movie/direction ?p]
-      [?p :person/name ?name]
-     ... is unified by the common variable ?p
-
-   `Joined pair`: a pair of relations, optionally nested
-     [:R1 :R2] ;two relations (smallest possible joined pair)
-     [[:R1 :R2] :R3] ;three relations (still a pair!)
-     [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
-     ... etc.
-
-   ## join-xf
-
-    Receives:
+  "Receives:
 
     A single zset (at a time)
 
@@ -219,7 +215,7 @@
                  ;return
                  (vector
                    ;add :where clauses as metadata to the joined relations (a zset)
-                   (join-intersect
+                   (indexed-join-intersect
                      [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
@@ -303,6 +299,18 @@
           (mapcat (fn [[cartesian-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [cartesian-xf-delta zset])))))))
+
+(defn union-xf
+  "Cartesian product, aka cross join"
+  [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
+   {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
+   query-state
+   & {:keys [last? return-zset-item-xf]
+      :or   {last?               false
+             return-zset-item-xf (map identity)}}]
+
+  ;WIP
+  )
 
 (defn group-by-count-xf
   "Takes a group-by-style function f and returns a transducer which

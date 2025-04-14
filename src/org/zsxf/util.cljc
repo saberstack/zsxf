@@ -112,7 +112,8 @@
          conj
          (fn [accum#]
            (apply comp accum#)))
-       []
+       ;keep this as '() to preserve `get-in`-style order of indices
+       '()
        ~v)))
 
 (comment

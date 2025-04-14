@@ -32,18 +32,18 @@
   (zs/zset-item (datom2 datom) (datom->weight datom)))
 
 (defn datom->eid [datom]
-  (if (datom? datom)
+  (when (datom? datom)
     (nth datom 0 nil)))
 
 (defn datom->attr [datom]
-  (if (datom? datom)
+  (when (datom? datom)
     (nth datom 1 nil)))
 
 (defn datom-attr= [datom attr]
   (= (datom->attr datom) attr))
 
 (defn datom->val [datom]
-  (if (datom? datom)
+  (when (datom? datom)
     (nth datom 2 nil)))
 
 (defn datom-val= [datom value]

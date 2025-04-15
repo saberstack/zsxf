@@ -1,12 +1,11 @@
 (ns org.zsxf.util
-  (:require [clojure.core.async :as a]
-            [clojure.edn :as edn]
-            [datascript.core :as d]
+  (:require [datascript.core :as d]
             [taoensso.timbre :as timbre]
+            #?(:clj [clojure.edn :as edn])
             #?(:clj [clojure.java.io :as io])
             #?(:clj [taoensso.encore :as enc]))
   #?(:clj
-     (:import (clojure.lang IObj IReduceInit)
+     (:import (clojure.lang IObj)
               (java.io PushbackReader))))
 
 (defn fpred
@@ -119,28 +118,6 @@
 (comment
   (macroexpand-1 '(path-f []))
   (macroexpand-1 '(path-f [1 2 3])))
-
-#?(:clj
-   (defn reducible->chan
-     "Take the rows from the reducible and put them onto a channel. Return the channel.
-     Useful for streaming a large number of rows from a database table without out-of-memory errors."
-     [^IReduceInit reducible ch]
-     (future
-       (transduce
-         (comp
-           (map (fn [row] (a/>!! ch row)))
-           ; halt when the receiving channel is full
-           ; WARNING: core.async sliding-buffer and dropping-buffer will not halt
-           ;(halt-when nil?)
-           )
-         conj
-         []
-         (eduction
-           (map (fn [row] (into {} row)))
-           reducible))
-       (a/close! ch))
-     ;return channel
-     ch))
 
 #?(:clj
    (defn read-edn-file [file-path]

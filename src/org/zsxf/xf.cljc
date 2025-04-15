@@ -141,16 +141,15 @@
      - `datoms`
      - `joined pairs`, i.e. [:R1 :R2], [[:R1 :R2] :R3] etc.
 
-    Returns (via mapcat):
+   Returns (via mapcat):
 
-    zset(s), each consisting of:
-    - new `joined pairs`
-    - each input zset-item unchanged, wrapped as a single item zset, unless ?last is true when it is not returned
-      The reason for returning zset-items is to allow downstream transducers
-      to process and integrate those items; in many cases, the zset-items are used by
-      multiple transducers during query execution.
-      This happens until the :last? join-xf is reached, at which point
-      the zset-items are not returned since every transducer has already processed them if needed.
+    Two zsets
+
+    Each zset has one of:
+    - new `joined pair`, i.e. [:R1 R2], or [[:R1 :R2] :R3], etc.
+    - each input zset-item unchanged, unless ?last is true when an empty set is returned.
+      The reason for passing through unchanged zset-items is to allow downstream transducers
+      to (potentially) process them
 
     Options:
 

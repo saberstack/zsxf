@@ -69,63 +69,66 @@
 (comment
   (set! *print-meta* false)
 
-
   (let [conn  (load-learn-db)
         query (q/create-query
-                (fn [state]
-                  (comp
-                    (org.zsxf.xf/mapcat-zset-transaction-xf)
-                    (org.zsxf.xf/join-xf
-                      {:clause    '[?danny :person/name "Danny Glover"],
-                       :path      identity,
-                       :pred
-                       #(org.zsxf.datom2/datom-attr-val=
-                          %
-                          :person/name
-                          "Danny Glover"),
-                       :index-kfn org.zsxf.datom2/datom->eid,}
-                      {:clause    '[?danny :person/born ?danny-born],
-                       :path      identity,
-                       :pred      #(org.zsxf.datom2/datom-attr= % :person/born),
-                       :index-kfn org.zsxf.datom2/datom->eid}
-                      state)
-                    (org.zsxf.xf/join-xf
-                      {:clause    '[?a :person/name ?actor],
-                       :path      identity,
-                       :pred      #(org.zsxf.datom2/datom-attr= % :person/name),
-                       :index-kfn org.zsxf.datom2/datom->eid}
-                      {:clause    '[?a :person/born ?actor-born],
-                       :path      identity,
-                       :pred      #(org.zsxf.datom2/datom-attr= % :person/born),
-                       :index-kfn org.zsxf.datom2/datom->eid}
-                      state
-                      :last?
-                      false)
-                    (org.zsxf.xf/join-xf
-                      {:clause    '[?a :person/name ?actor],
-                       :path      org.zsxf.datalog.compiler/safe-first,
-                       :pred      #(org.zsxf.datom2/datom-attr= % :person/name),
-                       :index-kfn org.zsxf.datom2/datom->eid}
-                      {:clause    '[_ :movie/cast ?a],
-                       :path      identity,
-                       :pred      #(org.zsxf.datom2/datom-attr= % :movie/cast),
-                       :index-kfn org.zsxf.datom2/datom->val}
-                      state)
-                    (org.zsxf.xf/cartesian-xf
-                      {:clause '[?danny :person/born ?danny-born]
-                       :path   identity
-                       :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
-                      {:clause '[?a :person/born ?actor-born]
-                       :path   org.zsxf.datalog.compiler/safe-second
-                       :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
-                      state
-                      :last true)
-                    (xforms/reduce
-                      (zs/zset-xf+
-                        (map (xf/with-meta-f
-                               (fn [zset-item]
-                                 ;TODO use :find to "shrink" the result
-                                 zset-item))))))))]
+               (fn [state]
+                 (comp
+                  (org.zsxf.xf/mapcat-zset-transaction-xf)
+                  (org.zsxf.xf/join-xf
+                   {:clause    '[?danny :person/name "Danny Glover"],
+                    :path      identity,
+                    :pred
+                    #(org.zsxf.datom2/datom-attr-val=
+                      %
+                      :person/name
+                      "Danny Glover"),
+                    :index-kfn org.zsxf.datom2/datom->eid,}
+                   {:clause    '[?danny :person/born ?danny-born],
+                    :path      identity,
+                    :pred      #(org.zsxf.datom2/datom-attr= % :person/born),
+                    :index-kfn org.zsxf.datom2/datom->eid}
+                   state)
+
+                  (org.zsxf.xf/join-xf
+                   {:clause    '[?a :person/name ?actor],
+                    :path      identity,
+                    :pred      #(org.zsxf.datom2/datom-attr= % :person/name),
+                    :index-kfn org.zsxf.datom2/datom->eid}
+                   {:clause    '[?a :person/born ?actor-born],
+                    :path      identity,
+                    :pred      #(org.zsxf.datom2/datom-attr= % :person/born),
+                    :index-kfn org.zsxf.datom2/datom->eid}
+                   state
+                   :last?
+                   false)
+
+                  (org.zsxf.xf/join-xf
+                   {:clause    '[?a :person/name ?actor],
+                    :path      org.zsxf.datalog.compiler/safe-first,
+                    :pred      #(org.zsxf.datom2/datom-attr= % :person/name),
+                    :index-kfn org.zsxf.datom2/datom->eid}
+                   {:clause    '[_ :movie/cast ?a],
+                    :path      identity,
+                    :pred      #(org.zsxf.datom2/datom-attr= % :movie/cast),
+                    :index-kfn org.zsxf.datom2/datom->val}
+                   state)
+                  (org.zsxf.xf/cartesian-xf
+                   {:clause '[?danny :person/born ?danny-born]
+                    :path org.zsxf.datalog.compiler/safe-second
+                    :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
+                   {:clause '[?a :person/born ?actor-born]
+                    :path (comp org.zsxf.datalog.compiler/safe-second  org.zsxf.datalog.compiler/safe-first)
+                    :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
+                   state
+                   :last? true)
+                  (xforms/reduce
+                   (zs/zset-xf+
+                    (map (xf/with-meta-f
+                           (fn [zset-item]
+                             ((juxt
+                               (comp org.zsxf.datom2/datom->val org.zsxf.datalog.compiler/safe-second  org.zsxf.datalog.compiler/safe-first)
+                               (comp org.zsxf.datom2/datom->val org.zsxf.datalog.compiler/safe-second org.zsxf.datalog.compiler/safe-first   org.zsxf.datalog.compiler/safe-second))
+                              zset-item)))))))))]
     (ds/init-query-with-conn query conn)
     (q/get-result query))
 

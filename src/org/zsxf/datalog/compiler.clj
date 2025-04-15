@@ -49,7 +49,8 @@
                                   [to-node _] destinations];
                               [from-node to-node])
           [first-clause# & remaining-clauses#] (keys named-clauses#)
-          state (gensym 'state) ]
+          state (gensym 'state)
+          connected-components# (parser/find-connected-components adjaceny-list)]
       (loop [preds# #{}
              xf-steps# []
              covered-nodes# #{first-clause#}

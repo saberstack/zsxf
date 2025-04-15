@@ -425,3 +425,94 @@
         result-zsxf-2 (q/get-result query)]
     (is (= result-ds-1 result-zsxf-1))
     (is (= result-ds-2 result-zsxf-2))))
+
+
+(def cartesian-product-danny-xf
+  (fn [state]
+    (comp
+      (xf/mapcat-zset-transaction-xf)
+      ;rel1
+      (xf/join-xf
+        {:clause    '[?danny :person/name "Danny Glover"],
+         :path      identity,
+         :pred      #(d2/datom-attr-val= % :person/name "Danny Glover")
+         :index-kfn d2/datom->eid,}
+        {:clause    '[?danny :person/born ?danny-born],
+         :path      identity,
+         :pred      #(d2/datom-attr= % :person/born),
+         :index-kfn org.zsxf.datom2/datom->eid}
+        state)
+
+      ;rel2
+      (xf/join-xf
+        {:clause    '[?a :person/name ?actor]
+         :path      identity
+         :pred      #(d2/datom-attr= % :person/name)
+         :index-kfn d2/datom->eid}
+        {:clause    '[?a :person/born ?actor-born]
+         :path      identity,
+         :pred      #(d2/datom-attr= % :person/born)
+         :index-kfn d2/datom->eid}
+        state)
+      (xf/join-xf
+        {:clause    '[?a :person/name ?actor]
+         :path      (util/path-f [0])
+         :pred      #(org.zsxf.datom2/datom-attr= % :person/name)
+         :index-kfn d2/datom->eid}
+        {:clause    '[_ :movie/cast ?a]
+         :path      identity
+         :pred      #(org.zsxf.datom2/datom-attr= % :movie/cast)
+         :index-kfn d2/datom->val}
+        state)
+      ;debug
+      (map (fn [pre-cartesian] pre-cartesian))
+
+      ;cartesian product rel1 and rel2
+      (xf/cartesian-xf
+        {:clause '[?danny :person/born ?danny-born]
+         :path   (util/path-f [1])
+         :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
+        {:clause '[?a :person/born ?actor-born]
+         :path   (util/path-f [0 1])
+         :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
+        state
+        :last? true)
+      ;debug
+      (map (fn [post-cartesian] post-cartesian))
+      (xforms/reduce
+        (zs/zset-xf+
+          (map (xf/with-meta-f
+                 (fn [zset-item]
+                   ((juxt
+                      (comp d2/datom->val (util/path-f [0 1]))
+                      (comp d2/datom->val (util/path-f [1 0 1])))
+                    zset-item)))))))))
+
+(def cartesian-product-danny-ds
+  '[:find ?danny-born ?actor-born
+    :where
+    [?danny :person/name "Danny Glover"]
+    [?danny :person/born ?danny-born]
+
+    [?a :person/name ?actor]
+    [?a :person/born ?actor-born]
+    [_ :movie/cast ?a]
+    ])
+
+(deftest cartesian-danny
+  (let [[conn _schema] (util/load-learn-db)
+        query         (q/create-query cartesian-product-danny-xf)
+        _             (ds/init-query-with-conn query conn)
+        result-zsxf-1 (q/get-result query)
+        result-ds-1   (d/q cartesian-product-danny-ds @conn)
+        ]
+    (is (= result-ds-1 result-zsxf-1))))
+
+(comment
+  (let [rel1                ['[?danny :person/name "Danny Glover"] '[?danny :person/born ?danny-born]]
+        rel2                [['[?a :person/name ?actor] '[?a :person/born ?actor-born]]
+                             '[_ :movie/cast ?a]]
+        cartesian-rel1-rel2 [rel1 rel2]]
+    cartesian-rel1-rel2)
+
+  )

@@ -2,7 +2,6 @@
   (:require [clojure.core.async :as a]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
-            [clojure.data.json]
             [charred.api :as charred]
             [clj-memory-meter.core :as mm]
             [net.cgrand.xforms :as xforms]

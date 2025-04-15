@@ -104,14 +104,15 @@
     (zs/intersect-indexed* delta-1 delta-2)))
 
 (defn- pull-join-xf-impl
+  "Left join impl for (pull ...)"
   [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]]]
   (zs/indexed-zset+
-    ;TODO check if correct:
-    ;start with entire previous state of the "left" side of the index
-    ;this allows us to always keep the "left" side regardless of whether there's anything to join with
-    index-state-1-prev
-    ;add the same data as join-xf impl
-    (join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]])))
+    ;ΔA ⋈ B
+    (zs/left-join-indexed* delta-1 index-state-2-prev)
+    ;A ⋈ ΔB
+    (zs/left-join-indexed* index-state-1-prev delta-2)
+    ;ΔA ⋈ ΔB
+    (zs/left-join-indexed* delta-1 delta-2)))
 
 (defn- relation-xf
   "Add metadata to zset-items to indicate that they are part of a relation."
@@ -238,9 +239,72 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (comment
-    ;TODO use pull-join-xf-impl
-    ))
+  (let [uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
+        uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
+        join-xf-clauses [clause-1 clause-2]]
+    (timbre/info uuid-1)
+    (timbre/info uuid-2)
+    (timbre/info join-xf-clauses)
+    ;TODO re-use code from join-xf, almost identical – one line difference
+    (comp
+      ;receives a zset, unpacks zset into individual items
+      (mapcat identity)
+      ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
+      (map (fn [zset-item]
+             (let [delta-1 (if (and
+                                 (can-join? zset-item path-f-1 clause-1)
+                                 (pred-1 (path-f-1 zset-item)))
+                             (zs/index #{zset-item} (comp index-kfn-1 path-f-1))
+                             {})
+                   delta-2 (if (and
+                                 (can-join? zset-item path-f-2 clause-2)
+                                 (pred-2 (path-f-2 zset-item)))
+                             (zs/index #{zset-item} (comp index-kfn-2 path-f-2))
+                             {})
+                   zset    (if last? #{} #{zset-item})]
+               ;return
+               [delta-1 delta-2 zset])))
+      (cond-branch
+        ;does this join-xf care about the current item?
+        (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
+          ;if none of the predicates were true...
+          (and (empty? delta-1) (empty? delta-2)))
+        (map (fn [[_delta-1 _delta-2 zset]]
+               ;return the zset
+               zset))
+        ;else, proceed to join
+        any?
+        (comp
+
+          (map (fn [[delta-1 delta-2 zset]]
+                 (let [index-state-1-prev (get @query-state uuid-1 {})
+                       index-state-2-prev (get @query-state uuid-2 {})]
+                   ;advance indices
+                   (swap! query-state
+                     (fn [state]
+                       (-> state
+                         (update uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
+                         (update uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
+                   ;return
+                   [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
+
+          (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
+                 ;return
+                 (vector
+                   ;add :where clauses as metadata to the joined relations (a zset)
+                   (zs/indexed-zset->zset
+                     ;TODO join difference here
+                     (pull-join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])
+                     ;transducer to transform zset items during conversion indexed-zset -> zset
+                     (comp
+                       (relation-xf clause-1 clause-2)
+                       return-zset-item-xf))
+                   ;original zset-item wrapped in a zset
+                   zset)))
+
+          (mapcat (fn [[join-xf-delta zset]]
+                    ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
+                    [join-xf-delta zset])))))))
 
 (defn cartesian-xf
   "Cartesian product, aka cross join"

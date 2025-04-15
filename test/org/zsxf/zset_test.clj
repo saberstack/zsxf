@@ -4,6 +4,7 @@
    [clojure.test.check :as check]
    [clojure.test.check.properties :as prop]
    [medley.core :as medley]
+   [org.zsxf.util :as util]
    [org.zsxf.zset :as zs]
    [clojure.test :refer :all]
    [taoensso.timbre :as timbre]))
@@ -37,6 +38,34 @@
          #{(zs/zset-count-item 42)})
       #{(zs/zset-count-item 84)})))
 
+(deftest left-join-indexed*-most-basic
+  (let [expected-result {72 #{^#:zset{:w 1} [[72 :movie/title "The Godfather"] [72 :movie/cast 200]]},
+                         80 #{^#:zset{:w 1} [[80 :movie/title "Scarface"] nil]}}]
+    (is (= (zs/left-join-indexed*
+             (zs/index
+               #{(zs/zset-item [72 :movie/title "The Godfather"])
+                 (zs/zset-item [80 :movie/title "Scarface"])}
+               first)
+             (zs/index
+               #{(zs/zset-item [72 :movie/cast 200])}
+               first))
+          expected-result))))
+
+(deftest left-join-re-index
+  (let [expected-result
+        {200           #{^#:zset{:w 1} [[72 :movie/title "The Godfather"] [72 :movie/cast 200]]},
+         "random-uuid" #{^#:zset{:w 1} [[80 :movie/title "Scarface"] nil]}}]
+    (is (=
+          (zs/index
+            (zs/indexed-zset->zset
+              {72 #{^#:zset{:w 1} [[72 :movie/title "The Godfather"] [72 :movie/cast 200]]},
+               80 #{^#:zset{:w 1} [[80 :movie/title "Scarface"] nil]}})
+            (comp
+              ;default to random uuid if key not found to preserve data in left-join fashion
+              (fn [k] (or k "random-uuid"))
+              (util/path-f [1 2])))
+          expected-result))))
+
 (defn equal->vec [zsets intersection]
   (transduce
     (comp
@@ -50,8 +79,9 @@
 (defn faulty-set->fixed-set [faulty-set]
   (into #{} faulty-set))
 
-(defn generate-zsets []
+(defn generate-zsets
   "Generates a vector of zsets with random but valid zset items based on a spec"
+  []
   (transduce
     (comp
       (map first)

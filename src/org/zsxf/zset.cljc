@@ -3,6 +3,7 @@
   ;rename to match Clojure
   #?(:cljs (:refer-clojure :rename {+ +' * *'}))
   (:require [clojure.spec.alpha :as s]
+            [org.zsxf.util :as util]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
             [net.cgrand.xforms :as xforms]
@@ -222,8 +223,8 @@
              new-weight (*' weight-1 weight-2)]
          (pair-f
            (zset-item
-             [(vary-meta item-1 (comp dissoc-meta-weight item-1-f)) ;remove weight
-              (vary-meta item-2 (comp dissoc-meta-weight item-2-f))] ;remove weight
+             [(item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
+              (item-2-f (vary-meta item-2 dissoc-meta-weight))] ;remove weight
              new-weight)))))))
 
 (defn index-xf
@@ -311,15 +312,16 @@
   Takes maps m1 and m2.
   Returns a set of common keys."
   [m1 m2]
-  (if (< (count m2) (count m1))
+  ;determine size and switch map order (if needed) for improved efficiency
+  (if (< (count m1) (count m2))
     (recur m2 m1)
     (reduce
       (fn [result item]
-        (if (contains? m2 item)
+        (if (contains? m1 item)
           (conj result item)
           result))
       #{}
-      (keys m1))))
+      (keys m2))))
 
 (defn intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)
@@ -337,15 +339,53 @@
                        (indexed-zset-2 common))]))
       commons)))
 
-;TODO Potentially not needed?
-#_(defn key-union
-  "Taken from clojure.set/union but adapted to work for maps."
-  [m1 m2]
-  (if (< (count m1) (count m2))
-    (recur m2 m1)
-    (reduce conj m1 m2)))
+(defn left-join-indexed*
+  "Like intersect-indexed* but keeps everything from indexed-zset-1
+   with missing matches from indexed-zset-2 replaced with nil"
+  [indexed-zset-1 indexed-zset-2]
+  (transduce
+    (map (fn [k+v] k+v))
+    (completing
+      (fn [accum [index-k-1 zset-1]]
+        (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
+          (assoc accum index-k-1 (zset* zset-1 zset-2))
+          (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] nil) identity)))))
+    {}
+    indexed-zset-1))
+(comment
+  (set! *print-meta* true)
+  (intersect-indexed*
+    (index
+      #{(zset-item [72 :movie/title "The Godfather"])}
+      first)
 
+    (index
+      #{(zset-item [72 :movie/cast 200])}
+      first))
 
+  (left-join-indexed*
+    (index
+      #{(zset-item [72 :movie/title "The Godfather"])
+        (zset-item [80 :movie/title "Scarface"])}
+      first)
+    (index
+      #{(zset-item [72 :movie/cast 200])}
+      first))
+  ;=>
+  {72 #{^#:zset{:w 1} [[72 :movie/title "The Godfather"] [72 :movie/cast 200]]},
+   80 #{^#:zset{:w 1} [[80 :movie/title "Scarface"] nil]}}
+
+  (left-join-indexed*
+    (index
+      (indexed-zset->zset
+        {72 #{^#:zset{:w 1} [[72 :movie/title "The Godfather"] [72 :movie/cast 200]]},
+         80 #{^#:zset{:w 1} [[80 :movie/title "Scarface"] nil]}})
+      (comp (fn [k] (or k (random-uuid))) (util/path-f [1 2])))
+
+    (index
+      #{(zset-item [200 :person/name "Al Pacino"])}
+      first))
+  )
 (comment
 
   (zset [{:a 1} {:b 2}])                                    ;ok

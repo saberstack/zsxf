@@ -352,40 +352,7 @@
           (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] nil) identity)))))
     {}
     indexed-zset-1))
-(comment
-  (set! *print-meta* true)
-  (intersect-indexed*
-    (index
-      #{(zset-item [72 :movie/title "The Godfather"])}
-      first)
 
-    (index
-      #{(zset-item [72 :movie/cast 200])}
-      first))
-
-  (left-join-indexed*
-    (index
-      #{(zset-item [72 :movie/title "The Godfather"])
-        (zset-item [80 :movie/title "Scarface"])}
-      first)
-    (index
-      #{(zset-item [72 :movie/cast 200])}
-      first))
-  ;=>
-  {72 #{^#:zset{:w 1} [[72 :movie/title "The Godfather"] [72 :movie/cast 200]]},
-   80 #{^#:zset{:w 1} [[80 :movie/title "Scarface"] nil]}}
-
-  (left-join-indexed*
-    (index
-      (indexed-zset->zset
-        {72 #{^#:zset{:w 1} [[72 :movie/title "The Godfather"] [72 :movie/cast 200]]},
-         80 #{^#:zset{:w 1} [[80 :movie/title "Scarface"] nil]}})
-      (comp (fn [k] (or k (random-uuid))) (util/path-f [1 2])))
-
-    (index
-      #{(zset-item [200 :person/name "Al Pacino"])}
-      first))
-  )
 (comment
 
   (zset [{:a 1} {:b 2}])                                    ;ok

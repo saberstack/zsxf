@@ -67,13 +67,34 @@
         vec
         (update last-index concat [:last? true]))))
 
+(defn var-to-getter [variable-index locators zset-item form]
+  (if (parser/variable? form)
+    (let [[[clause-to-select position] & _] (form variable-index)]
+      `((comp ~(position pos->getter) ~@(clause-to-select locators)) ~zset-item))
+    form))
+
+(defn add-predicates [xf-steps-flat variable-index locators predicate-clauses]
+  (if (empty? predicate-clauses)
+    xf-steps-flat
+    (let [pred-fns
+          (map (fn [[predicate-clause]]
+                 (let [zset-item (gensym 'zset-item)]
+                   `(filter (fn [~zset-item]
+                              (~@(map (partial var-to-getter variable-index locators zset-item) predicate-clause))))))
+               predicate-clauses)
+          xf `(comp ~@pred-fns)
+          last-index (dec (count xf-steps-flat))]
+      (update xf-steps-flat last-index
+              concat [:return-zset-item-xf xf]))))
+
 (defmacro sprinkle-dbsp-on [query]
   (condp = (s/conform ::parser-spec/query query)
     ::s/invalid
     `(ex-info "Invalid or unsupported query"
               {:explain-data ~(s/explain-data ::parser-spec/query query)})
     (let [{where-clauses# :where find-vars# :find} (parser/query->map query)
-          named-clauses# (parser/name-clauses where-clauses#)
+          {predicate-clauses# true pattern-clauses# false} (group-by (partial s/valid? ::parser-spec/predicate) where-clauses#)
+          named-clauses# (parser/name-clauses pattern-clauses#)
           variable-index# (parser/index-variables named-clauses#)
           adjacency-list# (parser/build-adjacency-list named-clauses#)
           adjacency-tuples# (for [[from-node destinations] adjacency-list#
@@ -94,10 +115,11 @@
 
         (cond (and (empty? remaining-nodes#) (empty? remaining-components#))
               (let [{:keys [locators cartesian-joins]} (join-isolated-components named-clauses# locators# state connected-components#)
-                    xf-steps-flat# (mark-last
-                                    (if (empty? cartesian-joins)
-                                      (first xf-steps#)
-                                      (->> xf-steps# (cons cartesian-joins) reverse vec (apply concat))))]
+                    xf-steps-flat# (-> (if (empty? cartesian-joins)
+                                          (first xf-steps#)
+                                          (->> xf-steps# (cons cartesian-joins) reverse vec (apply concat)))
+                                        (mark-last)
+                                        (add-predicates variable-index# locators predicate-clauses#))]
                 `(fn [~state]
                   (comp
                    (xf/mapcat-zset-transaction-xf)

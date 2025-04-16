@@ -58,8 +58,8 @@
         (recur (next connected-components)
                (conj new-joins cartesian-join)
                (merge locators
-                      (medley/map-vals #(conj % `safe-first) (select-keys locators component-1))
-                      (medley/map-vals #(conj % `safe-second) (select-keys locators component-2))))))))
+                      (update-vals (select-keys locators component-1) #(conj % `safe-first))
+                      (update-vals (select-keys locators component-2) #(conj % `safe-second))))))))
 
 (defn mark-last [xf-steps-flat]
   (let [last-index (dec (count xf-steps-flat))]
@@ -157,7 +157,7 @@
                        (disj remaining-nodes# to#)
                        (merge {from# [`safe-first]}
                               locators#
-                              (medley/map-vals #(conj % `safe-first) (select-keys locators# covered-nodes#))
+                              (update-vals (select-keys locators# covered-nodes#) #(conj % `safe-first))
                               {to# [`safe-second]})
                        remaining-components#
                        (inc n#))))))))

@@ -6,6 +6,7 @@
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as xf]
             [clojure.spec.alpha :as s]
+            [datascript.built-ins :as built-ins]
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
 
@@ -73,6 +74,10 @@
       `((comp ~(position pos->getter) ~@(clause-to-select locators)) ~zset-item))
     form))
 
+(defn substitute-operator [[op & tail]]
+  {:pre [(contains? built-ins/query-fns op)]}
+  (cons (built-ins/query-fns op) tail))
+
 (defn add-predicates [xf-steps-flat variable-index locators predicate-clauses]
   (if (empty? predicate-clauses)
     xf-steps-flat
@@ -80,7 +85,9 @@
           (map (fn [[predicate-clause]]
                  (let [zset-item (gensym 'zset-item)]
                    `(filter (fn [~zset-item]
-                              (~@(map (partial var-to-getter variable-index locators zset-item) predicate-clause))))))
+                              (~@(->> predicate-clause
+                                      (substitute-operator)
+                                      (map (partial var-to-getter variable-index locators zset-item))))))))
                predicate-clauses)
           xf `(comp ~@pred-fns)
           last-index (dec (count xf-steps-flat))]

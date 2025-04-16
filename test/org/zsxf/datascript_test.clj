@@ -27,6 +27,14 @@
             (d/q (quote ~query) @conn#)
             ~result))))
 
+(defmacro test-query-matches-db [query]
+  `(let [conn#           (load-learn-db)
+         query#           (q/create-query
+                           (sprinkle-dbsp-on [~@query]))]
+     (ds/init-query-with-conn query# conn#)
+     (is (= (q/get-result query#)
+            (d/q (quote ~query) @conn#)))))
+
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"
   (test-query-gives-result [:find ?name
                             :where
@@ -63,73 +71,18 @@
      ["Braveheart" 1995] ["Terminator 3: Rise of the Machines" 2003]
      ["Commando" 1985] ["Die Hard" 1988]
      ["Alien" 1979] ["RoboCop" 1987]
-     ["Rambo III" 1988] ["Lethal Weapon 3" 1992]})
-  )
+     ["Rambo III" 1988] ["Lethal Weapon 3" 1992]}))
+
+(deftest test-danny "query with cartesian product"
+  (test-query-matches-db [:find ?actor-born ?danny-born
+                          :where
+                          [?danny :person/name "Danny Glover"]
+                          [?danny :person/born ?danny-born]
+                          [?a :person/name ?actor]
+                          [?a :person/born ?actor-born]
+                          [_ :movie/cast ?a]]))
 
 (comment
   (set! *print-meta* false)
-
-  (let [conn  (load-learn-db)
-        query (q/create-query
-               (fn [state]
-                 (comp
-                  (org.zsxf.xf/mapcat-zset-transaction-xf)
-                  (org.zsxf.xf/join-xf
-                   {:clause    '[?danny :person/name "Danny Glover"],
-                    :path      identity,
-                    :pred
-                    #(org.zsxf.datom2/datom-attr-val=
-                      %
-                      :person/name
-                      "Danny Glover"),
-                    :index-kfn org.zsxf.datom2/datom->eid,}
-                   {:clause    '[?danny :person/born ?danny-born],
-                    :path      identity,
-                    :pred      #(org.zsxf.datom2/datom-attr= % :person/born),
-                    :index-kfn org.zsxf.datom2/datom->eid}
-                   state)
-
-                  (org.zsxf.xf/join-xf
-                   {:clause    '[?a :person/name ?actor],
-                    :path      identity,
-                    :pred      #(org.zsxf.datom2/datom-attr= % :person/name),
-                    :index-kfn org.zsxf.datom2/datom->eid}
-                   {:clause    '[?a :person/born ?actor-born],
-                    :path      identity,
-                    :pred      #(org.zsxf.datom2/datom-attr= % :person/born),
-                    :index-kfn org.zsxf.datom2/datom->eid}
-                   state
-                   :last?
-                   false)
-
-                  (org.zsxf.xf/join-xf
-                   {:clause    '[?a :person/name ?actor],
-                    :path      org.zsxf.datalog.compiler/safe-first,
-                    :pred      #(org.zsxf.datom2/datom-attr= % :person/name),
-                    :index-kfn org.zsxf.datom2/datom->eid}
-                   {:clause    '[_ :movie/cast ?a],
-                    :path      identity,
-                    :pred      #(org.zsxf.datom2/datom-attr= % :movie/cast),
-                    :index-kfn org.zsxf.datom2/datom->val}
-                   state)
-                  (org.zsxf.xf/cartesian-xf
-                   {:clause '[?danny :person/born ?danny-born]
-                    :path org.zsxf.datalog.compiler/safe-second
-                    :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
-                   {:clause '[?a :person/born ?actor-born]
-                    :path (comp org.zsxf.datalog.compiler/safe-second  org.zsxf.datalog.compiler/safe-first)
-                    :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
-                   state
-                   :last? true)
-                  (xforms/reduce
-                   (zs/zset-xf+
-                    (map (xf/with-meta-f
-                           (fn [zset-item]
-                             ((juxt
-                               (comp org.zsxf.datom2/datom->val org.zsxf.datalog.compiler/safe-second  org.zsxf.datalog.compiler/safe-first)
-                               (comp org.zsxf.datom2/datom->val org.zsxf.datalog.compiler/safe-second org.zsxf.datalog.compiler/safe-first   org.zsxf.datalog.compiler/safe-second))
-                              zset-item)))))))))]
-    (ds/init-query-with-conn query conn)
-    (q/get-result query))
 
   )

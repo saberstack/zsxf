@@ -36,8 +36,36 @@
 
     `(comp ~@locator-vec)))
 
-(defn join-isolated-components [locators connected-components xf-steps]
-  (first xf-steps))
+(defn join-isolated-components [named-clauses locators state connected-components ]
+  (loop
+      [[component-1 component-2 & _] connected-components
+       new-joins []
+       locators locators]
+    (if (nil? component-2)
+      {:cartesian-joins new-joins
+       :locators locators}
+
+      (let [[c1-name#  c2-name# :as clause-names] (map first connected-components)
+            [c1# c2#] (map named-clauses clause-names)
+            cartesian-join `(xf/cartesian-xf
+                             {:clause (quote ~c1#)
+                              :pred ~(apply clause-pred c1#)
+                              :path ~(path-f (c1-name# locators))}
+                             {:clause (quote ~c2#)
+                              :pred ~(apply clause-pred c2#)
+                              :path ~(path-f (c2-name# locators))}
+                             ~state)]
+        (recur (next connected-components)
+               (conj new-joins cartesian-join)
+               (merge locators
+                      (medley/map-vals #(conj % `safe-first) (select-keys locators component-1))
+                      (medley/map-vals #(conj % `safe-second) (select-keys locators component-2))))))))
+
+(defn mark-last [xf-steps-flat]
+  (let [last-index (dec (count xf-steps-flat))]
+    (-> xf-steps-flat
+        vec
+        (update last-index concat [:last? true]))))
 
 (defmacro sprinkle-dbsp-on [query]
   (condp = (s/conform ::parser-spec/query query)
@@ -61,26 +89,34 @@
              covered-nodes# #{first-clause#}
              remaining-nodes# (set remaining-clauses#)
              locators# {first-clause# []}
+             remaining-components# remaining-components#
              n# 1]
 
         (cond (and (empty? remaining-nodes#) (empty? remaining-components#))
-              (let [flat-xf-steps# (join-isolated-components locators# connected-components# xf-steps#)]
+              (let [{:keys [locators cartesian-joins]} (join-isolated-components named-clauses# locators# state connected-components#)
+                    xf-steps-flat# (mark-last
+                                    (if (empty? cartesian-joins)
+                                      (first xf-steps#)
+                                      (->> xf-steps# (cons cartesian-joins) reverse vec (apply concat))))]
                 `(fn [~state]
                   (comp
                    (xf/mapcat-zset-transaction-xf)
                    (map (fn [zset#]
                           (xf/disj-irrelevant-items zset# ~@preds#)))
-                   ~@flat-xf-steps#
+                   ~@xf-steps-flat#
                    (xforms/reduce (zs/zset-xf+ (map
                                                 (xf/with-meta-f
                                                   (juxt ~@(map (fn [find-var#]
                                                                  (let [[[clause-to-select# position#] & _] (find-var# variable-index#)]
-                                                                   `(comp ~(position# pos->getter) ~@(clause-to-select# locators#))))
+                                                                   `(comp ~(position# pos->getter) ~@(clause-to-select# locators))))
                                                                find-vars#)))))))))
 
               ;; Stack overflow
               (> n# 15)
-              n#
+              {:remaining-nodes remaining-nodes#
+               :remaining-components remaining-components#
+               :xf-steps xf-steps#
+               :n n#}
 
               (and (empty? remaining-nodes#) (seq remaining-components#))
               (let [next-component# (first remaining-components#)
@@ -90,6 +126,7 @@
                        #{next-node#}
                        (disj next-component# next-node#)
                        locators#
+                       (next remaining-components#)
                        n#))
 
               :else
@@ -113,15 +150,16 @@
                                 :pred ~pred2#
                                 :path identity
                                 :index-kfn ~((get-in variable-index# [common-var# to#]) pos->getter) }
-                               ~state
-                               :last? ~(= #{to#} remaining-nodes#))]
+                               ~state)]
                 (recur (conj preds# pred1# pred2#)
                        (update xf-steps# 0 conj new-join#)
                        (conj covered-nodes# to#)
                        (disj remaining-nodes# to#)
-                       (merge locators#
+                       (merge {from# [`safe-first]}
+                              locators#
                               (medley/map-vals #(conj % `safe-first) (select-keys locators# covered-nodes#))
                               {to# [`safe-second]})
+                       remaining-components#
                        (inc n#))))))))
 
 (defn runtime-compile

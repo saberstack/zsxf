@@ -3,6 +3,7 @@
   ;rename to match Clojure
   #?(:cljs (:refer-clojure :rename {+ +' * *'}))
   (:require [clojure.spec.alpha :as s]
+            [org.zsxf.relation :as rel]
             [org.zsxf.util :as util]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
@@ -20,13 +21,27 @@
   [x]
   (:zset/w (meta x)))
 
+(defn determine-weight [zset-item w]
+  (if (rel/type-not-found? zset-item)
+    (min 1 w)
+    w))
+
+(defn determine-weight-f [zset-item f]
+  (if (rel/type-not-found? zset-item)
+    (comp #(min 1 %) f)
+    f))
+
+(defonce zset-weight-of-1-f (fn [_] 1))
+
 (defn update-zset-item-weight
   [zset-item f]
-  (vary-meta zset-item (fn [meta-map] (update meta-map :zset/w f))))
+  (let [f' (determine-weight-f zset-item f)]
+    (vary-meta zset-item (fn [meta-map] (update meta-map :zset/w f')))))
 
 (defn assoc-zset-item-weight
   [zset-item w]
-  (vary-meta zset-item (fn [meta-map] (assoc meta-map :zset/w w))))
+  (let [w' (determine-weight zset-item w)]
+    (vary-meta zset-item (fn [meta-map] (assoc meta-map :zset/w w')))))
 
 (defn dissoc-meta-weight [meta-map]
   (dissoc meta-map :zset/w))
@@ -58,14 +73,12 @@
   ([x weight]
    (if (meta x)
      ;meta exists, assoc to it
-     (vary-meta x
-       (fn [m]
-         (assoc m :zset/w weight)))
+     (assoc-zset-item-weight x weight)
      ;optimization:
      ; reuse metadata map for common weights
      (if (= 1 weight)
        (with-meta x zset-weight-of-1)
-       (with-meta x {:zset/w weight})))))
+       (assoc-zset-item-weight x weight)))))
 
 (defn zset-count-item
   "zset representing a count"
@@ -179,14 +192,15 @@
      (comp cat)
      (completing
        (fn [s new-zset-item]
-         (if-let [zset-item (s new-zset-item)]
-           (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
-             (if (or (zero? new-weight) (neg-int? new-weight))
-               (disj s zset-item)
-               (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
-           (if (pos-int? (zset-weight new-zset-item))
-             (conj s new-zset-item)
-             s)))
+         (let [type-not-found? (rel/type-not-found? new-zset-item)]
+           (if-let [zset-item (s new-zset-item)]
+             (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
+               (if (or (zero? new-weight) (neg-int? new-weight))
+                 (disj s zset-item)
+                 (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
+             (if (pos-int? (zset-weight new-zset-item))
+               (conj s new-zset-item)
+               s))))
        (fn [accum]
          accum))
      zset-1
@@ -341,14 +355,16 @@
 
 (defn left-join-indexed*
   "Like intersect-indexed* but keeps everything from indexed-zset-1
-   with missing matches from indexed-zset-2 replaced with nil"
-  [indexed-zset-1 indexed-zset-2]
-  (transduce
-    (map (fn [k+v] k+v))
-    (completing
-      (fn [accum [index-k-1 zset-1]]
-        (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
-          (assoc accum index-k-1 (zset* zset-1 zset-2))
-          (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] nil) identity)))))
-    {}
-    indexed-zset-1))
+   with missing matches from indexed-zset-2 replaced with :not-found"
+  ([indexed-zset-1 indexed-zset-2]
+   (left-join-indexed* indexed-zset-1 indexed-zset-2 :not-found))
+  ([indexed-zset-1 indexed-zset-2 not-found]
+   (transduce
+     (map (fn [k+v] k+v))
+     (completing
+       (fn [accum [index-k-1 zset-1]]
+         (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
+           (assoc accum index-k-1 (zset* zset-1 zset-2))
+           (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] not-found) identity)))))
+     {}
+     indexed-zset-1)))

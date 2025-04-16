@@ -18,6 +18,7 @@
      ... etc."
   (:require [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
+            [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]
             #?(:clj [org.zsxf.type :as t])                  ;don't remove! type import fails
             [org.zsxf.util :as util])
@@ -70,11 +71,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn relation? [x]
+  (true? (::xf/relation (meta x))))
+
 (defn detect-join-type [zset-item path-f clause]
   (cond
     #?(:clj  (instance? Datom2 zset-item)
        :cljs (util/datom-like? zset-item)) :datom
-    (true? (::xf/relation (meta zset-item))) :relation
+    (relation? zset-item) :relation
     :else
     (throw (ex-info "invalid input zset-item" {:zset-item           zset-item
                                                :path-f-of-zset-item (path-f zset-item)
@@ -103,7 +107,7 @@
     ;ΔA ⋈ ΔB
     (zs/intersect-indexed* delta-1 delta-2)))
 
-(defn- pull-join-xf-impl
+(defn- left-join-xf-impl
   "Left join impl for (pull ...)"
   [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]]]
   (zs/indexed-zset+
@@ -126,10 +130,25 @@
                  (update
                    1 (fn [datom-2]
                        (vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))))
-                 (vary-meta
-                   (fn [v]
-                     (assoc v ::xf/relation true))))]
+                 (rel/mark-as-rel)
+                 (zs/update-zset-item-weight identity))]
            new-zset-item))))
+
+(defn- left-join-relation-xf
+  "Add metadata to zset-items to indicate that they are part of a relation."
+  [clause-1 clause-2]
+  (map
+    (fn [[_ _ :as zset-item]]
+      (let [new-zset-item     (-> zset-item
+                                (update
+                                  0 (fn [datom-1]
+                                      (util/?vary-meta datom-1 (fn [m] (assoc m ::xf/clause clause-1)))))
+                                (update
+                                  1 (fn [datom-2]
+                                      (util/?vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))))
+                                (rel/mark-as-rel)
+                                (zs/update-zset-item-weight identity))]
+        new-zset-item))))
 
 (defn join-xf
   "Receives:
@@ -166,8 +185,8 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
-        uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
+  (let [uuid-1          (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
+        uuid-2          (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
         join-xf-clauses [clause-1 clause-2]]
     (timbre/info uuid-1)
     (timbre/info uuid-2)
@@ -231,7 +250,7 @@
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
 
-(defn pull-join-xf
+(defn left-join-xf
   ;TODO WIP
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
@@ -239,8 +258,8 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
-        uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
+  (let [uuid-1          (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
+        uuid-2          (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
         join-xf-clauses [clause-1 clause-2]]
     (timbre/info uuid-1)
     (timbre/info uuid-2)
@@ -294,10 +313,11 @@
                    ;add :where clauses as metadata to the joined relations (a zset)
                    (zs/indexed-zset->zset
                      ;TODO join difference here
-                     (pull-join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])
+                     (left-join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
-                       (relation-xf clause-1 clause-2)
+                       (left-join-relation-xf clause-1 clause-2)
+                       (map (fn [left-join-relation-xf-debug] (timbre/spy left-join-relation-xf-debug)))
                        return-zset-item-xf))
                    ;original zset-item wrapped in a zset
                    zset)))
@@ -314,8 +334,8 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1    (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
-        uuid-2    (with-meta [(random-uuid)] {::xf/clause-1 clause-2})]
+  (let [uuid-1 (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
+        uuid-2 (with-meta [(random-uuid)] {::xf/clause-1 clause-2})]
     (comp
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)

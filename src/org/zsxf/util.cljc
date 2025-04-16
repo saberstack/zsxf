@@ -220,5 +220,10 @@
          (int? (nth2 x 0))
          (keyword? (nth2 x 1))))))
 
+(defn ?vary-meta [obj f & args]
+  (if (can-meta? obj)
+    (apply vary-meta obj f args)
+    obj))
+
 (comment
   (scaffold clojure.lang.IPersistentMap))

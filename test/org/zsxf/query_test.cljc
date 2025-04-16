@@ -516,3 +516,51 @@
     cartesian-rel1-rel2)
 
   )
+
+(defn all-movies-optionally-find-sequels-zsxf
+  [query-state]
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/left-join-xf
+      {:clause    '[?m :movie/title ?title]
+       :path      identity
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      {:clause    '[?m :movie/sequel :no-sequel?]
+       :path      identity
+       :pred      #(d2/datom-attr= % :movie/sequel)
+       :index-kfn d2/datom->eid}
+      query-state
+      :last? true)
+    (xforms/reduce
+      (zs/zset-xf+
+        (map (xf/with-meta-f
+               (fn [zset-item]
+                 zset-item
+                 #_((juxt
+                    (comp d2/datom->val (util/path-f [0]))
+                    (comp d2/?datom->val (util/path-f [1])))
+                  zset-item))))))
+    (map (fn [post-reduce-debug]
+           (timbre/spy (count post-reduce-debug))
+           (timbre/spy post-reduce-debug)))))
+
+(def all-movies-optionally-find-sequels-ds
+  '[:find ?title ?m2 #_?title2
+    :in $
+    :where
+    [?m :movie/title ?title]
+    [(get-else $ ?m :movie/sequel :no-sequel?) ?m2]
+    ;[(get-else $ ?m2 :movie/title :no-seq-no-title) ?title2]
+    ])
+
+(comment
+  (do
+    (set! *print-meta* true)
+    (let [[conn _schema] (util/load-learn-db)
+          query         (q/create-query all-movies-optionally-find-sequels-zsxf)
+          _             (ds/init-query-with-conn query conn)
+          result-ds-1   (d/q all-movies-optionally-find-sequels-ds @conn)
+          result-zsxf-1 (q/get-result query)]
+      result-ds-1
+      result-zsxf-1)))

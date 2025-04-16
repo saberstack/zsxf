@@ -83,14 +83,18 @@
                           [_ :movie/cast ?a]]))
 
 (deftest test-danny-pred "query with predicate"
-  (test-query-matches-db [:find ?actor
-                          :where
-                          [?danny :person/name "Danny Glover"]
-                          [?danny :person/born ?danny-born]
-                          [?a :person/name ?actor]
-                          [?a :person/born ?actor-born]
-                          [_ :movie/cast ?a]
-                          [(< ?actor-born ?danny-born)]]))
+  (test-query-gives-result [:find ?actor
+                            :where
+                            [?danny :person/name "Danny Glover"]
+                            [?danny :person/born ?danny-born]
+                            [?a :person/name ?actor]
+                            [?a :person/born ?actor-born]
+                            [_ :movie/cast ?a]
+                            [(< ?actor-born ?danny-born)]]
+                           #{["Joe Pesci"] ["Brian Dennehy"] ["Tom Skerritt"]
+                             ["Alan Rickman"] ["Tina Turner"] ["Bruce Spence"]
+                             ["Michael Preston"] ["Charles Napier"] ["Gary Busey"]
+                             ["Sylvester Stallone"] ["Ronny Cox"] ["Richard Crenna"]}))
 
 (comment
   (set! *print-meta* false)

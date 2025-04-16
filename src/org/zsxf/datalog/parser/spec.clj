@@ -1,6 +1,6 @@
 (ns org.zsxf.datalog.parser.spec
   (:require
-   [clojure.spec.gen.alpha :as gen]
+   #_[clojure.spec.gen.alpha :as gen]
    [clojure.spec.alpha :as s]))
 
 
@@ -22,7 +22,14 @@
 
 (s/def ::pattern (s/tuple ::pattern-el ::pattern-el ::pattern-el))
 
-(s/def ::where-clauses (s/cat :where-kw #{:where} :clauses (s/+ ::pattern)))
+(s/def ::pred-operator #{'= 'not= '> '>= '< '<=})
+(s/def ::pred-operand (s/or :variable ::variable :constant ::constant))
+
+(s/def ::predicate (s/tuple (s/cat :pred-operator ::pred-operator :pred-operands (s/+ ::pred-operand))))
+
+(s/def ::clause (s/or :pattern ::pattern :predicate ::predicate))
+
+(s/def ::where-clauses (s/cat :where-kw #{:where} :clauses (s/+ ::clause)))
 
 (s/def ::find-rel (s/+ ::variable))
 

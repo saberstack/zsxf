@@ -115,11 +115,23 @@
     (is (not (s/valid? ::parser-spec/find-spec '(:find [?name]))))
     (is (not (s/valid? ::parser-spec/find-spec '(:find ?name .))))))
 
+(deftest predicate-test
+  (testing "valid predicates"
+    (is (s/valid? ::parser-spec/predicate '[(> ?age 4)]))
+    (is (s/valid? ::parser-spec/predicate '[(= 3 4)]))
+    (is (s/valid? ::parser-spec/predicate '[(not= 3 "sheep")])))
+  (testing "invalid predicates"
+    (is (not (s/valid? ::parser-spec/predicate '(> ?age 4))))
+    (is (not (s/valid? ::parser-spec/predicate '[(+ 3 4)])))
+    (is (not (s/valid? ::parser-spec/predicate '[(?var ?var ?var)])))))
+
 (deftest clause-test
-  (testing "Valid clauses (currently only patterns)"
+  (testing "Valid clauses (patterns or predicates)"
     (is (s/valid? ::parser-spec/pattern '[?e :name "Alice"]))
+    (is (s/valid? ::parser-spec/clause '[?e :name "Alice"]))
     (is (s/valid? ::parser-spec/pattern '[?product :price ?price]))
-    (is (s/valid? ::parser-spec/pattern '[_ :type :person])))
+    (is (s/valid? ::parser-spec/pattern '[_ :type :person]))
+    (is (s/valid? ::parser-spec/clause '[(> ?age 4)])))
 
   (testing "Invalid patterns"
     (is (not (s/valid? ::parser-spec/pattern '(not [?e :name "Alice"]))))
@@ -136,7 +148,8 @@
     (is (s/valid? ::parser-spec/where-clauses '(:where
                                                 [?p :name ?name]
                                                 [?p :friend ?friend]
-                                                [?friend :name ?friend-name]))))
+                                                [?friend :name ?friend-name]
+                                                [(not= ?name ?friend-name)]))))
 
   (testing "Invalid where clauses"
     (is (not (s/valid? ::parser-spec/where-clauses '(:where))))
@@ -191,10 +204,6 @@
     (is (not (s/valid? ::parser-spec/query '[:find ?name
                                              :in ?search-name
                                              :where [?p :name ?search-name]])))
-    (is (not (s/valid? ::parser-spec/query '[:find ?name
-                                             :where
-                                             [?p :name ?name]
-                                             [(< ?age 30)]])))
     (is (not (s/valid? ::parser-spec/query '[:find ?name
                                              :where
                                              [?p :name ?name]

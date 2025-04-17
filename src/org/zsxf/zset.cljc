@@ -70,9 +70,14 @@
 ;Reuse common zset weight maps
 (defonce zset-weight-of-1 {:zset/w 1})
 
+(defn has-zset-weight? [x]
+  (:zset/w (meta x)))
+
 (defn zset-item
   ([x]
-   (with-meta x zset-weight-of-1))
+   (if (has-zset-weight? x)
+     x
+     (with-meta x zset-weight-of-1)))
   ([x weight]
    (if (meta x)
      ;meta exists, assoc to it
@@ -108,45 +113,6 @@
     (when-not result (timbre/error (s/explain-data ::zs/zset x)))
     result))
 
-(defn zset
-  ;TODO remove or reuse zset+ impl
-  "Collection to zset as per https://www.feldera.com/blog/Implementing%20Z-sets/#converting-a-collection-to-a-z-set"
-  ([coll]
-   (zset coll (map identity)))
-  ([coll xf]
-   (zset coll xf 1))
-  ([coll xf weight]
-   ;{:pre [(s/valid? (s/coll-of eligible-coll?) coll)]}
-   (transduce
-     xf
-     (fn
-       ([accum] accum)
-       ([accum new-item]
-        (if-let [existing-item (accum new-item)]
-          ;existing item
-          (let [accum'      (disj accum existing-item)
-                existing-m' (update-zset-item-weight existing-item
-                              (fn [prev-w]
-                                ; fnil is used to handle the case where the weight is not present
-                                ; in the meta, aka it is nil
-                                ((fnil + 0) (zset-weight new-item) prev-w)))
-                _           existing-m'
-                zset-w'     (zset-weight existing-m')]
-            (if (zero? zset-w')
-              accum'
-              (conj accum' existing-m')))
-          ; most new items do not have an existing weight, but if they do, we use it
-          (if-let [existing-weight (zset-weight new-item)]
-            ;skip if existing weight is zero
-            (if (zero? existing-weight)
-              accum
-              ;else, add item with existing weight
-              (conj accum (zset-item new-item existing-weight)))
-            ;new item, no weight, add the item with default weight
-            (conj accum (zset-item new-item weight))))))
-     #{}
-     coll)))
-
 (defn with-not-found [s zsi-not-found]
   (vary-meta s
     (fn [m]
@@ -164,6 +130,8 @@
 
 (defn deny-not-found? [s zsi]
   (contains? (zset-denied-not-found s) zsi))
+
+(declare zset)
 
 (defn zset+
   "Adds two zsets"
@@ -206,6 +174,10 @@
          accum))
      zset-1
      more)))
+
+(defn zset
+  [coll]
+  (zset+ (map zset-item) #{} coll))
 
 (defn zset-xf+
   "Takes a transducers and returns a function with the same signature as zset+.
@@ -255,11 +227,6 @@
     conj
     #{}
     zset))
-
-(defn zset-negative
-  "Represents a deletion change"
-  [coll]
-  (zset coll (map identity) -1))
 
 (defn zset*
   "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"

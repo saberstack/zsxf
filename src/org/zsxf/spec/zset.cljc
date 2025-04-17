@@ -10,7 +10,9 @@
 
 (s/def ::zs/has-metadata?
   (s/with-gen
-    (fn [x] (not (nil? (meta x))))
+    (fn [x] (and
+              (some? (meta x))
+              (s/valid? :zset/w (:zset/w (meta x)))))
     (fn []
       (gen/let [base     (gen/one-of [(gen/vector gen/small-integer)
                                       (gen/map gen/keyword gen/small-integer)

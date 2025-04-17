@@ -4,7 +4,6 @@
   #?(:cljs (:refer-clojure :rename {+ +' * *'}))
   (:require [clojure.spec.alpha :as s]
             [org.zsxf.relation :as rel]
-            [org.zsxf.util :as util]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
             [net.cgrand.xforms :as xforms]
@@ -22,14 +21,18 @@
   (:zset/w (meta x)))
 
 (defn determine-weight [zset-item w]
-  (if (rel/type-not-found? zset-item)
+  ;TODO determine if it's important to keep [:not-found] weights at 1
+  #_(if (rel/type-not-found? zset-item)
     (min 1 w)
-    w))
+    w)
+  w)
 
 (defn determine-weight-f [zset-item f]
-  (if (rel/type-not-found? zset-item)
+  ;TODO determine if it's important to keep [:not-found] weights at 1
+  #_(if (rel/type-not-found? zset-item)
     (comp #(min 1 %) f)
-    f))
+    f)
+  f)
 
 (defonce zset-weight-of-1-f (fn [_] 1))
 
@@ -143,6 +146,18 @@
      #{}
      coll)))
 
+(defn with-not-found [s zset-item-not-found]
+  (vary-meta s
+    (fn [m]
+      (update m :zset/deny-not-found
+        (fn [s] (conj (or s #{}) zset-item-not-found))))))
+
+(defn zset-denied-not-found [s]
+  (:zset/deny-not-found (meta s)))
+
+(defn deny-not-found? [s zset-item]
+  (contains? (zset-denied-not-found s) zset-item))
+
 (defn zset+
   "Adds two zsets"
   ([] (zset #{}))
@@ -156,13 +171,23 @@
      (comp cat xf)
      (completing
        (fn [s new-zset-item]
-         (if-let [zset-item (s new-zset-item)]
-           (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
+         (if-let [prev-item (s new-zset-item)]
+           ;item already exists in the zset
+           (let [new-weight (+' (zset-weight prev-item) (zset-weight new-zset-item))]
              (if (zero? new-weight)
-               (disj s zset-item)
-               (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
+               (disj s prev-item)
+               (conj (disj s prev-item) (assoc-zset-item-weight new-zset-item new-weight))))
+           ;else, new item
            (if (not= 0 (zset-weight new-zset-item))
-             (conj s new-zset-item)
+             (let [zset-item-not-found (when (rel/optional? new-zset-item) (rel/rel->not-found new-zset-item))
+                   deny-nf?            (deny-not-found? s new-zset-item)]
+               (if deny-nf?
+                 s
+                 (if zset-item-not-found
+                   (with-not-found
+                     (conj (disj s zset-item-not-found) new-zset-item)
+                     zset-item-not-found)
+                   (conj s new-zset-item))))
              s)))
        (fn [accum]
          accum))
@@ -192,15 +217,14 @@
      (comp cat)
      (completing
        (fn [s new-zset-item]
-         (let [type-not-found? (rel/type-not-found? new-zset-item)]
-           (if-let [zset-item (s new-zset-item)]
-             (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
-               (if (or (zero? new-weight) (neg-int? new-weight))
-                 (disj s zset-item)
-                 (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
-             (if (pos-int? (zset-weight new-zset-item))
-               (conj s new-zset-item)
-               s))))
+         (if-let [zset-item (s new-zset-item)]
+           (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
+             (if (or (zero? new-weight) (neg-int? new-weight))
+               (disj s zset-item)
+               (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
+           (if (pos-int? (zset-weight new-zset-item))
+             (conj s new-zset-item)
+             s)))
        (fn [accum]
          accum))
      zset-1
@@ -357,14 +381,16 @@
   "Like intersect-indexed* but keeps everything from indexed-zset-1
    with missing matches from indexed-zset-2 replaced with :not-found"
   ([indexed-zset-1 indexed-zset-2]
-   (left-join-indexed* indexed-zset-1 indexed-zset-2 :not-found))
-  ([indexed-zset-1 indexed-zset-2 not-found]
-   (transduce
-     (map (fn [k+v] k+v))
-     (completing
-       (fn [accum [index-k-1 zset-1]]
-         (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
-           (assoc accum index-k-1 (zset* zset-1 zset-2))
-           (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] not-found) identity)))))
-     {}
-     indexed-zset-1)))
+   (left-join-indexed* indexed-zset-1 indexed-zset-2 rel/not-found))
+  ([indexed-zset-1 indexed-zset-2 nf]
+   (let [left-join-indexed*-return
+         (transduce
+           (map (fn [k+v] k+v))
+           (completing
+             (fn [accum [index-k-1 zset-1 :as k+v]]
+               (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
+                 (assoc accum index-k-1 (zset* zset-1 zset-2 identity identity rel/mark-as-opt-rel))
+                 (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] nf) rel/mark-as-opt-rel)))))
+           {}
+           indexed-zset-1)]
+     left-join-indexed*-return)))

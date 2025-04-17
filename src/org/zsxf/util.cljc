@@ -204,6 +204,13 @@
        [conn schema])))
 
 #?(:clj
+   (defn load-learn-db-empty
+     []
+     (let [schema (read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
+           conn   (d/create-conn schema)]
+       [conn schema])))
+
+#?(:clj
    (defn jvm-version []
      (parse-long (System/getProperty "java.vm.specification.version"))))
 

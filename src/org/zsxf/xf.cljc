@@ -110,13 +110,15 @@
 (defn- left-join-xf-impl
   "Left join impl for (pull ...)"
   [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]]]
-  (zs/indexed-zset+
-    ;ΔA ⋈ B
-    (zs/left-join-indexed* delta-1 index-state-2-prev)
-    ;A ⋈ ΔB
-    (zs/left-join-indexed* index-state-1-prev delta-2)
-    ;ΔA ⋈ ΔB
-    (zs/left-join-indexed* delta-1 delta-2)))
+  (let [indexed-zset+return
+        (zs/indexed-zset+
+          ;ΔA ⋈ B
+          (zs/left-join-indexed* delta-1 index-state-2-prev)
+          ;A ⋈ ΔB
+          (zs/left-join-indexed* index-state-1-prev delta-2)
+          ;ΔA ⋈ ΔB
+          (zs/left-join-indexed* delta-1 delta-2))]
+    indexed-zset+return))
 
 (defn- relation-xf
   "Add metadata to zset-items to indicate that they are part of a relation."
@@ -146,7 +148,6 @@
                                 (update
                                   1 (fn [datom-2]
                                       (util/?vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))))
-                                (rel/mark-as-rel)
                                 (zs/update-zset-item-weight identity))]
         new-zset-item))))
 
@@ -317,7 +318,7 @@
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
                        (left-join-relation-xf clause-1 clause-2)
-                       (map (fn [left-join-relation-xf-debug] (timbre/spy left-join-relation-xf-debug)))
+                       (map (fn [left-join-relation-xf-debug] left-join-relation-xf-debug))
                        return-zset-item-xf))
                    ;original zset-item wrapped in a zset
                    zset)))

@@ -35,3 +35,6 @@
   (and
     (relation? x)
     (= not-found (peek x))))
+
+(defn maybe-zsi->not-found [zsi]
+  (when (optional? zsi) (rel->not-found zsi)))

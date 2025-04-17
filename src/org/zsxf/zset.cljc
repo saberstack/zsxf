@@ -23,15 +23,15 @@
 (defn determine-weight [zset-item w]
   ;TODO determine if it's important to keep [:not-found] weights at 1
   #_(if (rel/type-not-found? zset-item)
-    (min 1 w)
-    w)
+      (min 1 w)
+      w)
   w)
 
 (defn determine-weight-f [zset-item f]
   ;TODO determine if it's important to keep [:not-found] weights at 1
   #_(if (rel/type-not-found? zset-item)
-    (comp #(min 1 %) f)
-    f)
+      (comp #(min 1 %) f)
+      f)
   f)
 
 (defonce zset-weight-of-1-f (fn [_] 1))
@@ -109,6 +109,7 @@
     result))
 
 (defn zset
+  ;TODO remove or reuse zset+ impl
   "Collection to zset as per https://www.feldera.com/blog/Implementing%20Z-sets/#converting-a-collection-to-a-z-set"
   ([coll]
    (zset coll (map identity)))
@@ -146,22 +147,28 @@
      #{}
      coll)))
 
-(defn with-not-found [s zset-item-not-found]
+(defn with-not-found [s zsi-not-found]
   (vary-meta s
     (fn [m]
       (update m :zset/deny-not-found
-        (fn [s] (conj (or s #{}) zset-item-not-found))))))
+        (fn [s] (conj (or s #{}) zsi-not-found))))))
+
+(defn without-not-found [s zsi-not-found]
+  (vary-meta s
+    (fn [m]
+      (update m :zset/deny-not-found
+        (fn [s] (disj (or s #{}) zsi-not-found))))))
 
 (defn zset-denied-not-found [s]
   (:zset/deny-not-found (meta s)))
 
-(defn deny-not-found? [s zset-item]
-  (contains? (zset-denied-not-found s) zset-item))
+(defn deny-not-found? [s zsi]
+  (contains? (zset-denied-not-found s) zsi))
 
 (defn zset+
   "Adds two zsets"
   ([] (zset #{}))
-  ([zset-1] zset-1)
+  ([zset-1] (zset+ #{} zset-1))
   ([zset-1 zset-2]
    (zset+ (map identity) zset-1 zset-2))
   ([xf zset-1 & more]
@@ -170,24 +177,30 @@
      ;get set items one by one
      (comp cat xf)
      (completing
-       (fn [s new-zset-item]
-         (if-let [prev-item (s new-zset-item)]
+       (fn [s new-zsi]
+         (if-let [prev-item (s new-zsi)]
            ;item already exists in the zset
-           (let [new-weight (+' (zset-weight prev-item) (zset-weight new-zset-item))]
+           (let [new-weight (+' (zset-weight prev-item) (zset-weight new-zsi))]
              (if (zero? new-weight)
-               (disj s prev-item)
-               (conj (disj s prev-item) (assoc-zset-item-weight new-zset-item new-weight))))
+               ;remove item
+               (if-let [zsi-not-found (rel/maybe-zsi->not-found prev-item)]
+                 ;removing a Maybe item, adjust metadata
+                 (without-not-found (disj s prev-item) zsi-not-found)
+                 ;regular item, just remove
+                 (disj s prev-item))
+               ;else keep item, adjust weight
+               (conj (disj s prev-item) (assoc-zset-item-weight new-zsi new-weight))))
            ;else, new item
-           (if (not= 0 (zset-weight new-zset-item))
-             (let [zset-item-not-found (when (rel/optional? new-zset-item) (rel/rel->not-found new-zset-item))
-                   deny-nf?            (deny-not-found? s new-zset-item)]
+           (if (not= 0 (zset-weight new-zsi))
+             (let [zsi-not-found (rel/maybe-zsi->not-found new-zsi)
+                   deny-nf?      (deny-not-found? s new-zsi)]
                (if deny-nf?
                  s
-                 (if zset-item-not-found
+                 (if zsi-not-found
                    (with-not-found
-                     (conj (disj s zset-item-not-found) new-zset-item)
-                     zset-item-not-found)
-                   (conj s new-zset-item))))
+                     (conj (disj s zsi-not-found) new-zsi)
+                     zsi-not-found)
+                   (conj s new-zsi))))
              s)))
        (fn [accum]
          accum))

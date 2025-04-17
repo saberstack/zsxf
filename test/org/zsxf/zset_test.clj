@@ -4,6 +4,7 @@
    [clojure.test.check :as check]
    [clojure.test.check.properties :as prop]
    [medley.core :as medley]
+   [org.zsxf.relation :as rel]
    [org.zsxf.util :as util]
    [org.zsxf.zset :as zs]
    [clojure.test :refer :all]
@@ -144,3 +145,18 @@
 
 (deftest no-zero-weights-after-zset+
   (check/quick-check 100 property-no-zero-weights-zset+))
+
+(deftest maybe-zsi-disj
+  (let [a-zset (zs/zset+
+                 (map identity)
+                 (zs/zset+
+                   #{(rel/mark-as-opt-rel
+                       (zs/zset-item [:a :b]))})
+                 #{(rel/mark-as-opt-rel
+                     (zs/zset-item [:a [:not-found]]))}
+                 #{(rel/mark-as-opt-rel
+                     (zs/zset-item [:a [:not-found]]))}
+                 #{(rel/mark-as-opt-rel
+                     (zs/zset-item [:a :b] -1))})]
+    (is (= #{} a-zset))
+    (is (= #{} (zs/zset-denied-not-found a-zset)))))

@@ -120,7 +120,7 @@
           (zs/left-join-indexed* delta-1 delta-2))]
     indexed-zset+return))
 
-(defn- relation-xf
+(defn- with-clauses-meta-xf
   "Add metadata to zset-items to indicate that they are part of a relation."
   [clause-1 clause-2]
   (map (fn [[_datom-1 _datom-2 :as zset-item]]
@@ -131,23 +131,8 @@
                        (vary-meta datom-1 (fn [m] (assoc m ::xf/clause clause-1)))))
                  (update
                    1 (fn [datom-2]
-                       (vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))))
-                 (rel/mark-as-rel))]
+                       (vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2))))))]
            new-zset-item))))
-
-(defn- left-join-relation-xf
-  "Add metadata to zset-items to indicate that they are part of a relation."
-  [clause-1 clause-2]
-  (map
-    (fn [[_ _ :as zset-item]]
-      (let [new-zset-item     (-> zset-item
-                                (update
-                                  0 (fn [datom-1]
-                                      (util/?vary-meta datom-1 (fn [m] (assoc m ::xf/clause clause-1)))))
-                                (update
-                                  1 (fn [datom-2]
-                                      (util/?vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2))))))]
-        new-zset-item))))
 
 (defn join-xf
   "Receives:
@@ -240,7 +225,7 @@
                      (join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
-                       (relation-xf clause-1 clause-2)
+                       (with-clauses-meta-xf clause-1 clause-2)
                        return-zset-item-xf))
                    ;original zset-item wrapped in a zset
                    zset)))
@@ -315,7 +300,7 @@
                      (left-join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp
-                       (left-join-relation-xf clause-1 clause-2)
+                       (with-clauses-meta-xf clause-1 clause-2)
                        (map (fn [left-join-relation-xf-debug] left-join-relation-xf-debug))
                        return-zset-item-xf))
                    ;original zset-item wrapped in a zset
@@ -382,7 +367,7 @@
                      ;TODO do we need to tag cartesian products with relation metadata?
                      ; Do they need to be referenced from downstream transducers?
                      (comp
-                       (relation-xf clause-1 clause-2)
+                       (with-clauses-meta-xf clause-1 clause-2)
                        return-zset-item-xf)
                      #{}
                      ;ΔA ⋈ B

@@ -289,8 +289,6 @@
   ([indexed-zset]
    (indexed-zset+ indexed-zset {}))
   ([indexed-zset-1 indexed-zset-2]
-   ;TODO merge-with is likely slow and needs optimization
-   ; https://github.com/bsless/clj-fast
    (merge-with zset+ indexed-zset-1 indexed-zset-2))
   ([indexed-zset-1 indexed-zset-2 & args]
    (apply merge-with zset+ indexed-zset-1 indexed-zset-2 args)))
@@ -354,7 +352,10 @@
       (map (fn [common]
              [common (zset*
                        (indexed-zset-1 common)
-                       (indexed-zset-2 common))]))
+                       (indexed-zset-2 common)
+                       identity
+                       identity
+                       rel/mark-as-rel)]))
       commons)))
 
 (defn left-join-indexed*

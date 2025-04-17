@@ -132,8 +132,7 @@
                  (update
                    1 (fn [datom-2]
                        (vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))))
-                 (rel/mark-as-rel)
-                 (zs/update-zset-item-weight identity))]
+                 (rel/mark-as-rel))]
            new-zset-item))))
 
 (defn- left-join-relation-xf
@@ -147,8 +146,7 @@
                                       (util/?vary-meta datom-1 (fn [m] (assoc m ::xf/clause clause-1)))))
                                 (update
                                   1 (fn [datom-2]
-                                      (util/?vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2)))))
-                                (zs/update-zset-item-weight identity))]
+                                      (util/?vary-meta datom-2 (fn [m] (assoc m ::xf/clause clause-2))))))]
         new-zset-item))))
 
 (defn join-xf

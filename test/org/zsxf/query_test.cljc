@@ -1,8 +1,8 @@
 (ns org.zsxf.query-test
   (:require
-   #?(:clj [clojure.test :refer [deftest is]])
+   #?(:clj [clojure.test :refer [deftest is]]
+      :cljs [cljs.test :refer-macros [deftest is]])
    #?(:clj [clj-memory-meter.core :as mm])
-   #?(:cljs [cljs.test :refer-macros [deftest is]])
    [datascript.core :as d]
    [datascript.db :as ddb]
    [net.cgrand.xforms :as xforms]

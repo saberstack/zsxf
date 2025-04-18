@@ -9,9 +9,9 @@
   Returns a map."
   [init-xf]
   (let [state (atom nil)]
-    {::q/xf     (init-xf state)
-     ::q/state  state
-     ::q/id     (random-uuid)}))
+    {::q/xf    (init-xf state)
+     ::q/state state
+     ::q/id    (random-uuid)}))
 
 (defn init-result [result result-delta]
   (if (nil? result)
@@ -55,6 +55,18 @@
   [query]
   ;(set! *print-meta* true)
   (::q/result @(get query ::q/state)))
+
+(defn get-aggregate-result
+  "WIP fn"
+  [query]
+  (update-vals
+    (get-result query)
+    (fn [s]
+      (into #{}
+        (comp
+          (map (fn [x] (if (= x zs/zset-sum) [:sum (zs/zset-weight x)] x)))
+          (map (fn [x] (if (= x zs/zset-count) [:count (zs/zset-weight x)] x))))
+        s))))
 
 (defn get-state [query]
   @(get query ::q/state))

@@ -1,6 +1,6 @@
 (ns org.zsxf.query-test
   (:require
-   #?(:clj [clojure.test :refer [deftest is]]
+   #?(:clj  [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer-macros [deftest is]])
    #?(:clj [clj-memory-meter.core :as mm])
    [datascript.core :as d]
@@ -10,6 +10,7 @@
    [org.zsxf.datom2 :as d2]
    [org.zsxf.query :as q]
    [org.zsxf.datalog.compiler]
+   [org.zsxf.relation :as rel]
    [org.zsxf.util :as util :refer [nth2 path-f]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
@@ -288,10 +289,7 @@
       ;group by aggregates
       (xf/group-by-xf
         #(-> % (nth2 0) d2/datom->val)
-        (comp
-          (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
-          (mapcat (fn [{:keys [cnt]}]
-                    [(zs/zset-count-item cnt)])))))))
+        xf/group-by-count-xform))))
 
 #?(:clj
    (defn thaw-artist-datoms!
@@ -537,11 +535,11 @@
         (map (xf/with-meta-f
                (fn [zset-item]
                  ((juxt
-                      (comp d2/datom->val (util/path-f [0]))
-                      (comp d2/?datom->val (util/path-f [1])))
-                    zset-item))))))
+                    (comp d2/datom->val (util/path-f [0]))
+                    (comp d2/?datom->val (util/path-f [1])))
+                  zset-item))))))
     (map (fn [post-reduce-debug]
-           post-reduce-debug))))
+           (timbre/spy post-reduce-debug)))))
 
 (def all-movies-optionally-find-sequels-ds
   '[:find ?title ?m2 #_?title2
@@ -562,12 +560,86 @@
    ; :movie/year     1982}
    {:db/id       -207
     :movie/title "Terminator 2: Judgment Day"
-    :movie/year  1991}])
+    :movie/year  1991}
+   ])
 
 (deftest all-movies-with-maybe-sequels
-  (let [[conn _schema] (util/load-learn-db)
-        query         (q/create-query all-movies-optionally-find-sequels-zsxf)
-        _             (ds/init-query-with-conn query conn)
-        result-ds-1   (d/q all-movies-optionally-find-sequels-ds @conn)
-        result-zsxf-1 (q/get-result query)]
-    (is (= result-zsxf-1 result-ds-1))))
+  (do
+    (set! *print-meta* false)
+    (let [[conn _schema] (util/load-learn-db)
+          query         (q/create-query all-movies-optionally-find-sequels-zsxf)
+          _             (ds/init-query-with-conn query conn)
+          result-ds-1   (d/q all-movies-optionally-find-sequels-ds @conn)
+          result-zsxf-1 (q/get-result query)]
+      (is (= result-zsxf-1 result-ds-1))
+      result-ds-1
+      result-zsxf-1)))
+
+(defn all-movies-optionally-find-sequel-titles-zsxf
+  [query-state]
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/left-join-xf
+      {:clause    '[?m :movie/title ?title]
+       :path      identity
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      {:clause    '[:?m :movie/sequel :sequel?]
+       :path      identity
+       :pred      #(d2/datom-attr= % :movie/sequel)
+       :index-kfn d2/datom->eid}
+      query-state
+      ;:last? true
+      )
+    ;(map (fn [in-between-debug-1] (timbre/spy in-between-debug-1)))
+    (xf/left-join-xf
+      {:clause    '[:?m :movie/sequel :sequel?]
+       :path      (util/path-f [1])
+       :pred      (fn [pred-x]
+                    (timbre/spy pred-x)
+                    (d2/datom-attr= pred-x :movie/sequel)
+                    true)
+       :index-kfn (fn [x] (d2/datom->val x))}
+      {:clause    '[:?m2 :movie/title :?sequel-title]
+       :path      identity
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      query-state
+      :last? true)
+    (xforms/reduce
+      (zs/zset-xf+
+        (map (xf/with-meta-f
+               (fn [zset-item]
+                 #_((juxt
+                      (comp d2/datom->val (util/path-f [0 0]))
+                      (comp d2/datom->val (util/path-f [0 1]))
+                      (comp d2/datom->val (util/path-f [1])))
+                    zset-item)
+                 zset-item)))))
+    (xf/group-by-xf
+      (util/path-f [0 0])
+      xf/group-by-count-xform)
+    (map (fn [post-reduce-debug]
+           (timbre/spy post-reduce-debug)))))
+
+(def all-movies-optionally-find-sequel-title-ds
+  '[:find (pull ?m [:movie/title
+                    {:movie/sequel [:movie/title]}])
+    :where
+    [?m :movie/title ?title]
+    ])
+
+(deftest all-movies-with-maybe-sequel-titles
+  (do
+    (set! *print-meta* true)
+    (let [
+          [conn _schema] (util/load-learn-db)
+          ;[conn _schema] (util/load-learn-db-empty)
+          ;_             (d/transact! conn tiny-data)
+          query         (q/create-query all-movies-optionally-find-sequel-titles-zsxf)
+          _             (ds/init-query-with-conn query conn)
+          result-ds-1   (d/q all-movies-optionally-find-sequel-title-ds @conn)
+          result-zsxf-1 (q/get-result query)]
+      result-ds-1
+      result-zsxf-1))
+  )

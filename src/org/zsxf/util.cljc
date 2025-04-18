@@ -34,6 +34,9 @@
   ([coll index not-found]
    ((fpred nth (comp not indexed?) nil) coll index not-found)))
 
+(defn peekv [coll]
+  ((fpred peek (comp not vector?) nil) coll))
+
 (defn key-intersection
   "Taken from clojure.set/intersection but adapted to work for maps.
   Takes maps m1 and m2.

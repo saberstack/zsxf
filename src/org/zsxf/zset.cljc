@@ -22,19 +22,15 @@
 
 (defn determine-weight [zset-item w]
   ;TODO determine if it's important to keep [:not-found] weights at 1
-  #_(if (rel/type-not-found? zset-item)
-      (min 1 w)
-      w)
-  w)
+  (if (rel/type-not-found? zset-item)
+    (min 1 w)
+    w))
 
 (defn determine-weight-f [zset-item f]
   ;TODO determine if it's important to keep [:not-found] weights at 1
-  #_(if (rel/type-not-found? zset-item)
-      (comp #(min 1 %) f)
-      f)
-  f)
-
-(defonce zset-weight-of-1-f (fn [_] 1))
+  (if (rel/type-not-found? zset-item)
+    (comp #(min 1 %) f)
+    f))
 
 (defn update-zset-item-weight
   [zset-item f]
@@ -176,8 +172,10 @@
      more)))
 
 (defn zset
-  [coll]
-  (zset+ (map zset-item) #{} coll))
+  ([coll]
+   (zset (map identity) coll))
+  ([xf coll]
+   (zset+ (comp (map zset-item) xf) #{} coll)))
 
 (defn zset-xf+
   "Takes a transducers and returns a function with the same signature as zset+.
@@ -370,8 +368,8 @@
            (completing
              (fn [accum [index-k-1 zset-1 :as k+v]]
                (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
-                 (assoc accum index-k-1 (zset* zset-1 zset-2 identity identity rel/mark-as-opt-rel))
-                 (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] nf) rel/mark-as-opt-rel)))))
+                 (assoc accum index-k-1 (zset* zset-1 zset-2 identity identity rel/mark-as-rel))
+                 (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] nf) rel/mark-as-rel)))))
            {}
            indexed-zset-1)]
      left-join-indexed*-return)))

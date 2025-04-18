@@ -626,8 +626,7 @@
            (timbre/spy post-reduce-debug)))))
 
 (def all-movies-optionally-find-sequel-title-ds
-  '[:find (pull ?m [:movie/title
-                    {:movie/sequel [:movie/title]}])
+  '[:find (pull ?m [:movie/title {:movie/sequel [:movie/title]}])
     :where
     [?m :movie/title ?title]
     ])
@@ -643,6 +642,7 @@
           _             (ds/init-query-with-conn query conn)
           result-ds-1   (d/q all-movies-optionally-find-sequel-title-ds @conn)
           result-zsxf-1 (q/get-result query)]
+      ;TODO handle [:not-found] values to match (pull ...)
       result-ds-1
       result-zsxf-1))
   )

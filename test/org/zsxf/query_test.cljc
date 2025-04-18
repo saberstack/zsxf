@@ -26,94 +26,78 @@
 ; over-retractions can be filtered out when their delta does not result in a change
 ; to the joined state
 
-;TODO use join-xf-3
-#_(defn aggregate-example-xf [query-state]
-    (comment
-      ;equivalent query
-      '[:find ?country (sum ?pts)
-        :where
-        [?e :team/name "A"]
-        [?e :event/country ?country]
-        [?e :team/points-scored ?pts]])
+(defn aggregate-example-xf [query-state]
+  (comment
+    ;equivalent query
+    '[:find ?country (sum ?pts)
+      :where
+      [?e :team/name "A"]
+      [?e :event/country ?country]
+      [?e :team/points-scored ?pts]])
 
-    (comp
-      (xf/mapcat-zset-transaction-xf)
-      (xf/join-xf
-        #(d2/datom-attr-val= % :team/name "A") d2/datom->eid
-        #(d2/datom-attr= % :event/country) d2/datom->eid
-        query-state)
-      (xf/join-right-pred-1-xf
-        #(d2/datom-attr= % :event/country) d2/datom->eid
-        #(d2/datom-attr= % :team/points-scored) d2/datom->eid
-        query-state
-        :last? true)
-      (xforms/reduce zs/zset+)
-      ;group by aggregates
-      (xf/group-by-xf
-        #(-> % (util/nth2 0) (util/nth2 1) d2/datom->val)
-        (comp
-          (xforms/transjuxt {:sum (xforms/reduce
-                                    (zs/zset-sum+
-                                      #(-> % (util/nth2 1) d2/datom->val)))
-                             :cnt (xforms/reduce zs/zset-count+)})
-          (mapcat (fn [{:keys [sum cnt]}]
-                    [(zs/zset-sum-item sum)
-                     (zs/zset-count-item cnt)]))))
-      (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/join-xf
+      {:clause    '[?e :team/name "A"]
+       :pred      #(d2/datom-attr-val= % :team/name "A")
+       :index-kfn d2/datom->eid}
+      {:clause    '[?e :event/country ?country]
+       :pred      #(d2/datom-attr= % :event/country)
+       :index-kfn d2/datom->eid}
+      query-state)
+    (xf/join-xf
+      {:clause    '[?e :event/country ?country]
+       :path      (util/path-f [1])
+       :pred      #(d2/datom-attr= % :event/country)
+       :index-kfn d2/datom->eid}
+      {:clause    '[?e :team/points-scored ?pts]
+       :pred      #(d2/datom-attr= % :team/points-scored)
+       :index-kfn d2/datom->eid}
+      query-state
+      :last? true)
+    (xforms/reduce zs/zset+)
+    ;group by aggregates
+    (xf/group-by-xf
+      #(-> % (util/nth2 0) (util/nth2 1) d2/datom->val)
+      (comp
+        (xforms/transjuxt {:sum (xforms/reduce
+                                  (zs/zset-sum+
+                                    #(-> % (util/nth2 1) d2/datom->val)))
+                           :cnt (xforms/reduce zs/zset-count+)})
+        (mapcat (fn [{:keys [sum cnt]}]
+                  [(zs/zset-sum-item sum)
+                   (zs/zset-count-item cnt)]))))
+    (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
 
-;TODO use join-xf-3
-#_(comment
-    ;example usage
-    (def query-1 (q/create-query aggregate-example-xf))
-
-    (q/input query-1
-      [(d2/tx-datoms->datoms2->zset
-         [(ddb/datom 1 :team/name "A" 536870913 true)
-          (ddb/datom 1 :event/country "Japan" 536870913 true)
-          (ddb/datom 1 :team/points-scored 25 536870913 true)
-          (ddb/datom 2 :team/name "A" 536870913 true)
-          (ddb/datom 2 :event/country "Japan" 536870913 true)
-          (ddb/datom 2 :team/points-scored 18 536870913 true)
-          (ddb/datom 3 :team/name "A" 536870913 true)
-          (ddb/datom 3 :event/country "Australia" 536870913 true)
-          (ddb/datom 3 :team/points-scored 25 536870913 true)
-          (ddb/datom 4 :team/name "A" 536870913 true)
-          (ddb/datom 4 :event/country "Australia" 536870913 true)
-          (ddb/datom 4 :team/points-scored 4 536870913 true)])])
-
-    (q/get-result query-1)
-
-    (q/input query-1
-      [(d2/tx-datoms->datoms2->zset
-         [(ddb/datom 1 :team/name "A" 536870913 false)
-          (ddb/datom 2 :team/name "A" 536870913 false)
-          (ddb/datom 3 :team/name "A" 536870913 false)])])
-
-    (q/get-result query-1)
-
-    (q/get-state query-1))
-
-(comment
-  ;subquery explore
-  '[:find ?p
-    :where
-    ;Alice
-    [?p :person/name "Alice"]
-    [?p :person/country ?c]
-    [?c :country/continent "Europe"]
-    [?p :likes "pizza"]
-
-    ;Bob
-    ;?p2 (Bob) has the same country as ?p (Alice)
-    ;and he also must like pizza
-    ;this is one fully formed subquery (no breaks in the chain)
-    ;but without unique identifiers, are we talking about Bob or Alice here?
-    [?p2 :person/name "Bob"]
-    [?p2 :person/country ?c]
-    [?c :country/continent "Europe"]
-    ;with no identifiers/clauses, this is ambiguous::
-    [?p2 :likes "pizza"]]
-  )
+(deftest simple-aggregate-1
+  (let [query-1  (q/create-query aggregate-example-xf)
+        _        (q/input query-1
+                   [(d2/tx-datoms->datoms2->zset
+                      [(ddb/datom 1 :team/name "A" 536870913 true)
+                       (ddb/datom 1 :event/country "Japan" 536870913 true)
+                       (ddb/datom 1 :team/points-scored 25 536870913 true)
+                       (ddb/datom 2 :team/name "A" 536870913 true)
+                       (ddb/datom 2 :event/country "Japan" 536870913 true)
+                       (ddb/datom 2 :team/points-scored 18 536870913 true)
+                       (ddb/datom 3 :team/name "A" 536870913 true)
+                       (ddb/datom 3 :event/country "Australia" 536870913 true)
+                       (ddb/datom 3 :team/points-scored 25 536870913 true)
+                       (ddb/datom 4 :team/name "A" 536870913 true)
+                       (ddb/datom 4 :event/country "Australia" 536870913 true)
+                       (ddb/datom 4 :team/points-scored 4 536870913 true)])])
+        result-1 (q/get-aggregate-result query-1)
+        _        (q/input query-1
+                   [(d2/tx-datoms->datoms2->zset
+                      [(ddb/datom 1 :team/name "A" 536870913 false)
+                       (ddb/datom 2 :team/name "A" 536870913 false)
+                       (ddb/datom 3 :team/name "A" 536870913 false)])])
+        result-2 (q/get-aggregate-result query-1)]
+    (is
+      (= result-1
+        {"Japan" #{[:sum 43] [:count 2]}, "Australia" #{[:sum 29] [:count 2]}}))
+    (is
+      (= result-2
+        {"Japan" #{}, "Australia" #{[:sum 4] [:count 1]}}))))
 
 (defn person-city-country-example-xf-join-3 [query-state]
   (comment

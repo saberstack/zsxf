@@ -84,15 +84,19 @@
        (with-meta x zset-weight-of-1)
        (assoc-zset-item-weight x weight)))))
 
+(def zset-count [:zset/count])
+
 (defn zset-count-item
   "zset representing a count"
   [n]
-  (zset-item [:zset/count] n))
+  (zset-item zset-count n))
+
+(def zset-sum [:zset/sum])
 
 (defn zset-sum-item
   "zset representing a sum"
   [n]
-  (zset-item [:zset/sum] n))
+  (zset-item zset-sum n))
 
 (defn eligible-coll?
   "Check if a collection is eligible to be a zset item.

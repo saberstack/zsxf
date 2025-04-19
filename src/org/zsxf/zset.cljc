@@ -5,6 +5,7 @@
   (:require [clojure.spec.alpha :as s]
             [org.zsxf.constant :as const]
             [org.zsxf.relation :as rel]
+            [org.zsxf.util :as util]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
             [net.cgrand.xforms :as xforms]
@@ -22,9 +23,7 @@
   (:zset/w (meta x)))
 
 (defn type-not-found? [x]
-  (and
-    (rel/relation? x)
-    (= const/not-found (peek x))))
+  (= const/not-found (util/peekv x)))
 
 (defn determine-weight [zset-item w]
   ;TODO determine if it's important to keep [:not-found] weights at 1
@@ -151,24 +150,12 @@
            (let [new-weight (+' (zset-weight prev-item) (zset-weight new-zsi))]
              (if (zero? new-weight)
                ;remove item
-               (if-let [zsi-not-found (rel/maybe-zsi->not-found prev-item)]
-                 ;removing a Maybe item, adjust metadata
-                 (without-not-found (disj s prev-item) zsi-not-found)
-                 ;regular item, just remove
-                 (disj s prev-item))
+               (disj s prev-item)
                ;else keep item, adjust weight
                (conj (disj s prev-item) (assoc-zset-item-weight new-zsi new-weight))))
            ;else, new item
            (if (not= 0 (zset-weight new-zsi))
-             (let [zsi-not-found (rel/maybe-zsi->not-found new-zsi)
-                   deny-nf?      (deny-not-found? s new-zsi)]
-               (if deny-nf?
-                 s
-                 (if zsi-not-found
-                   (with-not-found
-                     (conj (disj s zsi-not-found) new-zsi)
-                     zsi-not-found)
-                   (conj s new-zsi))))
+             (conj s new-zsi)
              s)))
        (fn [accum]
          accum))
@@ -347,33 +334,37 @@
 
   The weight of a common item in the return is the product (via zset*)
   of the weights of the same item in indexed-zset-1 and indexed-zset-2."
-  [indexed-zset-1 indexed-zset-2]
-  (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
-    (into
-      {}
-      (map (fn [common]
-             [common (zset*
-                       (indexed-zset-1 common)
-                       (indexed-zset-2 common)
-                       identity
-                       identity
-                       rel/mark-as-rel)]))
-      commons)))
+  ([indexed-zset-1 indexed-zset-2]
+   (intersect-indexed* indexed-zset-1 indexed-zset-2 identity identity))
+  ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f]
+   (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
+     (into
+       {}
+       (map (fn [common]
+              [common (zset*
+                        (indexed-zset-1 common)
+                        (indexed-zset-2 common)
+                        zset*-item-1-f
+                        zset*-item-2-f
+                        identity)]))
+       commons))))
 
 (defn left-join-indexed*
   "Like intersect-indexed* but keeps everything from indexed-zset-1
    with missing matches from indexed-zset-2 replaced with :not-found"
   ([indexed-zset-1 indexed-zset-2]
-   (left-join-indexed* indexed-zset-1 indexed-zset-2 const/not-found))
-  ([indexed-zset-1 indexed-zset-2 nf]
+   (left-join-indexed* indexed-zset-1 indexed-zset-2 identity identity))
+  ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f]
    (let [left-join-indexed*-return
          (transduce
            (map (fn [k+v] k+v))
            (completing
              (fn [accum [index-k-1 zset-1 :as k+v]]
                (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
-                 (assoc accum index-k-1 (zset* zset-1 zset-2 identity identity rel/mark-as-rel))
-                 (assoc accum index-k-1 (zset* zset-1 zset-1 identity (fn [_] nf) rel/mark-as-rel)))))
+                 (assoc accum index-k-1 (zset* zset-1 zset-2 zset*-item-1-f zset*-item-2-f identity))
+                 (assoc accum index-k-1 (zset* zset-1 zset-1 zset*-item-1-f
+                                          (fn [_] (zset*-item-2-f const/not-found))
+                                          identity)))))
            {}
            indexed-zset-1)]
      left-join-indexed*-return)))

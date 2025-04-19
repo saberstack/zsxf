@@ -239,4 +239,6 @@
     obj))
 
 (comment
-  (scaffold clojure.lang.IPersistentMap))
+  (scaffold clojure.lang.IPersistentMap)
+
+  (scaffold clojure.lang.IPersistentVector))

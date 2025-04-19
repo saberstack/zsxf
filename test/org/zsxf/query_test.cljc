@@ -553,35 +553,34 @@
       ; some extra not-found are included but the impls is simpler
       ;(is (= result-zsxf-1 result-ds-1))
       result-ds-1
-      result-zsxf-1
-      true)))
+      result-zsxf-1)))
 
 (defn all-movies-optionally-find-sequel-titles-zsxf
   [query-state]
   (comp
     (xf/mapcat-zset-transaction-xf)
     (xf/left-join-xf
-      {:clause    '[?m :movie/title ?title]
+      {:clause    :movie-title
        :path      identity
        :pred      #(d2/datom-attr= % :movie/title)
        :index-kfn d2/datom->eid}
-      {:clause    '[:?m :movie/sequel :sequel?]
+      {:clause    :sequel?
        :path      identity
        :pred      #(d2/datom-attr= % :movie/sequel)
        :index-kfn d2/datom->eid}
       query-state
       ;:last? true
       )
-    ;(map (fn [in-between-debug-1] (timbre/spy in-between-debug-1)))
+    (map (fn [in-between-debug-1] (timbre/spy in-between-debug-1)))
     (xf/left-join-xf
-      {:clause    '[:?m :movie/sequel :sequel?]
+      {:clause    :sequel?
        :path      (util/path-f [1])
-       :pred      (fn [pred-x]
-                    (timbre/spy pred-x)
-                    (d2/datom-attr= pred-x :movie/sequel)
+       :pred      (fn [always-true-pred-item]
+                    (timbre/spy always-true-pred-item)
+                    (d2/datom-attr= always-true-pred-item :movie/sequel)
                     true)
        :index-kfn (fn [x] (d2/datom->val x))}
-      {:clause    '[:?m2 :movie/title :?sequel-title]
+      {:clause    :sequel-title
        :path      identity
        :pred      #(d2/datom-attr= % :movie/title)
        :index-kfn d2/datom->eid}
@@ -638,6 +637,6 @@
           result-ds-1   (d/q all-movies-optionally-find-sequel-title-ds @conn)
           result-zsxf-1 (q/get-result query)]
       ;TODO handle [:not-found] values to match (pull ...)
-      result-zsxf-1
-      result-ds-1))
+      result-ds-1
+      result-zsxf-1))
   )

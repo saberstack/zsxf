@@ -99,27 +99,27 @@
       (timbre/info "looking for clause:" clause))
     item-can-join?))
 
-(defn add-meta-clause-f [clause]
+(defn with-clause-f [clause]
   (fn [item]
     (vary-meta item (fn [m] (assoc m :xf.clause clause)))))
 
 (defn- join-xf-impl
   [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]] [clause-1 clause-2]]
-  (let [f1 (add-meta-clause-f clause-1)
-        f2 (add-meta-clause-f clause-2)]
+  (let [f1 (with-clause-f clause-1)
+        f2 (with-clause-f clause-2)]
     (zs/indexed-zset+
       ;ΔA ⋈ B
-      (zs/intersect-indexed* delta-1 index-state-2-prev f1 f2)
+      (zs/intersect-indexed* delta-1 index-state-2-prev f1 f2 rel/index-clauses)
       ;A ⋈ ΔB
-      (zs/intersect-indexed* index-state-1-prev delta-2 f1 f2)
+      (zs/intersect-indexed* index-state-1-prev delta-2 f1 f2 rel/index-clauses)
       ;ΔA ⋈ ΔB
-      (zs/intersect-indexed* delta-1 delta-2 f1 f2))))
+      (zs/intersect-indexed* delta-1 delta-2 f1 f2 rel/index-clauses))))
 
 (defn- left-join-xf-impl
   "Left join impl for (pull ...)"
   [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]] [clause-1 clause-2]]
-  (let [f1 (add-meta-clause-f clause-1)
-        f2 (add-meta-clause-f clause-2)
+  (let [f1 (with-clause-f clause-1)
+        f2 (with-clause-f clause-2)
         indexed-zset+return
            (zs/indexed-zset+
              ;ΔA ⋈ B
@@ -182,12 +182,11 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1          (with-meta [(random-uuid)] {::xf/clause-1 clause-1})
-        uuid-2          (with-meta [(random-uuid)] {::xf/clause-1 clause-2})
-        join-xf-clauses [clause-1 clause-2]]
+  (let [uuid-1 [clause-1 (random-uuid)]
+        uuid-2 [clause-2 (random-uuid)]]
     (timbre/info uuid-1)
     (timbre/info uuid-2)
-    (timbre/info join-xf-clauses)
+    (timbre/info [clause-1 clause-2])
     (comp
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
@@ -255,12 +254,11 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1          [clause-1 (random-uuid)]
-        uuid-2          [clause-2 (random-uuid)]
-        join-xf-clauses [clause-1 clause-2]]
+  (let [uuid-1 [clause-1 (random-uuid)]
+        uuid-2 [clause-2 (random-uuid)]]
     (timbre/info uuid-1)
     (timbre/info uuid-2)
-    (timbre/info join-xf-clauses)
+    (timbre/info [clause-1 clause-2])
     (comp
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
@@ -380,19 +378,19 @@
                    ;return
                    [sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]])))
           (map (fn [[sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]]]
-                 (let [f1 (add-meta-clause-f clause-1)
-                       f2 (add-meta-clause-f clause-2)]
+                 (let [f1 (with-clause-f clause-1)
+                       f2 (with-clause-f clause-2)]
                    ;return
                    (vector
                      (zs/zset+
                        return-zset-item-xf
                        #{}
                        ;ΔA ⋈ B
-                       (zs/zset* delta-1 sub-state-2-prev f1 f2 identity)
+                       (zs/zset* delta-1 sub-state-2-prev f1 f2 rel/index-clauses)
                        ;A ⋈ ΔB
-                       (zs/zset* sub-state-1-prev delta-2 f1 f2 identity)
+                       (zs/zset* sub-state-1-prev delta-2 f1 f2 rel/index-clauses)
                        ;ΔA ⋈ ΔB
-                       (zs/zset* delta-1 delta-2 f1 f2 identity))
+                       (zs/zset* delta-1 delta-2 f1 f2 rel/index-clauses))
                      ;original zset-item wrapped in a zset
                      zset))))
           (mapcat (fn [[cartesian-xf-delta zset]]

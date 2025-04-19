@@ -335,8 +335,8 @@
   The weight of a common item in the return is the product (via zset*)
   of the weights of the same item in indexed-zset-1 and indexed-zset-2."
   ([indexed-zset-1 indexed-zset-2]
-   (intersect-indexed* indexed-zset-1 indexed-zset-2 identity identity))
-  ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f]
+   (intersect-indexed* indexed-zset-1 indexed-zset-2 identity identity identity))
+  ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f pair-f]
    (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
      (into
        {}
@@ -346,7 +346,7 @@
                         (indexed-zset-2 common)
                         zset*-item-1-f
                         zset*-item-2-f
-                        identity)]))
+                        pair-f)]))
        commons))))
 
 (defn left-join-indexed*
@@ -361,10 +361,10 @@
            (completing
              (fn [accum [index-k-1 zset-1 :as k+v]]
                (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
-                 (assoc accum index-k-1 (zset* zset-1 zset-2 zset*-item-1-f zset*-item-2-f identity))
-                 (assoc accum index-k-1 (zset* zset-1 zset-1 zset*-item-1-f
-                                          (fn [_] (zset*-item-2-f const/not-found))
-                                          identity)))))
+                 (assoc accum index-k-1
+                   (zset* zset-1 zset-2 zset*-item-1-f zset*-item-2-f rel/index-clauses))
+                 (assoc accum index-k-1
+                   (zset* zset-1 zset-1 zset*-item-1-f (fn [_] (zset*-item-2-f const/not-found)) rel/index-clauses)))))
            {}
            indexed-zset-1)]
      left-join-indexed*-return)))

@@ -13,6 +13,7 @@
    [org.zsxf.lib.result-set-xf.core :as rsxf]
    [org.zsxf.query :as q]
    [org.zsxf.datalog.compiler]
+   [org.zsxf.relation :as rel]
    [org.zsxf.util :as util :refer [nth2 path-f]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
@@ -144,7 +145,6 @@
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
 
 
-
 (deftest join-xf-3-test-1
   (let [_      (timbre/set-min-level! :trace)
         query  (q/create-query person-city-country-example-xf-join-3)
@@ -168,6 +168,10 @@
         (ddb/datom 2 :person/country 1 536870913 true)])])
 
   (q/get-result query-1)
+
+  (rel/find-clause
+    (first (q/get-result query-1))
+    '[?p :person/name "Alice"])
 
   (q/input query-1
     [(d2/tx-datoms->datoms2->zset

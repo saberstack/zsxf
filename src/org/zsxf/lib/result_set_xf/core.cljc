@@ -1,7 +1,6 @@
 (ns org.zsxf.lib.result-set-xf.core
   (:require [clojure.spec.alpha :as s]
-            [net.cgrand.xforms :as xforms]
-            [taoensso.timbre :as timbre]))
+            [net.cgrand.xforms :as xforms]))
 
 (defn- get-map-ns-keys
   "Return a vector of all keys from a map m that are namespaced under ns."
@@ -43,36 +42,20 @@
       (comp
         meta-xform
         (xforms/by-key
-          (fn [m] (let [m' (select-keys m (star-filter m ks))]
-                    (timbre/spy ks)
-                    (timbre/spy m')))
-          (fn [m] (timbre/spy m))
-          (fn [k ms] (timbre/spy [k ms]))
+          (fn [m] (select-keys m (star-filter m ks)))
+          (fn [m] m)
+          (fn [k ms] [k ms])
           (xforms/into []))
-        #_(halt-when (fn [[grouped-by-value grouped-maps-vector]]
-                     (empty? grouped-by-value))
-          (fn [accum trigger]
-            (timbre/spy accum)
-            (timbre/spy trigger)
-            accum))
         (map (fn [[grouped-by-value grouped-maps-vector]]
-               (timbre/spy grouped-by-value)
-               (timbre/spy grouped-maps-vector)
-               (timbre/spy link-ops)
                (merge grouped-by-value
                  (into {}
                    (map (fn [[item-name -pattern]]
                           ; return a vector of item-name and the result of calling trampoline
-                          (timbre/spy item-name)
                           [item-name
                            ;for shallow recursion only, can blow up the stack!
                            (result-set-xf grouped-maps-vector -pattern)]))
                    link-ops)))))
-      (completing
-        (fn [accum-final item]
-          (timbre/spy accum-final)
-          (timbre/spy item)
-          (conj accum-final item)))
+      conj
       []
       result-set)))
 

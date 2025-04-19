@@ -1,5 +1,6 @@
 (ns org.zsxf.datom2
-  (:require [org.zsxf.util :as util]
+  (:require [org.zsxf.constant :as const]
+            [org.zsxf.util :as util]
             #?(:clj [org.zsxf.type :as t])
             [org.zsxf.zset :as zs])
   #?(:clj
@@ -17,7 +18,7 @@
       (let [[e a v _t add-or-retract :as datom] datascript-datom]
         [e a v]))))
 
-(defn datom? [x]
+(defn datom2? [x]
   #?(:clj
      (instance? Datom2 x)
      :cljs
@@ -32,22 +33,22 @@
   (zs/zset-item (datom2 datom) (datom->weight datom)))
 
 (defn datom->eid [datom]
-  (when (datom? datom)
+  (when (datom2? datom)
     (nth datom 0 nil)))
 
 (defn datom->attr [datom]
-  (when (datom? datom)
+  (when (datom2? datom)
     (nth datom 1 nil)))
 
 (defn datom-attr= [datom attr]
   (= (datom->attr datom) attr))
 
 (defn datom->val [datom]
-  (when (datom? datom)
+  (when (datom2? datom)
     (nth datom 2 nil)))
 
 (defn ?datom->val [datom]
-  (if (datom? datom)
+  (if (datom2? datom)
     (nth datom 2 nil)
     datom))
 
@@ -76,3 +77,12 @@
       (map datom->datom2->zset-item)
       (map hash-set))
     datoms))
+
+(defn datom->map [x]
+  (cond
+    (datom2? x) {:db/id (nth x 0) (nth x 1) (nth x 2)}
+    (= x const/not-found) {}
+    ;repl helper case
+    (util/datom-like? x) {:db/id (nth x 0) (nth x 1) (nth x 2)}
+    :else nil #_(throw (throw (ex-info "x must be either a datom, datom-like or [:not-found] type"
+                                {:provided-x x :provided-type (type x)})))))

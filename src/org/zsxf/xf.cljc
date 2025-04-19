@@ -16,7 +16,9 @@
      [[:R1 :R2] :R3] ;three relations (still a pair!)
      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
      ... etc."
-  (:require [net.cgrand.xforms :as xforms]
+  (:require [medley.core :as medley]
+            [net.cgrand.xforms :as xforms]
+            [org.zsxf.constant :as const]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
@@ -241,9 +243,6 @@
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
 
-
-#_[true true [[60 :movie/title "Commando"] [:not-found]] [:?m :movie/sequel :sequel?]]
-
 (defn left-join-xf
   ;TODO WIP
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
@@ -265,7 +264,7 @@
       (map (fn [zset-item]
              (let [d1-can-join? (can-join? zset-item path-f-1 clause-1)
                    d1-pred      (pred-1 (path-f-1 zset-item))
-                   nf-item?     (= rel/not-found (util/peekv zset-item))
+                   nf-item?     (= const/not-found (util/peekv zset-item))
                    delta-1      (if (and d1-can-join? d1-pred)
                                   (zs/index #{zset-item} (comp index-kfn-1 path-f-1))
                                   {})
@@ -277,7 +276,7 @@
                                   {})
                    zset         (if last? #{} #{zset-item})
                    ?zset-nf     (when (and nf-item? d1-can-join? d1-pred)
-                                  (zs/zset (with-clauses-meta-xf clause-1 clause-2) #{[zset-item rel/not-found]}))]
+                                  (zs/zset (with-clauses-meta-xf clause-1 clause-2) #{[zset-item const/not-found]}))]
                ;return
                (timbre/spy [delta-1 delta-2 zset ?zset-nf]))))
       (cond-branch
@@ -416,13 +415,28 @@
 
 (defn group-by-xf
   ;wip
-  [f xform]
-  (comp
-    (map (fn [zset] (zs/index zset f)))
-    (map (fn [indexed-zset]
-           (update-vals indexed-zset
-             (fn [indexed-zset-item]
-               (into #{} xform indexed-zset-item)))))))
+  ([f xform]
+   (group-by-xf f xform identity))
+  ([f xform set-f]
+   (comp
+     (map (fn [zset] (zs/index zset f)))
+     (map (fn [indexed-zset]
+            (update-vals indexed-zset
+              (fn [indexed-zset-item]
+                (set-f
+                  (into #{} xform indexed-zset-item)))))))))
+
+(defn discard-not-found
+  ;(pull ...) helper
+  ; WIP
+  [s]
+  (into #{}
+    (apply
+      sequence
+      (comp
+        (map (fn [& ms] (medley/find-first #(not (empty? %)) ms)))
+        (remove nil?))
+      s)))
 
 (def group-by-count-xform
   (comp

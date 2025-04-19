@@ -1,5 +1,6 @@
 (ns org.zsxf.relation
-  (:require [org.zsxf.util :as util]
+  (:require [org.zsxf.constant :as const]
+            [org.zsxf.util :as util]
             [org.zsxf.xf :as-alias xf]
             [taoensso.timbre :as timbre]))
 
@@ -24,18 +25,11 @@
                          ::xf/relation true
                          ::xf/relation.opt true))))
 
-(defonce not-found [:not-found])
-
-(defn type-not-found? [x]
-  (and
-    (relation? x)
-    (= not-found (peek x))))
-
 ;TODO remove?
 (defn rel->not-found [rel]
-  (if (= not-found (-> (util/nth2 rel 0) (util/nth2 1)))
+  (if (= const/not-found (-> (util/nth2 rel 0) (util/nth2 1)))
     (recur (util/nth2 rel 0))
-    (update rel 1 (fn [_] not-found))))
+    (update rel 1 (fn [_] const/not-found))))
 
 (comment
   (rel->not-found [[:A :B] [:not-found]])

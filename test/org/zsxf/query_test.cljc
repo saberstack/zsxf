@@ -5,12 +5,14 @@
    #?(:clj [clj-memory-meter.core :as mm])
    [datascript.core :as d]
    [datascript.db :as ddb]
+   [medley.core :as medley]
    [net.cgrand.xforms :as xforms]
    [org.zsxf.datascript :as ds]
+   [clojure.set :as set]
    [org.zsxf.datom2 :as d2]
+   [org.zsxf.lib.result-set-xf.core :as rsxf]
    [org.zsxf.query :as q]
    [org.zsxf.datalog.compiler]
-   [org.zsxf.relation :as rel]
    [org.zsxf.util :as util :refer [nth2 path-f]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
@@ -562,6 +564,16 @@
       result-zsxf-1
       true)))
 
+(defn discard-not-found [s]
+  (into []
+    (apply
+      sequence
+      (comp
+        (map (fn [& ms]
+               (medley/find-first #(not (empty? %)) ms)))
+        (remove nil?))
+      s)))
+
 (defn all-movies-optionally-find-sequel-titles-zsxf
   [query-state]
   (comp
@@ -593,19 +605,23 @@
        :index-kfn d2/datom->eid}
       query-state
       :last? true)
-    (xforms/reduce
-      (zs/zset-xf+
-        (map (xf/with-meta-f
-               (fn [zset-item]
-                 #_((juxt
-                      (comp d2/datom->val (util/path-f [0 0]))
-                      (comp d2/datom->val (util/path-f [0 1]))
-                      (comp d2/datom->val (util/path-f [1])))
-                    zset-item)
-                 zset-item)))))
+    (xforms/reduce zs/zset+)
+    ;initial (pull ...) impl
     (xf/group-by-xf
-      (util/path-f [0 0])
-      xf/group-by-count-xform)
+      (util/path-f [0 0 0])
+      (comp
+        (map (juxt
+               (util/path-f [0 0 d2/datom->map])
+               (util/path-f [0 1 d2/datom->map])
+               (util/path-f
+                 [1 d2/datom->map
+                  ;make unique
+                  #(set/rename-keys % {:movie/title :movie/title.sequel
+                                       :db/id       :db/id.sequel})]))))
+      (comp
+        (fn [s] (rsxf/pull s [:movie/title {:movie/sequel [:movie/title.sequel]}]))
+        (fn [s] #{(apply merge s)})
+        (fn [s] (xf/discard-not-found s))))
     (map (fn [post-reduce-debug]
            (timbre/spy post-reduce-debug)))))
 

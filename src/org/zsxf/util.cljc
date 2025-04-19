@@ -109,7 +109,11 @@
     `identity
     `(transduce
        (map (fn [idx#]
-              (fn [x#] (~`nth2 x# idx#))))
+              (fn [x#]
+                (cond
+                  (int? idx#) (~`nth2 x# idx#)
+                  (fn? idx#) (idx# x#)
+                  :else (throw (ex-info "path components must satisfy either int? or fn?" {:given x#}))))))
        (completing
          conj
          (fn [accum#]
@@ -221,14 +225,13 @@
   (double
     (/ num-of-bytes 1000000)))
 
-#?(:cljs
-   (defn datom-like?
-     ;TODO remove this once there's Datom2 for CLJS
-     [x]
-     (boolean
-       (and (nth2 x 0) (nth2 x 1) (nth2 x 2)
-         (int? (nth2 x 0))
-         (keyword? (nth2 x 1))))))
+(defn datom-like?
+  "A REPL helper fn to allow working with vectors instead of datoms"
+  [x]
+  (boolean
+    (and (nth2 x 0) (nth2 x 1) (nth2 x 2)
+      (int? (nth2 x 0))
+      (keyword? (nth2 x 1)))))
 
 (defn ?vary-meta [obj f & args]
   (if (can-meta? obj)

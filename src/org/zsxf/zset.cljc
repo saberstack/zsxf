@@ -3,6 +3,7 @@
   ;rename to match Clojure
   #?(:cljs (:refer-clojure :rename {+ +' * *'}))
   (:require [clojure.spec.alpha :as s]
+            [org.zsxf.constant :as const]
             [org.zsxf.relation :as rel]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
@@ -20,15 +21,20 @@
   [x]
   (:zset/w (meta x)))
 
+(defn type-not-found? [x]
+  (and
+    (rel/relation? x)
+    (= const/not-found (peek x))))
+
 (defn determine-weight [zset-item w]
   ;TODO determine if it's important to keep [:not-found] weights at 1
-  (if (rel/type-not-found? zset-item)
+  (if (type-not-found? zset-item)
     (min 1 w)
     w))
 
 (defn determine-weight-f [zset-item f]
   ;TODO determine if it's important to keep [:not-found] weights at 1
-  (if (rel/type-not-found? zset-item)
+  (if (type-not-found? zset-item)
     (comp #(min 1 %) f)
     f))
 
@@ -62,10 +68,6 @@
    (let [w (zset-weight item)]
      (+' accum w))))
 
-;Optimization to save (a lot!) of memory.
-;Reuse common zset weight maps
-(defonce zset-weight-of-1 {:zset/w 1})
-
 (defn has-zset-weight? [x]
   (:zset/w (meta x)))
 
@@ -73,7 +75,7 @@
   ([x]
    (if (has-zset-weight? x)
      x
-     (with-meta x zset-weight-of-1)))
+     (with-meta x const/zset-weight-of-1)))
   ([x weight]
    (if (meta x)
      ;meta exists, assoc to it
@@ -81,22 +83,20 @@
      ;optimization:
      ; reuse metadata map for common weights
      (if (= 1 weight)
-       (with-meta x zset-weight-of-1)
+       (with-meta x const/zset-weight-of-1)
        (assoc-zset-item-weight x weight)))))
-
-(def zset-count [:zset/count])
 
 (defn zset-count-item
   "zset representing a count"
   [n]
-  (zset-item zset-count n))
+  (zset-item const/zset-count n))
 
 (def zset-sum [:zset/sum])
 
 (defn zset-sum-item
   "zset representing a sum"
   [n]
-  (zset-item zset-sum n))
+  (zset-item const/zset-sum n))
 
 (defn eligible-coll?
   "Check if a collection is eligible to be a zset item.
@@ -364,7 +364,7 @@
   "Like intersect-indexed* but keeps everything from indexed-zset-1
    with missing matches from indexed-zset-2 replaced with :not-found"
   ([indexed-zset-1 indexed-zset-2]
-   (left-join-indexed* indexed-zset-1 indexed-zset-2 rel/not-found))
+   (left-join-indexed* indexed-zset-1 indexed-zset-2 const/not-found))
   ([indexed-zset-1 indexed-zset-2 nf]
    (let [left-join-indexed*-return
          (transduce

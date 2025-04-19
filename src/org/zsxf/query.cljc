@@ -1,5 +1,8 @@
 (ns org.zsxf.query
-  (:require [org.zsxf.zset :as zs]
+  (:require [org.zsxf.constant :as const]
+            [org.zsxf.datom2 :as d2]
+            [org.zsxf.relation :as rel]
+            [org.zsxf.zset :as zs]
             [org.zsxf.query :as-alias q]))
 
 (defn create-query
@@ -64,8 +67,8 @@
     (fn [s]
       (into #{}
         (comp
-          (map (fn [x] (if (= x zs/zset-sum) [:sum (zs/zset-weight x)] x)))
-          (map (fn [x] (if (= x zs/zset-count) [:count (zs/zset-weight x)] x))))
+          (map (fn [x] (if (= x const/zset-sum) [:sum (zs/zset-weight x)] x)))
+          (map (fn [x] (if (= x const/zset-count) [:count (zs/zset-weight x)] x))))
         s))))
 
 (defn get-state [query]

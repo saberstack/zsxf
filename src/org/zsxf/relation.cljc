@@ -4,6 +4,7 @@
             [org.zsxf.xf :as-alias xf]
             [taoensso.timbre :as timbre]))
 
+;TODO explore "associative" relation idea
 
 (defn relation? [x]
   (true? (::xf/relation (meta x))))

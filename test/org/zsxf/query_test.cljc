@@ -492,14 +492,6 @@
         ]
     (is (= result-ds-1 result-zsxf-1))))
 
-(comment
-  (let [rel1                ['[?danny :person/name "Danny Glover"] '[?danny :person/born ?danny-born]]
-        rel2                [['[?a :person/name ?actor] '[?a :person/born ?actor-born]]
-                             '[_ :movie/cast ?a]]
-        cartesian-rel1-rel2 [rel1 rel2]]
-    cartesian-rel1-rel2)
-
-  )
 
 (defn all-movies-optionally-find-sequels-zsxf
   [query-state]
@@ -564,16 +556,6 @@
       result-zsxf-1
       true)))
 
-(defn discard-not-found [s]
-  (into []
-    (apply
-      sequence
-      (comp
-        (map (fn [& ms]
-               (medley/find-first #(not (empty? %)) ms)))
-        (remove nil?))
-      s)))
-
 (defn all-movies-optionally-find-sequel-titles-zsxf
   [query-state]
   (comp
@@ -631,6 +613,19 @@
     [?m :movie/title ?title]
     ])
 
+;TODO how do we handle this?
+;reverse pull example
+(def all-movies-optionally-find-sequels-and-prequels-ds
+  '[:find (pull ?m [:db/id :movie/title {:movie/sequel [:movie/title]} {:movie/_sequel [:movie/title]}])
+    :where
+    [?m :movie/title ?title]
+    ])
+(comment
+  (let [[conn _schema] (util/load-learn-db)
+        result-ds-1   (d/q all-movies-optionally-find-sequels-and-prequels-ds @conn)]
+    result-ds-1)
+  )
+
 (deftest all-movies-with-maybe-sequel-titles
   (do
     (set! *print-meta* true)
@@ -643,6 +638,6 @@
           result-ds-1   (d/q all-movies-optionally-find-sequel-title-ds @conn)
           result-zsxf-1 (q/get-result query)]
       ;TODO handle [:not-found] values to match (pull ...)
-      result-ds-1
-      result-zsxf-1))
+      result-zsxf-1
+      result-ds-1))
   )

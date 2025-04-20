@@ -90,8 +90,6 @@
   [n]
   (zset-item const/zset-count n))
 
-(def zset-sum [:zset/sum])
-
 (defn zset-sum-item
   "zset representing a sum"
   [n]
@@ -111,24 +109,6 @@
   (let [result (s/valid? ::zs/zset x)]
     (when-not result (timbre/error (s/explain-data ::zs/zset x)))
     result))
-
-(defn with-not-found [s zsi-not-found]
-  (vary-meta s
-    (fn [m]
-      (update m :zset/deny-not-found
-        (fn [s] (conj (or s #{}) zsi-not-found))))))
-
-(defn without-not-found [s zsi-not-found]
-  (vary-meta s
-    (fn [m]
-      (update m :zset/deny-not-found
-        (fn [s] (disj (or s #{}) zsi-not-found))))))
-
-(defn zset-denied-not-found [s]
-  (:zset/deny-not-found (meta s)))
-
-(defn deny-not-found? [s zsi]
-  (contains? (zset-denied-not-found s) zsi))
 
 (declare zset)
 

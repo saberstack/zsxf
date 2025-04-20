@@ -134,7 +134,7 @@
                           (xf/disj-irrelevant-items zset# ~@preds#)))
                    ~@xf-steps-flat#
                    (xforms/reduce (zs/zset-xf+ (map
-                                                (xf/with-meta-f
+                                                (xf/same-meta-f
                                                   (juxt ~@(map (fn [find-var#]
                                                                  (let [[[clause-to-select# position#] & _] (find-var# variable-index#)]
                                                                    `(comp ~(position# pos->getter) ~@(clause-to-select# locators))))

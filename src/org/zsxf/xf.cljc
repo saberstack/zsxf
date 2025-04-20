@@ -90,7 +90,7 @@
         item-can-join? (condp = jt
                          :datom true
                          :relation (= clause (:xf.clause (meta (path-f zset-item)))))]
-    (when (false? item-can-join?)
+    #_(when (false? item-can-join?)
       (timbre/info "cannot join !!!")
       (timbre/info zset-item)
       (timbre/info "path-f to item ::::" (path-f zset-item))
@@ -287,7 +287,7 @@
           ;if none of the predicates were true...
           (and (empty? delta-1) (empty? delta-2)))
         (mapcat (fn [[_delta-1 _delta-2 zset ?zset-nf]]
-                  [(timbre/spy ?zset-nf)
+                  [?zset-nf
                    ;return the zset
                    zset]))
         ;else, proceed to join
@@ -445,12 +445,12 @@
     (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
     (mapcat (fn [{:keys [cnt]}] [(zs/zset-count-item cnt)]))))
 
-(defn with-meta-f
+(defn same-meta-f
   "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
   [f]
   (fn [data]
-    (with-meta
-      (f data)
+    ((fnil with-meta const/not-found)
+     (f data)
       (meta data))))
 
 (defn mapcat-zset-transaction-xf

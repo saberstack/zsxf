@@ -9,28 +9,25 @@
       (:xf.clause (meta (first x)))
       (:xf.clause (meta (second x))))))
 
-(defn index-clauses [rel]
-  (if (relation? rel)
-    (let [existing-rel-index-1 (:rel.index (meta (first rel)))
-          existing-rel-index-2 (:rel.index (meta (second rel)))
-          rel-index-from-existing
-                               (merge
-                                 (update-vals existing-rel-index-1 (fn [v] (apply conj [0] v)))
-                                 (update-vals existing-rel-index-2 (fn [v] (apply conj [1] v))))
-          rel-index-m          (merge-with
-                                 (fn [val-in-prev _val-in-latter]
-                                   val-in-prev)
-                                 rel-index-from-existing
-                                 (into {}
-                                   (map-indexed
-                                     (fn [idx rel-item]
-                                       [(:xf.clause (meta rel-item)) [idx]]))
-                                   rel))]
-      (-> rel
-        (vary-meta (fn [m] (assoc m :rel.index rel-index-m)))
+(defn index-clauses [rel1+rel2-v]
+  (if (relation? rel1+rel2-v)
+    (let [[rel1 rel2] rel1+rel2-v
+          rel-index-1-prev (:rel.index (meta rel1))
+          rel-index-2-prev (:rel.index (meta rel2))
+          ;"Lift" previous relation indices one level
+          rel-index-prev'  (merge
+                             (update-vals rel-index-1-prev (fn [v] (apply conj [0] v)))
+                             (update-vals rel-index-2-prev (fn [v] (apply conj [1] v))))
+          ;next index from top level clauses
+          rel-index-next   {(:xf.clause (meta rel1)) [0]
+                            (:xf.clause (meta rel2)) [1]}
+          ;merge prev and next index, keeping prev updated values
+          rel-index-next   (merge-with (fn [prev _] prev) rel-index-prev' rel-index-next)]
+      (-> rel1+rel2-v
+        (vary-meta (fn [m] (assoc m :rel.index rel-index-next)))
         (update 0 (fn [x] (vary-meta x #(dissoc % :rel.index))))
         (update 1 (fn [x] (vary-meta x #(dissoc % :rel.index))))))
-    rel))
+    rel1+rel2-v))
 
 (defn find-clause [rel clause]
   (let [path (get (:rel.index (meta rel)) clause)]

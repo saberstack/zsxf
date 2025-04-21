@@ -211,6 +211,11 @@
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
 
+(defn outer-join-xf []
+  ;TODO continue here
+  ; use join-xf, difference-xf, and union-xf
+  )
+
 
 (defonce tmp-state (atom nil))
 

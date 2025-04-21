@@ -550,9 +550,10 @@
     :where
     [?m :movie/title ?title]
     [(get-else $ ?m :movie/sequel :no-sequel) ?maybe-sequel]
-    [(get-else $ ?maybe-sequel :movie/title :no-sequel-no-title) ?maybe-sequel-title]])
+    ;[(get-else $ ?maybe-sequel :movie/title :no-sequel-no-title) ?maybe-sequel-title]
+    ])
 
-(defn movies-without-sequels-zsxf [query-state]
+(defn basic-difference-zsxf [query-state]
   (comp
     (xf/mapcat-zset-transaction-xf)
     (xf/join-xf
@@ -578,9 +579,9 @@
     (xforms/reduce
       (zs/zset-xf+
         (map (xf/same-meta-f
-               (fn [zset-item]
-                 zset-item
-                 [(d2/datom->val zset-item)])))))))
+               (fn [zset-item-final]
+                 ;(timbre/spy zset-item-final)
+                 [(d2/datom->val zset-item-final)])))))))
 
 (def movies-without-sequels-ds
   '[:find ?title
@@ -591,10 +592,8 @@
 (deftest movies-without-sequels
   (let [_           (timbre/set-min-level! :trace)
         [conn _] (util/load-learn-db-empty)
-        ;[conn _] (util/load-learn-db)
-        query       (q/create-query movies-without-sequels-zsxf
-                      ;[zs/zset+ #{}]
-                      )
+        [conn _] (util/load-learn-db)
+        query       (q/create-query basic-difference-zsxf)
         _           (ds/init-query-with-conn query conn)
         result-zsxf (q/get-result query)
         result-ds   (d/q movies-without-sequels-ds @conn)]
@@ -640,6 +639,102 @@
     (d/q movies-without-sequels-ds @conn)
 
     ))
+
+
+(defn difference-then-union-zsxf [query-state]
+  (let [clause-gen-1 (gensym 'difference-xf-1)]
+    (comp
+      (xf/mapcat-zset-transaction-xf)
+      (xf/join-xf
+        {:clause    '[?m :movie/title ?title]
+         :path      identity
+         :pred      #(d2/datom-attr= % :movie/title)
+         :index-kfn d2/datom->eid}
+        {:clause    '[?m :movie/sequel]
+         :path      identity
+         :pred      #(d2/datom-attr= % :movie/sequel)
+         :index-kfn d2/datom->eid}
+        query-state)
+      (xf/difference-xf
+        {:clause      '[?m :movie/title ?title]
+         :path        identity
+         :pred        #(d2/datom-attr= % :movie/title)
+         :zset-item-f identity}
+        {:clause      '[?m :movie/sequel]
+         :path        (util/path-f [1])
+         :pred        #(d2/datom-attr= % :movie/sequel)
+         :zset-item-f first}
+        :output-clause clause-gen-1)
+      (xf/union-xf
+        {:clause      '[?m :movie/sequel]
+         :path        (util/path-f [1])
+         :pred        #(d2/datom-attr= % :movie/sequel)
+         :zset-item-f identity}
+        {:clause      clause-gen-1
+         :path        identity
+         :pred        #(d2/datom-attr= % :movie/title)
+         :zset-item-f identity}
+        :last? true)
+      (xforms/reduce
+        (zs/zset-xf+
+          (map (xf/same-meta-f
+                 (fn [internal-reduce-zset-item]
+                   (timbre/spy internal-reduce-zset-item))))))
+      (map (fn [post-reduce-item]
+             (timbre/spy post-reduce-item))))))
+
+(deftest difference-then-union
+  (let [_           (set! *print-meta* true)
+        _           (timbre/set-min-level! :trace)
+        ;[conn _] (util/load-learn-db-empty)
+        [conn _] (util/load-learn-db)
+        query       (q/create-query difference-then-union-zsxf)
+        _           (ds/init-query-with-conn query conn)
+        result-zsxf (q/get-result query)]
+    (def conn conn)
+    (def query query)
+    result-zsxf)
+
+  (comment
+
+    (d/transact! conn
+      [{:movie/title "Terminator"}])
+
+    (d/q movies-maybe-sequels-ds @conn)
+    (q/get-result query)
+
+    (d/transact! conn
+      [{:movie/title "Terminator 2"}])
+
+    (d/q movies-maybe-sequels-ds @conn)
+    (q/get-result query)
+
+    (d/transact! conn
+      [{:db/id 1 :movie/sequel 2}])
+    (q/get-result query)
+
+
+    (d/transact! conn [[:db/retract 1 :movie/sequel]])
+    (d/transact! conn [[:db/retract 52 :movie/sequel]])
+    (q/get-result query)
+
+    (d/q movies-maybe-sequels-ds @conn)
+    (q/get-result query)
+    (q/get-state query)
+
+    (d/transact! conn
+      [{:movie/title "Terminator 3"}])
+
+    (d/q movies-maybe-sequels-ds @conn)
+
+    (d/transact! conn
+      [{:db/id 2 :movie/sequel 3}])
+
+    (d/q movies-maybe-sequels-ds @conn)
+
+    )
+
+  )
 
 (def all-movies-optionally-find-sequels-ds
   '[:find ?title ?m2 #_?title2

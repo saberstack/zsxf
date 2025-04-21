@@ -10,24 +10,29 @@
   init-xf is a function which takes a single argument,
   and must return a ZSXF-compatible transducer which takes and returns zsets
   Returns a map."
-  [init-xf]
-  (let [state (atom nil)]
-    {::q/xf    (init-xf state)
-     ::q/state state
-     ::q/id    (random-uuid)}))
+  ([init-xf]
+   (create-query init-xf []))
+  ([init-xf custom-init]
+   (let [state (atom nil)]
+     {::q/xf          (init-xf state)
+      ::q/state       state
+      ::q/id          (random-uuid)
+      ::q/custom-init custom-init})))
 
-(defn init-result [result result-delta]
+(defn init-result [result result-delta [reduce-fn reduce-init]]
   (if (nil? result)
     ;init
     (cond
-      (map? result-delta) [{} zs/indexed-zset+]             ;for aggregates, allow negative weights
-      (set? result-delta) [#{} zs/zset-pos+]                ;regular joins, no negative weight
+      (and (fn? reduce-fn) (coll? reduce-init)) [reduce-fn reduce-init]
+      (map? result-delta) [zs/indexed-zset+ {}]             ;for aggregates, allow negative weights
+      (set? result-delta) [zs/zset-pos+ #{}]                ;regular joins, no negative weight
       :else (throw (ex-info "result-delta must be either map or set"
                      {:result-delta result})))
     ;else, existing result
     (cond
-      (and (map? result) (map? result-delta)) [result zs/indexed-zset+] ;for aggregates, allow negative weights
-      (and (set? result) (set? result-delta)) [result zs/zset-pos+] ;regular joins no negative weights
+      (and (fn? reduce-fn) (coll? reduce-init)) [reduce-fn result]
+      (and (map? result) (map? result-delta)) [zs/indexed-zset+ result] ;for aggregates, allow negative weights
+      (and (set? result) (set? result-delta)) [zs/zset-pos+ result] ;regular joins no negative weights
       :else (throw (ex-info "result and result-delta together must be either maps or sets"
                      {:result result :result-delta result})))))
 
@@ -36,7 +41,7 @@
   Synchronously executes the transaction, summing the existing query result state with new deltas, if any.
   Returns the full post-transaction query result.
   The result can be a set or a map (in the case of aggregations)."
-  [{::q/keys [state xf] :as _query} zsets]
+  [{::q/keys [state xf custom-init] :as _query} zsets]
   (transduce
     xf
     (fn
@@ -48,7 +53,7 @@
        ;side effect
        (swap! state
          (fn [{::q/keys [result] :as state-m}]
-           (let [[result result+] (init-result result result-delta)]
+           (let [[result+ result] (init-result result result-delta custom-init)]
              (assoc state-m ::q/result
                (result+ result result-delta)))))))
     [zsets]))

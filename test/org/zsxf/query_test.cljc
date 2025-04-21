@@ -589,15 +589,18 @@
     (not [?m :movie/sequel ?sequel])])
 
 (deftest movies-without-sequels
-  (let [_ (timbre/set-min-level! :trace)
+  (let [_           (timbre/set-min-level! :trace)
         [conn _] (util/load-learn-db-empty)
-        [conn _] (util/load-learn-db)
-        query       (q/create-query movies-without-sequels-zsxf)
+        ;[conn _] (util/load-learn-db)
+        query       (q/create-query movies-without-sequels-zsxf
+                      ;[zs/zset+ #{}]
+                      )
         _           (ds/init-query-with-conn query conn)
         result-zsxf (q/get-result query)
         result-ds   (d/q movies-without-sequels-ds @conn)]
-    ;(def conn conn)
-    ;(def query query)
+    (def conn conn)
+    (def query query)
+    result-zsxf
     (is (= result-ds result-zsxf)))
 
   (comment
@@ -616,9 +619,15 @@
 
     (d/transact! conn
       [{:db/id 1 :movie/sequel 2}])
+    (q/get-result query)
+
+
+    (d/transact! conn [[:db/retract 1 :movie/sequel]])
+    (q/get-result query)
 
     (d/q movies-without-sequels-ds @conn)
     (q/get-result query)
+    (q/get-state query)
 
     (d/transact! conn
       [{:movie/title "Terminator 3"}])

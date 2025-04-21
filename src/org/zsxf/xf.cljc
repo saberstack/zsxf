@@ -213,8 +213,8 @@
                     [join-xf-delta zset])))))))
 
 (defn union-xf
-  [{clause-1 :clause path-f-1 :path pred-1 :pred zset-item-f-1 :zset-item-f :or {path-f-1 identity}}
-   {clause-2 :clause path-f-2 :path pred-2 :pred zset-item-f-2 :zset-item-f :or {path-f-2 identity}}
+  [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity}}
+   {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f :or {path-f-2 identity}}
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
@@ -222,16 +222,21 @@
     ;receives a zset, unpacks zset into individual items
     (mapcat identity)
     ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
-    (map (fn [zset-item]
-           (let [delta-1 (if (and (can-join? zset-item path-f-1 clause-1)
-                               (pred-1 (path-f-1 zset-item)))
-                           (zs/zset #{(zset-item-f-1 zset-item)}) #{})
-                 delta-2 (if (and (can-join? zset-item path-f-2 clause-2)
-                               (pred-2 (path-f-2 zset-item)))
-                           (zs/zset #{(zset-item-f-2 zset-item)}) #{})
-                 zset    (if last? #{} #{zset-item})]
+    (map (fn [-zset-item]
+           (timbre/spy -zset-item)
+           (let [delta-1 (if (and (can-join? -zset-item path-f-1 clause-1)
+                               (pred-1 (path-f-1 -zset-item)))
+                           (zs/zset #{(zs/new-zset-item
+                                        (item-f-1 -zset-item)
+                                        (zs/zset-weight -zset-item))}) #{})
+                 delta-2 (if (and (can-join? -zset-item path-f-2 clause-2)
+                               (pred-2 (path-f-2 -zset-item)))
+                           (zs/zset #{(zs/new-zset-item
+                                        (item-f-2 -zset-item)
+                                        (zs/zset-weight -zset-item))}) #{})
+                 zset    (if last? #{} #{-zset-item})]
              ;return
-             [delta-1 delta-2 zset])))
+             (timbre/spy [delta-1 delta-2 zset]))))
     (cond-branch
       ;does difference-xf care about the current item?
       (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]

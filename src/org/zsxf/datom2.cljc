@@ -77,12 +77,3 @@
       (map datom->datom2->zset-item)
       (map hash-set))
     datoms))
-
-(defn datom->map [x]
-  (cond
-    (datom2? x) {:db/id (nth x 0) (nth x 1) (nth x 2)}
-    (= x const/not-found) {}
-    ;repl helper case
-    (util/datom-like? x) {:db/id (nth x 0) (nth x 1) (nth x 2)}
-    :else nil #_(throw (throw (ex-info "x must be either a datom, datom-like or [:not-found] type"
-                                {:provided-x x :provided-type (type x)})))))

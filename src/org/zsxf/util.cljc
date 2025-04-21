@@ -241,4 +241,6 @@
 (comment
   (scaffold clojure.lang.IPersistentMap)
 
+  (scaffold clojure.lang.IPersistentCollection)
+
   (scaffold clojure.lang.IPersistentVector))

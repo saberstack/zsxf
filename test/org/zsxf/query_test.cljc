@@ -360,7 +360,7 @@
     (xf/cartesian-xf
       {:clause '[?m :movie/title _]
        :pred   #(d2/datom-attr= % :movie/title)}
-      {:clause '[?m :movie/title _]
+      {:clause '[?m :movie/title _x]
        :pred   #(d2/datom-attr= % :movie/title)}
       query-state
       :last? true)
@@ -369,8 +369,8 @@
         (map (xf/same-meta-f
                (fn [zset-item]
                  (let [juxt-find (juxt
-                                   (comp d2/datom->eid (util/path-f [0]))
-                                   (comp d2/datom->eid (util/path-f [1])))]
+                                   (comp d2/datom->val (util/path-f [0]))
+                                   (comp d2/datom->val (util/path-f [1])))]
                    (juxt-find zset-item)))))))))
 
 (def cartesian-product-movie-person-ds
@@ -380,10 +380,10 @@
     [?p :person/name _]])
 
 (def cartesian-product-movie-movie-ds
-  '[:find ?m ?m2
+  '[:find ?t1 ?t2
     :where
-    [?m :movie/title _]
-    [?m2 :movie/title _]])
+    [?m :movie/title ?t1]
+    [?m2 :movie/title ?t2]])
 
 (deftest cartesian-product-movie-movie
   (let [[conn _] (util/load-learn-db)
@@ -392,6 +392,30 @@
         result-zsxf (q/get-result query)
         result-ds   (d/q cartesian-product-movie-movie-ds @conn)]
     (is (= result-ds result-zsxf))))
+
+(deftest cartesian-product-movie-movie-with-retract
+  (let [[conn _] (util/load-learn-db)
+        query       (q/create-query cartesian-product-movie-movie-zsxf)
+        _           (ds/init-query-with-conn query conn)
+        _           (d/transact! conn [[:db/retract 52 :movie/title]])
+        result-zsxf (q/get-result query)
+        result-ds   (d/q cartesian-product-movie-movie-ds @conn)]
+    (is (= result-ds result-zsxf))))
+
+;equivalent?
+(comment
+  ;OR is set/union TODO
+  '(or
+     ;all movies with sequels (10), inner-join, join-xf
+     (and
+       [?m :movie/title ?t]
+       [?m :movie/sequel])
+     ;movies without sequels (2), set/diff TODO
+     (and
+       [?m :movie/title ?t]
+       (not [?m :movie/sequel])))
+  )
+
 
 (deftest cartesian-product-movie-person
   (let [[conn _] (util/load-learn-db)
@@ -508,42 +532,6 @@
         ]
     (is (= result-ds-1 result-zsxf-1))))
 
-
-(defn all-movies-optionally-find-sequels-zsxf
-  [query-state]
-  (comp
-    (xf/mapcat-zset-transaction-xf)
-    (xf/left-join-xf
-      {:clause    '[?m :movie/title ?title]
-       :path      identity
-       :pred      #(d2/datom-attr= % :movie/title)
-       :index-kfn d2/datom->eid}
-      {:clause    '[?m :movie/sequel :no-sequel?]
-       :path      identity
-       :pred      #(d2/datom-attr= % :movie/sequel)
-       :index-kfn d2/datom->eid}
-      query-state
-      :last? true)
-    (xforms/reduce
-      (zs/zset-xf+
-        (map (xf/same-meta-f
-               (fn [zset-item]
-                 ((juxt
-                    (comp d2/datom->val (util/path-f [0]))
-                    (comp d2/?datom->val (util/path-f [1])))
-                  zset-item))))))
-    (map (fn [post-reduce-debug]
-           (timbre/spy post-reduce-debug)))))
-
-(def all-movies-optionally-find-sequels-ds
-  '[:find ?title ?m2 #_?title2
-    :in $
-    :where
-    [?m :movie/title ?title]
-    [(get-else $ ?m :movie/sequel [:not-found]) ?m2]
-    ;[(get-else $ ?m2 :movie/title :no-seq-no-title) ?title2]
-    ])
-
 (def tiny-data
   [{:db/id        -200
     :movie/title  "The Terminator"
@@ -554,79 +542,104 @@
    ; :movie/year     1982}
    {:db/id       -207
     :movie/title "Terminator 2: Judgment Day"
-    :movie/year  1991}
-   ])
+    :movie/year  1991}])
 
-(deftest all-movies-with-maybe-sequels
-  (do
-    (set! *print-meta* false)
-    (let [[conn _schema] (util/load-learn-db)
-          query         (q/create-query all-movies-optionally-find-sequels-zsxf)
-          _             (ds/init-query-with-conn query conn)
-          result-ds-1   (d/q all-movies-optionally-find-sequels-ds @conn)
-          result-zsxf-1 (q/get-result query)]
-      ;TODO how to handle this case?
-      ; some extra not-found are included but the impls is simpler
-      ;(is (= result-zsxf-1 result-ds-1))
-      result-ds-1
-      result-zsxf-1)))
+(def movies-maybe-sequels-ds
+  '[:find ?title ?maybe-sequel
+    :in $
+    :where
+    [?m :movie/title ?title]
+    [(get-else $ ?m :movie/sequel :no-sequel) ?maybe-sequel]
+    [(get-else $ ?maybe-sequel :movie/title :no-sequel-no-title) ?maybe-sequel-title]])
 
-(defn all-movies-optionally-find-sequel-titles-zsxf
-  [query-state]
+(defn movies-without-sequels-zsxf [query-state]
   (comp
     (xf/mapcat-zset-transaction-xf)
-    (xf/left-join-xf
-      {:clause    :movie-title
+    (xf/join-xf
+      {:clause    '[?m :movie/title ?title]
        :path      identity
        :pred      #(d2/datom-attr= % :movie/title)
        :index-kfn d2/datom->eid}
-      {:clause    :sequel?
+      {:clause    '[?m :movie/sequel]
        :path      identity
        :pred      #(d2/datom-attr= % :movie/sequel)
        :index-kfn d2/datom->eid}
-      query-state
-      ;:last? true
-      )
-    (map (fn [in-between-debug-1] (timbre/spy in-between-debug-1)))
-    (xf/left-join-xf
-      {:clause    :sequel?
-       :path      (util/path-f [1])
-       :pred      (fn [always-true-pred-item]
-                    (timbre/spy always-true-pred-item)
-                    (d2/datom-attr= always-true-pred-item :movie/sequel)
-                    true)
-       :index-kfn (fn [x] (d2/datom->val x))}
-      {:clause    :sequel-title
-       :path      identity
-       :pred      #(d2/datom-attr= % :movie/title)
-       :index-kfn d2/datom->eid}
-      query-state
+      query-state)
+    (xf/difference-xf
+      {:clause      '[?m :movie/title ?title]
+       :path        identity
+       :pred        #(d2/datom-attr= % :movie/title)
+       :zset-item-f identity}
+      {:clause      '[?m :movie/sequel]
+       :path        (util/path-f [1])
+       :pred        #(d2/datom-attr= % :movie/sequel)
+       :zset-item-f first}
       :last? true)
     (xforms/reduce
-      zs/zset+
-      #_(zs/zset-xf+
-          (map (xf/same-meta-f
-                 (fn [zset-item]
-                   (timbre/spy zset-item)
-                   (rel/find-clause zset-item :movie-title)
-                   )))))
-    ;initial (pull ...) impl
-    (xf/group-by-xf
-      (util/path-f [0 0 0])
-      (comp
-        (map (juxt
-               (util/path-f [0 0 d2/datom->map])
-               (util/path-f [0 1 d2/datom->map])
-               (util/path-f
-                 [1 d2/datom->map
-                  ;make unique
-                  #(set/rename-keys % {:movie/title :movie/title.sequel
-                                       :db/id       :db/id.sequel})]))))
-      (comp
-        ;(fn [s] (rsxf/pull s [:movie/title {:movie/sequel [:movie/title.sequel]}]))
-        (fn [s] #{(apply merge s)})
-        (fn [s] (xf/discard-not-found s))))
+      (zs/zset-xf+
+        (map (xf/same-meta-f
+               (fn [zset-item]
+                 zset-item
+                 [(d2/datom->val zset-item)])))))))
+
+(def movies-without-sequels-ds
+  '[:find ?title
+    :where
+    [?m :movie/title ?title]
+    (not [?m :movie/sequel ?sequel])])
+
+(deftest movies-without-sequels
+  (let [_ (timbre/set-min-level! :trace)
+        [conn _] (util/load-learn-db-empty)
+        [conn _] (util/load-learn-db)
+        query       (q/create-query movies-without-sequels-zsxf)
+        _           (ds/init-query-with-conn query conn)
+        result-zsxf (q/get-result query)
+        result-ds   (d/q movies-without-sequels-ds @conn)]
+    ;(def conn conn)
+    ;(def query query)
+    (is (= result-ds result-zsxf)))
+
+  (comment
+
+    (d/transact! conn
+      [{:movie/title "Terminator"}])
+
+    (d/q movies-without-sequels-ds @conn)
+    (q/get-result query)
+
+    (d/transact! conn
+      [{:movie/title "Terminator 2"}])
+
+    (d/q movies-without-sequels-ds @conn)
+    (q/get-result query)
+
+    (d/transact! conn
+      [{:db/id 1 :movie/sequel 2}])
+
+    (d/q movies-without-sequels-ds @conn)
+    (q/get-result query)
+
+    (d/transact! conn
+      [{:movie/title "Terminator 3"}])
+
+    (d/q movies-without-sequels-ds @conn)
+
+    (d/transact! conn
+      [{:db/id 2 :movie/sequel 3}])
+
+    (d/q movies-without-sequels-ds @conn)
+
     ))
+
+(def all-movies-optionally-find-sequels-ds
+  '[:find ?title ?m2 #_?title2
+    :in $
+    :where
+    [?m :movie/title ?title]
+    [(get-else $ ?m :movie/sequel [:not-found]) ?m2]
+    ;[(get-else $ ?m2 :movie/title :no-seq-no-title) ?title2]
+    ])
 
 (def all-movies-optionally-find-sequel-title-ds
   '[:find (pull ?m [:db/id :movie/title {:movie/sequel [:movie/title]}])
@@ -647,112 +660,16 @@
     result-ds-1)
   )
 
-(deftest all-movies-with-maybe-sequel-titles
-  (do
-    (set! *print-meta* false)
-    (let [
-          [conn _schema] (util/load-learn-db)
-          ;[conn _schema] (util/load-learn-db-empty)
-          ;_             (d/transact! conn tiny-data)
-          query         (q/create-query all-movies-optionally-find-sequel-titles-zsxf)
-          _             (ds/init-query-with-conn query conn)
-          _             (d/transact! conn [[:db/retract 52 :movie/title]])
-          result-ds-1   (d/q all-movies-optionally-find-sequel-title-ds @conn)
-          result-zsxf-1 (q/get-result query)
-          ]
-      result-ds-1
-      result-zsxf-1
-      #_(d/q
-          '[:find ?e
-            :where
-            [?e :movie/title "Terminator 2"]]
-          @conn)))
-  )
+(def union-movies-people-ds
+  '[:find ?x
+    :where
+    (or
+      [_ :movie/title ?x]
+      [_ :person/name ?x])
+    ])
 
-(comment
-
-  (cursive/diff
-
-    #{[[[58 :movie/title "Lethal Weapon 2"] [:not-found]] [:not-found]]
-      [[[58 :movie/title "Lethal Weapon 2"] [58 :movie/sequel 64]] [:not-found]]
-      [[[67 :movie/title "Mad Max"] [:not-found]] [:not-found]]
-      [[[68 :movie/title "Mad Max 2"] [68 :movie/sequel 69]] [69 :movie/title "Mad Max Beyond Thunderdome"]]
-      [[[62 :movie/title "Terminator 3: Rise of the Machines"] [:not-found]] [:not-found]]
-      [[[67 :movie/title "Mad Max"] [67 :movie/sequel 68]] [68 :movie/title "Mad Max 2"]]
-      [[[54 :movie/title "Rambo: First Blood Part II"] [:not-found]] [:not-found]]
-      [[[69 :movie/title "Mad Max Beyond Thunderdome"] [:not-found]] [:not-found]]
-      [[[65 :movie/title "Alien"] [65 :movie/sequel 66]] [66 :movie/title "Aliens"]]
-      [[[56 :movie/title "Predator 2"] [:not-found]] [:not-found]]
-      [[[68 :movie/title "Mad Max 2"] [:not-found]] [:not-found]]
-      [[[66 :movie/title "Aliens"] [:not-found]] [:not-found]]
-      [[[51 :movie/title "The Terminator"] [51 :movie/sequel 52]] [:not-found]]
-      [[[54 :movie/title "Rambo: First Blood Part II"] [54 :movie/sequel 63]] [:not-found]]
-      [[[51 :movie/title "The Terminator"] [:not-found]] [:not-found]]
-      [[[68 :movie/title "Mad Max 2"] [68 :movie/sequel 69]] [:not-found]]
-      [[[53 :movie/title "First Blood"] [53 :movie/sequel 54]] [54 :movie/title "Rambo: First Blood Part II"]]
-      [[[57 :movie/title "Lethal Weapon"] [57 :movie/sequel 58]] [58 :movie/title "Lethal Weapon 2"]]
-      [[[58 :movie/title "Lethal Weapon 2"] [58 :movie/sequel 64]] [64 :movie/title "Lethal Weapon 3"]]
-      [[[60 :movie/title "Commando"] [:not-found]] [:not-found]]
-      [[[53 :movie/title "First Blood"] [:not-found]] [:not-found]]
-      [[[53 :movie/title "First Blood"] [53 :movie/sequel 54]] [:not-found]]
-      [[[51 :movie/title "The Terminator"] [51 :movie/sequel 52]] [52 :movie/title "Terminator 2: Judgment Day"]]
-      [[[61 :movie/title "Die Hard"] [:not-found]] [:not-found]]
-      [[[65 :movie/title "Alien"] [65 :movie/sequel 66]] [:not-found]]
-      [[[52 :movie/title "Terminator 2: Judgment Day"] [52 :movie/sequel 62]] [:not-found]]
-      [[[67 :movie/title "Mad Max"] [67 :movie/sequel 68]] [:not-found]]
-      [[[55 :movie/title "Predator"] [55 :movie/sequel 56]] [:not-found]]
-      [[[63 :movie/title "Rambo III"] [:not-found]] [:not-found]]
-      [[[70 :movie/title "Braveheart"] [:not-found]] [:not-found]]
-      [[[64 :movie/title "Lethal Weapon 3"] [:not-found]] [:not-found]]
-      [[[52 :movie/title "Terminator 2: Judgment Day"] [:not-found]] [:not-found]]
-      [[[57 :movie/title "Lethal Weapon"] [:not-found]] [:not-found]]
-      [[[65 :movie/title "Alien"] [:not-found]] [:not-found]]
-      [[[52 :movie/title "Terminator 2: Judgment Day"] [52 :movie/sequel 62]]
-       [62 :movie/title "Terminator 3: Rise of the Machines"]]
-      [[[59 :movie/title "RoboCop"] [:not-found]] [:not-found]]
-      [[[54 :movie/title "Rambo: First Blood Part II"] [54 :movie/sequel 63]] [63 :movie/title "Rambo III"]]
-      [[[55 :movie/title "Predator"] [:not-found]] [:not-found]]
-      [[[57 :movie/title "Lethal Weapon"] [57 :movie/sequel 58]] [:not-found]]
-      [[[55 :movie/title "Predator"] [55 :movie/sequel 56]] [56 :movie/title "Predator 2"]]}
-
-
-    #{[[[58 :movie/title "Lethal Weapon 2"] [:not-found]] [:not-found]]
-      [[[58 :movie/title "Lethal Weapon 2"] [58 :movie/sequel 64]] [:not-found]]
-      [[[67 :movie/title "Mad Max"] [:not-found]] [:not-found]]
-      [[[68 :movie/title "Mad Max 2"] [68 :movie/sequel 69]] [69 :movie/title "Mad Max Beyond Thunderdome"]]
-      [[[62 :movie/title "Terminator 3: Rise of the Machines"] [:not-found]] [:not-found]]
-      [[[67 :movie/title "Mad Max"] [67 :movie/sequel 68]] [68 :movie/title "Mad Max 2"]]
-      [[[54 :movie/title "Rambo: First Blood Part II"] [:not-found]] [:not-found]]
-      [[[69 :movie/title "Mad Max Beyond Thunderdome"] [:not-found]] [:not-found]]
-      [[[65 :movie/title "Alien"] [65 :movie/sequel 66]] [66 :movie/title "Aliens"]]
-      [[[56 :movie/title "Predator 2"] [:not-found]] [:not-found]]
-      [[[68 :movie/title "Mad Max 2"] [:not-found]] [:not-found]]
-      [[[66 :movie/title "Aliens"] [:not-found]] [:not-found]]
-      [[[51 :movie/title "The Terminator"] [51 :movie/sequel 52]] [:not-found]]
-      [[[54 :movie/title "Rambo: First Blood Part II"] [54 :movie/sequel 63]] [:not-found]]
-      [[[51 :movie/title "The Terminator"] [:not-found]] [:not-found]]
-      [[[68 :movie/title "Mad Max 2"] [68 :movie/sequel 69]] [:not-found]]
-      [[[53 :movie/title "First Blood"] [53 :movie/sequel 54]] [54 :movie/title "Rambo: First Blood Part II"]]
-      [[[57 :movie/title "Lethal Weapon"] [57 :movie/sequel 58]] [58 :movie/title "Lethal Weapon 2"]]
-      [[[58 :movie/title "Lethal Weapon 2"] [58 :movie/sequel 64]] [64 :movie/title "Lethal Weapon 3"]]
-      [[[60 :movie/title "Commando"] [:not-found]] [:not-found]]
-      [[[53 :movie/title "First Blood"] [:not-found]] [:not-found]]
-      [[[53 :movie/title "First Blood"] [53 :movie/sequel 54]] [:not-found]]
-      [[[61 :movie/title "Die Hard"] [:not-found]] [:not-found]]
-      [[[65 :movie/title "Alien"] [65 :movie/sequel 66]] [:not-found]]
-      [[[52 :movie/title "Terminator 2: Judgment Day"] [52 :movie/sequel 62]] [:not-found]]
-      [[[67 :movie/title "Mad Max"] [67 :movie/sequel 68]] [:not-found]]
-      [[[55 :movie/title "Predator"] [55 :movie/sequel 56]] [:not-found]]
-      [[[63 :movie/title "Rambo III"] [:not-found]] [:not-found]]
-      [[[70 :movie/title "Braveheart"] [:not-found]] [:not-found]]
-      [[[64 :movie/title "Lethal Weapon 3"] [:not-found]] [:not-found]]
-      [[[52 :movie/title "Terminator 2: Judgment Day"] [:not-found]] [:not-found]]
-      [[[57 :movie/title "Lethal Weapon"] [:not-found]] [:not-found]]
-      [[[65 :movie/title "Alien"] [:not-found]] [:not-found]]
-      [[[59 :movie/title "RoboCop"] [:not-found]] [:not-found]]
-      [[[54 :movie/title "Rambo: First Blood Part II"] [54 :movie/sequel 63]] [63 :movie/title "Rambo III"]]
-      [[[55 :movie/title "Predator"] [:not-found]] [:not-found]]
-      [[[57 :movie/title "Lethal Weapon"] [57 :movie/sequel 58]] [:not-found]]
-      [[[55 :movie/title "Predator"] [55 :movie/sequel 56]] [56 :movie/title "Predator 2"]]})
-
+(defn union-explore []
+  (let [[conn _schema] (util/load-learn-db)
+        result-ds (d/q union-movies-people-ds @conn)]
+    result-ds)
   )

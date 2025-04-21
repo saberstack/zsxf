@@ -23,7 +23,11 @@
   (:zset/w (meta x)))
 
 (defn type-not-found? [x]
-  (= const/not-found (util/peekv x)))
+  (= const/not-found (util/peekv x))
+  ;TODO remove, debug only!!
+  ;debug
+  false
+  )
 
 (defn determine-weight [zset-item w]
   ;TODO determine if it's important to keep [:not-found] weights at 1
@@ -345,6 +349,46 @@
                    (zset* zset-1 zset-2 zset*-item-1-f zset*-item-2-f rel/index-clauses))
                  (assoc accum index-k-1
                    (zset* zset-1 zset-1 zset*-item-1-f (fn [_] (zset*-item-2-f const/not-found)) rel/index-clauses)))))
+           {}
+           indexed-zset-1)]
+     left-join-indexed*-return)))
+
+;TODO delete?
+#_(defn rel->maybe [rel]
+  (timbre/spy rel)
+  (let [rel-meta (meta rel)]
+    (vary-meta
+      (first rel)
+      (fn [m]
+        (merge-with
+          (fn [prev new]
+            (timbre/info "conflict" prev new)
+            (if (and (set? prev) (set? new))
+              #{}
+              new))
+          (or m {})
+          (timbre/spy rel-meta)
+          {:maybe #{rel}})))))
+
+;TODO delete?
+#_(defn left-join-indexed*-2
+  "Like intersect-indexed* but keeps everything from indexed-zset-1
+   with missing matches from indexed-zset-2 replaced with :not-found"
+  ([indexed-zset-1 indexed-zset-2]
+   (left-join-indexed*-2 indexed-zset-1 indexed-zset-2 identity identity))
+  ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f]
+   (let [left-join-indexed*-return
+         (transduce
+           (map (fn [k+v] k+v))
+           (completing
+             (fn [accum [index-k-1 zset-1 :as k+v]]
+               (if-let [[_index-k-2 zset-2] (find indexed-zset-2 index-k-1)]
+                 (assoc accum index-k-1
+                   (zset* zset-1 zset-2 zset*-item-1-f zset*-item-2-f rel->maybe))
+                 (assoc accum index-k-1
+                   (zset* zset-1 zset-1 zset*-item-1-f (fn [_] (zset*-item-2-f const/not-found)) rel->maybe))))
+             (fn [final-value]
+               (timbre/spy final-value)))
            {}
            indexed-zset-1)]
      left-join-indexed*-return)))

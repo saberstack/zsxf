@@ -89,6 +89,15 @@
        (with-meta x const/zset-weight-of-1)
        (assoc-zset-item-weight x weight)))))
 
+(defn new-zset-item
+  "Overwrites any existing meta"
+  ([x]
+   (with-meta x const/zset-weight-of-1))
+  ([x weight]
+   (if (= 1 weight)
+     (with-meta x const/zset-weight-of-1)
+     (with-meta x {:zset/w weight}))))
+
 (defn zset-count-item
   "zset representing a count"
   [n]

@@ -212,7 +212,7 @@
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
 
-(defn difference-xf
+(defn union-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred zset-item-f-1 :zset-item-f :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred zset-item-f-2 :zset-item-f :or {path-f-2 identity}}
    & {:keys [last? return-zset-item-xf]
@@ -247,12 +247,61 @@
                ;return
                (vector
                  (zs/zset+
+                   (zs/zset+ delta-1 delta-2))
+                 ;original zset-item wrapped in a zset
+                 zset)))
+        (mapcat (fn [[union-xf-delta zset]]
+                  ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
+                  [union-xf-delta zset]))))))
+
+
+(defn difference-xf
+  [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity}}
+   {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f :or {path-f-2 identity}}
+   & {:keys [last? return-zset-item-xf]
+      :or   {last?               false
+             return-zset-item-xf (map identity)}}]
+  (comp
+    ;receives a zset, unpacks zset into individual items
+    (mapcat identity)
+    ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
+    (map (fn [-zset-item]
+           (timbre/spy -zset-item)
+           (let [delta-1 (if (and (can-join? -zset-item path-f-1 clause-1)
+                               (pred-1 (path-f-1 -zset-item)))
+                           (zs/zset #{(zs/new-zset-item
+                                        (item-f-1 -zset-item)
+                                        (zs/zset-weight -zset-item))}) #{})
+                 delta-2 (if (and (can-join? -zset-item path-f-2 clause-2)
+                               (pred-2 (path-f-2 -zset-item)))
+                           (zs/zset #{(zs/new-zset-item
+                                        (item-f-2 -zset-item)
+                                        (zs/zset-weight -zset-item))}) #{})
+                 zset    (if last? #{} #{-zset-item})]
+             ;return
+             (timbre/spy [delta-1 delta-2 zset]))))
+    (cond-branch
+      ;does difference-xf care about the current item?
+      (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
+        ;if none of the predicates were true...
+        (and (empty? delta-1) (empty? delta-2)))
+      (map (fn [[_delta-1 _delta-2 zset]]
+             ;no – return the zset and stop processing
+             zset))
+      ;else, proceed to join
+      any?
+      (comp
+        (map (fn [[delta-1 delta-2 zset]]
+               (timbre/spy [delta-1 delta-2 zset])
+               ;return
+               (vector
+                 (zs/zset+
                    (zs/zset+ delta-1 (zs/zset-negate delta-2)))
                  ;original zset-item wrapped in a zset
                  zset)))
         (mapcat (fn [[difference-xf-delta zset]]
                   ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
-                  [difference-xf-delta zset]))))))
+                  (timbre/spy [difference-xf-delta zset])))))))
 
 
 ;TODO delete?
@@ -274,85 +323,85 @@
 
 ;TODO delete?
 #_(defn left-join-xf
-  [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
-   {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
-   query-state
-   & {:keys [last? return-zset-item-xf]
-      :or   {last?               false
-             return-zset-item-xf (map identity)}}]
-  (let [uuid-1 [clause-1 (random-uuid)]
-        uuid-2 [clause-2 (random-uuid)]]
-    (timbre/info uuid-1)
-    (timbre/info uuid-2)
-    (timbre/info [clause-1 clause-2])
-    (comp
-      ;receives a zset, unpacks zset into individual items
-      (mapcat identity)
-      ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
-      (map (fn [zset-item]
-             (let [d1-can-join? (can-join? zset-item path-f-1 clause-1)
-                   d1-pred      (pred-1 (path-f-1 zset-item))
-                   nf-item?     (= const/not-found (util/peekv zset-item))
-                   delta-1      (if (and d1-can-join? d1-pred)
-                                  (zs/index #{zset-item} (comp index-kfn-1 path-f-1))
-                                  {})
-                   _            (timbre/spy [nf-item? (can-join? zset-item path-f-1 clause-1) (pred-1 (path-f-1 zset-item)) zset-item clause-1])
-                   delta-2      (if (and
-                                      (can-join? zset-item path-f-2 clause-2)
-                                      (pred-2 (path-f-2 zset-item)))
-                                  (zs/index #{zset-item} (comp index-kfn-2 path-f-2))
-                                  {})
-                   zset         (if last? #{} #{zset-item})
-                   ?zset-nf     (when (and nf-item? d1-can-join? d1-pred)
-                                  (zs/zset (with-clauses-meta-xf clause-1 clause-2) #{[zset-item const/not-found]})
-                                  #{})]
-               ;return
-               (timbre/spy [delta-1 delta-2 zset ?zset-nf]))))
-      (cond-branch
-        ;does this join-xf care about the current item?
-        (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
-          ;if none of the predicates were true...
-          (and (empty? delta-1) (empty? delta-2)))
-        (mapcat (fn [[_delta-1 _delta-2 zset ?zset-nf]]
-                  [?zset-nf
-                   ;return the zset
-                   zset]))
-        ;else, proceed to join
-        any?
-        (comp
-
-          (map (fn [[delta-1 delta-2 zset]]
-                 (let [index-state-1-prev (get @query-state uuid-1 {})
-                       index-state-2-prev (get @query-state uuid-2 {})]
-                   ;advance indices
-                   (swap! query-state
-                     (fn [state]
-                       (-> state
-                         (update uuid-1 (fn [index] (zs/indexed-zset+ index delta-1)))
-                         (update uuid-2 (fn [index] (zs/indexed-zset+ index delta-2))))))
-                   ;return
-                   [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
-
-          (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
+    [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
+     {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
+     query-state
+     & {:keys [last? return-zset-item-xf]
+        :or   {last?               false
+               return-zset-item-xf (map identity)}}]
+    (let [uuid-1 [clause-1 (random-uuid)]
+          uuid-2 [clause-2 (random-uuid)]]
+      (timbre/info uuid-1)
+      (timbre/info uuid-2)
+      (timbre/info [clause-1 clause-2])
+      (comp
+        ;receives a zset, unpacks zset into individual items
+        (mapcat identity)
+        ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
+        (map (fn [zset-item]
+               (let [d1-can-join? (can-join? zset-item path-f-1 clause-1)
+                     d1-pred      (pred-1 (path-f-1 zset-item))
+                     nf-item?     (= const/not-found (util/peekv zset-item))
+                     delta-1      (if (and d1-can-join? d1-pred)
+                                    (zs/index #{zset-item} (comp index-kfn-1 path-f-1))
+                                    {})
+                     _            (timbre/spy [nf-item? (can-join? zset-item path-f-1 clause-1) (pred-1 (path-f-1 zset-item)) zset-item clause-1])
+                     delta-2      (if (and
+                                        (can-join? zset-item path-f-2 clause-2)
+                                        (pred-2 (path-f-2 zset-item)))
+                                    (zs/index #{zset-item} (comp index-kfn-2 path-f-2))
+                                    {})
+                     zset         (if last? #{} #{zset-item})
+                     ?zset-nf     (when (and nf-item? d1-can-join? d1-pred)
+                                    (zs/zset (with-clauses-meta-xf clause-1 clause-2) #{[zset-item const/not-found]})
+                                    #{})]
                  ;return
-                 (vector
-                   ;add :where clauses as metadata to the joined relations (a zset)
-                   (zs/indexed-zset->zset
-                     ;left join implemented here
-                     (left-join-xf-impl
-                       [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]
-                       [clause-1 clause-2])
-                     ;transducer to transform zset items during conversion indexed-zset -> zset
-                     (comp
-                       ;(with-clauses-meta-xf clause-1 clause-2)
-                       (map (fn [left-join-relation-xf-debug] left-join-relation-xf-debug))
-                       return-zset-item-xf))
-                   ;original zset-item wrapped in a zset
-                   zset)))
+                 (timbre/spy [delta-1 delta-2 zset ?zset-nf]))))
+        (cond-branch
+          ;does this join-xf care about the current item?
+          (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
+            ;if none of the predicates were true...
+            (and (empty? delta-1) (empty? delta-2)))
+          (mapcat (fn [[_delta-1 _delta-2 zset ?zset-nf]]
+                    [?zset-nf
+                     ;return the zset
+                     zset]))
+          ;else, proceed to join
+          any?
+          (comp
 
-          (mapcat (fn [[join-xf-delta zset]]
-                    ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
-                    [join-xf-delta zset])))))))
+            (map (fn [[delta-1 delta-2 zset]]
+                   (let [index-state-1-prev (get @query-state uuid-1 {})
+                         index-state-2-prev (get @query-state uuid-2 {})]
+                     ;advance indices
+                     (swap! query-state
+                       (fn [state]
+                         (-> state
+                           (update uuid-1 (fn [index] (zs/indexed-zset+ index delta-1)))
+                           (update uuid-2 (fn [index] (zs/indexed-zset+ index delta-2))))))
+                     ;return
+                     [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
+
+            (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
+                   ;return
+                   (vector
+                     ;add :where clauses as metadata to the joined relations (a zset)
+                     (zs/indexed-zset->zset
+                       ;left join implemented here
+                       (left-join-xf-impl
+                         [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]
+                         [clause-1 clause-2])
+                       ;transducer to transform zset items during conversion indexed-zset -> zset
+                       (comp
+                         ;(with-clauses-meta-xf clause-1 clause-2)
+                         (map (fn [left-join-relation-xf-debug] left-join-relation-xf-debug))
+                         return-zset-item-xf))
+                     ;original zset-item wrapped in a zset
+                     zset)))
+
+            (mapcat (fn [[join-xf-delta zset]]
+                      ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
+                      [join-xf-delta zset])))))))
 
 (defn cartesian-xf
   "Cartesian product, aka cross join"
@@ -427,21 +476,21 @@
 
 ;TODO delete?
 #_(defn- with-clauses-meta-xf
-  "Add metadata to zset-items to indicate that they are part of a relation."
-  [clause-1 clause-2]
-  (map (fn [[_datom-1 _datom-2 :as zset-item]]
-         (let [new-zset-item
-               (-> zset-item
-                 (update
-                   0 (fn [datom-1]
+    "Add metadata to zset-items to indicate that they are part of a relation."
+    [clause-1 clause-2]
+    (map (fn [[_datom-1 _datom-2 :as zset-item]]
+           (let [new-zset-item
+                 (-> zset-item
+                   (update
+                     0 (fn [datom-1]
 
-                       (vary-meta datom-1 (fn [m] (assoc m :xf.clause clause-1)))))
-                 (update
-                   1 (fn [datom-2]
-                       (vary-meta datom-2 (fn [m] (assoc m :xf.clause clause-2)))))
-                 ;=(rel/mark-as-rel :called-from "with-clauses-meta-xf")
-                 )]
-           new-zset-item))))
+                         (vary-meta datom-1 (fn [m] (assoc m :xf.clause clause-1)))))
+                   (update
+                     1 (fn [datom-2]
+                         (vary-meta datom-2 (fn [m] (assoc m :xf.clause clause-2)))))
+                   ;=(rel/mark-as-rel :called-from "with-clauses-meta-xf")
+                   )]
+             new-zset-item))))
 
 
 ;TODO delete?

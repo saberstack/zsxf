@@ -211,14 +211,6 @@
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
 
-(defn outer-join-xf []
-  ;TODO continue here
-  ; use join-xf, difference-xf, and union-xf
-  )
-
-
-(defonce tmp-state (atom nil))
-
 (defn can-join-union?
   "Unions use a simpler can-join?
   Can only join to exact clause matches for the time being"
@@ -414,8 +406,8 @@
   [f]
   (fn [data]
     (with-meta
-     (f data)
-     (meta data))))
+      (f data)
+      (meta data))))
 
 (defn mapcat-zset-transaction-xf
   "Receives a transaction represented by a vectors of zsets.
@@ -428,3 +420,42 @@
     #{}
     (filter (apply some-fn preds))
     zset))
+
+(defn outer-join-xf
+  [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
+   {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
+   query-state
+   & {:keys [last?] :or {last? false}}]
+  (let [clause-gen-1 (gensym 'difference-xf-1)]
+    (comp
+      (mapcat-zset-transaction-xf)
+      (join-xf
+        {:clause    clause-1
+         :path      path-f-1
+         :pred      pred-1
+         :index-kfn index-kfn-1}
+        {:clause    clause-2
+         :path      path-f-2
+         :pred      pred-2
+         :index-kfn index-kfn-2}
+        query-state)
+      (difference-xf
+        {:clause      clause-1
+         :path        path-f-1
+         :pred        pred-1
+         :zset-item-f identity}
+        {:clause      clause-2
+         :path        (util/path-f [1])
+         :pred        pred-2
+         :zset-item-f first}
+        :output-clause clause-gen-1)
+      (union-xf
+        {:clause      clause-2
+         :path        (util/path-f [1])
+         :pred        pred-2
+         :zset-item-f identity}
+        {:clause      clause-gen-1
+         :path        identity
+         :pred        pred-1
+         :zset-item-f identity}
+        :last? last?))))

@@ -7,5 +7,3 @@
 (defonce zset-count [:zset/count])
 
 (defonce zset-sum [:zset/sum])
-
-(defonce not-found [:not-found])

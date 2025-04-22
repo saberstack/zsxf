@@ -1,7 +1,5 @@
 (ns org.zsxf.query
   (:require [org.zsxf.constant :as const]
-            [org.zsxf.datom2 :as d2]
-            [org.zsxf.relation :as rel]
             [org.zsxf.zset :as zs]
             [org.zsxf.query :as-alias q]))
 

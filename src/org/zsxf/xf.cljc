@@ -457,4 +457,6 @@
          :path        identity
          :pred        pred-1
          :zset-item-f identity}
-        :last? last?))))
+        :last? last?)
+      ;return one zset
+      (xforms/reduce zs/zset+))))

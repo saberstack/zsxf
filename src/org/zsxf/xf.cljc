@@ -428,7 +428,6 @@
    & {:keys [last?] :or {last? false}}]
   (let [clause-gen-1 (gensym 'difference-xf-1)]
     (comp
-      (mapcat-zset-transaction-xf)
       (join-xf
         {:clause    clause-1
          :path      path-f-1

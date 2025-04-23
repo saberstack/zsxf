@@ -736,6 +736,53 @@
 
   )
 
+(def outer-join-ds
+  '[:find ?title ?m2 #_?title2
+    :in $
+    :where
+    [?m :movie/title ?title]
+    [(get-else $ ?m :movie/sequel [:nf]) ?m2]
+    ;[(get-else $ ?m2 :movie/title :no-seq-no-title) ?title2]
+    ])
+
+(defn outer-join-zsxf [query-state]
+  (comp
+    (xf/mapcat-zset-transaction-xf)
+    (xf/outer-join-xf
+      {:clause    '[?m :movie/title ?title]
+       :path      identity
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      {:clause    '[?m :movie/sequel]
+       :path      identity
+       :pred      #(d2/datom-attr= % :movie/sequel)
+       :index-kfn d2/datom->eid}
+      query-state
+      :last? true)
+    (xforms/reduce
+      (zs/zset-xf+
+        (map (xf/same-meta-f
+               (fn [zsi]
+                 (if (rel/relation? zsi)
+                   ((juxt
+                      (util/path-f [0 d2/datom->val])
+                      (util/path-f [1 d2/datom->val]))
+                    zsi)
+                   [(d2/datom->val zsi) [:nf]]))))))
+    (map (fn [post-reduce-item]
+           (timbre/spy post-reduce-item)))))
+
+(deftest outer-join-xf-basic
+  (let [_           (set! *print-meta* false)
+        _           (timbre/set-min-level! :info)
+        ;[conn _] (util/load-learn-db-empty)
+        [conn _] (util/load-learn-db)
+        query       (q/create-query outer-join-zsxf)
+        _           (ds/init-query-with-conn query conn)
+        result-zsxf (q/get-result query)
+        result-ds (d/q outer-join-ds @conn)]
+    (is (= result-zsxf result-ds))))
+
 (def all-movies-optionally-find-sequels-ds
   '[:find ?title ?m2 #_?title2
     :in $

@@ -758,7 +758,9 @@
        :pred      #(d2/datom-attr= % :movie/sequel)
        :index-kfn d2/datom->eid}
       query-state
+      :output-clause 'outer-join-here!
       :last? true)
+    (map (fn [post-outer-join-xf] (timbre/spy post-outer-join-xf)))
     (xforms/reduce
       (zs/zset-xf+
         (map (xf/same-meta-f
@@ -768,20 +770,70 @@
                       (util/path-f [0 d2/datom->val])
                       (util/path-f [1 d2/datom->val]))
                     zsi)
-                   [(d2/datom->val zsi) [:nf]]))))))
-    (map (fn [post-reduce-item]
-           (timbre/spy post-reduce-item)))))
+                   [(d2/datom->val zsi) [:nf]]))))))))
 
 (deftest outer-join-xf-basic
-  (let [_           (set! *print-meta* false)
-        _           (timbre/set-min-level! :info)
+  (let [_           (set! *print-meta* true)
+        _           (timbre/set-min-level! :trace)
         ;[conn _] (util/load-learn-db-empty)
         [conn _] (util/load-learn-db)
         query       (q/create-query outer-join-zsxf)
         _           (ds/init-query-with-conn query conn)
         result-zsxf (q/get-result query)
-        result-ds (d/q outer-join-ds @conn)]
+        result-ds   (d/q outer-join-ds @conn)]
+    result-zsxf
     (is (= result-zsxf result-ds))))
+
+(defn outer-join-multiple-zsxf [query-state]
+  (let [clause-gen-1 (gensym 'output-join-xf)]
+    (comp
+      (xf/mapcat-zset-transaction-xf)
+      (xf/outer-join-xf
+        {:clause    '[?m :movie/title ?title]
+         :path      identity
+         :pred      #(d2/datom-attr= % :movie/title)
+         :index-kfn d2/datom->eid}
+        {:clause    '[?m :movie/sequel]
+         :path      identity
+         :pred      #(d2/datom-attr= % :movie/sequel)
+         :index-kfn d2/datom->eid}
+        :output-clause clause-gen-1
+        query-state)
+      (xf/outer-join-xf
+        {:can-join-fn (xf/top-clause=)
+         :clause      clause-gen-1
+         :path        (xf/datom-or-path-f [1])
+         :pred        (fn [x] (d2/datom-attr= x :movie/sequel))
+         :index-kfn   d2/datom->val}
+        {:clause    '[?m :movie/sequel]
+         :path      identity
+         :pred      #(d2/datom-attr= % :movie/sequel)
+         :index-kfn d2/datom->eid}
+        query-state
+        :last? true)
+      (xforms/reduce
+        (zs/zset-xf+
+          (map (xf/same-meta-f
+                 (fn [zsi]
+                   (if (rel/relation? zsi)
+                     ((juxt
+                        (util/path-f [0 d2/datom->val])
+                        (util/path-f [1 d2/datom->val]))
+                      zsi)
+                     [(d2/datom->val zsi) [:nf]])))))))))
+
+(deftest outer-join-xf-multiple
+  #_(let [_           (set! *print-meta* false)
+        _           (timbre/set-min-level! :trace)
+        ;[conn _] (util/load-learn-db-empty)
+        [conn _] (util/load-learn-db)
+        query       (q/create-query outer-join-multiple-zsxf)
+        _           (ds/init-query-with-conn query conn)
+        result-zsxf (q/get-result query)
+        result-ds   (d/q outer-join-ds @conn)]
+    true
+    ;(is (= result-zsxf result-ds))
+    ))
 
 (def all-movies-optionally-find-sequels-ds
   '[:find ?title ?m2 #_?title2

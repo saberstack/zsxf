@@ -5,7 +5,6 @@
   (:require [clojure.spec.alpha :as s]
             [org.zsxf.constant :as const]
             [org.zsxf.relation :as rel]
-            [org.zsxf.util :as util]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
             [net.cgrand.xforms :as xforms]

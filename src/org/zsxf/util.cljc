@@ -100,27 +100,27 @@
     -1 false
     1 true))
 
-(defmacro path-f
-  "Macro to create a path function.
+(defn path-f
+  "Create a path function.
   Takes a vector of indices.
   Returns a function that takes an indexed collection and returns the value at the path."
   [v]
   (if (empty? v)
-    `identity
-    `(transduce
-       (map (fn [idx#]
-              (fn [x#]
-                (cond
-                  (int? idx#) (~`nth2 x# idx#)
-                  (fn? idx#) (idx# x#)
-                  :else (throw (ex-info "path components must satisfy either int? or fn?" {:given x#}))))))
-       (completing
-         conj
-         (fn [accum#]
-           (apply comp accum#)))
-       ;keep this as '() to preserve `get-in`-style order of indices
-       '()
-       ~v)))
+    identity
+    (transduce
+      (map (fn [idx]
+             (fn [x]
+               (cond
+                 (int? idx) (nth2 x idx)
+                 (fn? idx) (idx x)
+                 :else (throw (ex-info "path components must satisfy either int? or fn?" {:given x}))))))
+      (completing
+        conj
+        (fn [accum]
+          (apply comp accum)))
+      ;keep this as '() to preserve `get-in`-style order of indices
+      '()
+      v)))
 
 (comment
   (macroexpand-1 '(path-f []))

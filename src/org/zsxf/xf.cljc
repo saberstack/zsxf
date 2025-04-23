@@ -18,6 +18,7 @@
      ... etc."
   (:require [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
+            [org.zsxf.datom2 :as d2]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
@@ -98,6 +99,17 @@
         (timbre/info "looking for clause:" clause))
     item-can-join?))
 
+(defn can-join-union?
+  "Unions use a simpler can-join?
+  Can only join to exact clause matches for the time being"
+  [zset-item path-f clause]
+  (let [item-can-join? (= clause (:xf.clause (meta (path-f zset-item))))]
+    item-can-join?))
+
+(defn top-clause= []
+  (fn [zset-item _path-f clause]
+    (= clause (:xf.clause (meta zset-item)))))
+
 (defn with-clause-f [clause]
   (fn [item]
     (vary-meta item (fn [m] (assoc m :xf.clause clause)))))
@@ -113,6 +125,11 @@
       (zs/intersect-indexed* index-state-1-prev delta-2 f1 f2 rel/index-clauses)
       ;ΔA ⋈ ΔB
       (zs/intersect-indexed* delta-1 delta-2 f1 f2 rel/index-clauses))))
+
+(defn datom-or-path-f [v]
+  (fn [x]
+    (or (and (d2/datom2? x) x)
+      ((util/path-f v) x))))
 
 (defn join-xf
   "Receives:
@@ -146,8 +163,9 @@
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
    query-state
-   & {:keys [last? return-zset-item-xf]
+   & {:keys [last? return-zset-item-xf can-join-fn]
       :or   {last?               false
+             can-join-fn         can-join?
              return-zset-item-xf (map identity)}}]
   (let [uuid-1 [clause-1 (random-uuid)]
         uuid-2 [clause-2 (random-uuid)]]
@@ -160,12 +178,12 @@
       ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
       (map (fn [zset-item]
              (let [delta-1 (if (and
-                                 (can-join? zset-item path-f-1 clause-1)
+                                 (can-join-fn zset-item path-f-1 clause-1)
                                  (pred-1 (path-f-1 zset-item)))
                              (zs/index #{zset-item} (comp index-kfn-1 path-f-1))
                              {})
                    delta-2 (if (and
-                                 (can-join? zset-item path-f-2 clause-2)
+                                 (can-join-fn zset-item path-f-2 clause-2)
                                  (pred-2 (path-f-2 zset-item)))
                              (zs/index #{zset-item} (comp index-kfn-2 path-f-2))
                              {})
@@ -211,17 +229,10 @@
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
 
-(defn can-join-union?
-  "Unions use a simpler can-join?
-  Can only join to exact clause matches for the time being"
-  [zset-item path-f clause]
-  (let [item-can-join? (= clause (:xf.clause (meta (path-f zset-item))))]
-    item-can-join?))
-
 (defn union-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f :or {path-f-2 identity}}
-   & {:keys [last? return-zset-item-xf]
+   & {:keys [last? return-zset-item-xf output-clause]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
   (timbre/info "union-xf setup...")
@@ -255,7 +266,9 @@
                ;return
                (vector
                  (zs/zset+
-                   (map identity)
+                   (map (fn [item]
+                          (let [item' (if output-clause ((with-clause-f output-clause) item) item)]
+                            (timbre/spy item'))))
                    #{} delta-1 delta-2)
                  ;original zset-item wrapped in a zset
                  zset)))
@@ -273,15 +286,15 @@
     ;receives a zset, unpacks zset into individual items
     (mapcat identity)
     ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
-    (map (fn [-zset-item]
-           (timbre/spy -zset-item)
-           (let [delta-1 (if (and (can-join? -zset-item path-f-1 clause-1) (pred-1 (path-f-1 -zset-item)))
-                           (zs/zset #{(zs/new-zset-item (item-f-1 -zset-item) (zs/zset-weight -zset-item))})
+    (map (fn [zsi]
+           (timbre/spy zsi)
+           (let [delta-1 (if (and (can-join? zsi path-f-1 clause-1) (pred-1 (path-f-1 zsi)))
+                           (zs/zset #{(zs/new-zset-item (item-f-1 zsi) (zs/zset-weight zsi))})
                            #{})
-                 delta-2 (if (and (can-join? -zset-item path-f-2 clause-2) (pred-2 (path-f-2 -zset-item)))
-                           (zs/zset #{(zs/new-zset-item (item-f-2 -zset-item) (zs/zset-weight -zset-item))})
+                 delta-2 (if (and (can-join? zsi path-f-2 clause-2) (pred-2 (path-f-2 zsi)))
+                           (zs/zset #{(zs/new-zset-item (item-f-2 zsi) (zs/zset-weight zsi))})
                            #{})
-                 zset    (if last? #{} #{-zset-item})]
+                 zset    (if last? #{} #{zsi})]
              ;return
              (timbre/spy [delta-1 delta-2 zset]))))
     (cond-branch
@@ -300,11 +313,7 @@
                ;return
                (vector
                  (zs/zset+
-                   (map (fn [item]
-                          (timbre/spy output-clause)
-                          (if output-clause
-                            ((with-clause-f output-clause) item)
-                            item)))
+                   (map (fn [item] (if output-clause ((with-clause-f output-clause) item) item)))
                    #{} delta-1 (zs/zset-negate delta-2))
                  ;original zset-item wrapped in a zset
                  zset)))
@@ -425,7 +434,7 @@
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
    query-state
-   & {:keys [last?] :or {last? false}}]
+   & {:keys [last? output-clause] :or {last? false}}]
   (let [clause-gen-1 (gensym 'difference-xf-1)]
     (comp
       (join-xf
@@ -457,6 +466,8 @@
          :path        identity
          :pred        pred-1
          :zset-item-f identity}
+        :output-clause output-clause
         :last? last?)
       ;return one zset
-      (xforms/reduce zs/zset+))))
+      ;(xforms/reduce zs/zset+)
+      )))

@@ -122,6 +122,9 @@
       '()
       v)))
 
+(defn sfirst [x]
+  (second (first x)))
+
 (comment
   (macroexpand-1 '(path-f []))
   (macroexpand-1 '(path-f [1 2 3])))

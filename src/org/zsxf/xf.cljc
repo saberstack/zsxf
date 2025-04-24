@@ -74,6 +74,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn same-meta-f
+  "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
+  [f]
+  (fn [data]
+    (with-meta
+      (f data)
+      (meta data))))
+
 (defn detect-join-type [zset-item path-f clause]
   (cond
     #?(:clj  (instance? Datom2 zset-item)
@@ -201,7 +209,6 @@
         ;else, proceed to join
         any?
         (comp
-
           (map (fn [[delta-1 delta-2 zset]]
                  (let [index-state-1-prev (get @query-state uuid-1 {})
                        index-state-2-prev (get @query-state uuid-2 {})]
@@ -266,9 +273,15 @@
                ;return
                (vector
                  (zs/zset+
-                   (map (fn [item]
-                          (let [item' (if output-clause ((with-clause-f output-clause) item) item)]
-                            (timbre/spy item'))))
+                   (comp
+                     (map (same-meta-f
+                            (fn [zsi]
+                              (if (rel/relation? zsi)
+                                zsi
+                                [zsi ((with-clause-f clause-1) [:nf])]))))
+                     (map (fn [zsi]
+                            (let [item' (if output-clause ((with-clause-f output-clause) zsi) zsi)]
+                              (timbre/spy item')))))
                    #{} delta-1 delta-2)
                  ;original zset-item wrapped in a zset
                  zset)))
@@ -410,13 +423,7 @@
     (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
     (mapcat (fn [{:keys [cnt]}] [(zs/zset-count-item cnt)]))))
 
-(defn same-meta-f
-  "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
-  [f]
-  (fn [data]
-    (with-meta
-      (f data)
-      (meta data))))
+
 
 (defn mapcat-zset-transaction-xf
   "Receives a transaction represented by a vectors of zsets.
@@ -430,14 +437,20 @@
     (filter (apply some-fn preds))
     zset))
 
+
+;TODO Redo Clauses:
+;
+; :tag
+
 (defn outer-join-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
    query-state
-   & {:keys [last? output-clause] :or {last? false}}]
+   & {:keys [last? output-clause debug?] :or {last? false debug? false}}]
   (let [clause-gen-1 (gensym 'difference-xf-1)]
     (comp
       (join-xf
+        ;A
         {:clause    clause-1
          :path      path-f-1
          :pred      pred-1
@@ -447,7 +460,12 @@
          :pred      pred-2
          :index-kfn index-kfn-2}
         query-state)
+      (map (fn [post-join-xf]
+             (if debug?
+               (timbre/spy post-join-xf)
+               post-join-xf)))
       (difference-xf
+        ;A
         {:clause      clause-1
          :path        path-f-1
          :pred        pred-1

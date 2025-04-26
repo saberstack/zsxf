@@ -10,7 +10,8 @@
       (:xf.clause (meta (second x))))))
 
 (defn index-clauses [rel1+rel2-v]
-  (if (relation? rel1+rel2-v)
+  rel1+rel2-v
+  #_(if (relation? rel1+rel2-v)
     (let [[rel1 rel2] rel1+rel2-v
           rel-index-1-prev (:rel.index (meta rel1))
           rel-index-2-prev (:rel.index (meta rel2))

@@ -92,6 +92,8 @@
            :jvm-heap-32gb
            {:jvm-opts ["-Xms32g" "-Xmx32g"]}
            :raspasov/local
-           {:jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
+           {:jvm-opts [
+                       ;"-Dclojure.compiler.direct-linking=true"
+                       ]}
            :socket-repl
            {:jvm-opts ["-Dclojure.server.repl={:port 5555 :accept clojure.core.server/repl :server-daemon false}"]}}}

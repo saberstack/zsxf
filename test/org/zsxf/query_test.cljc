@@ -532,18 +532,6 @@
         ]
     (is (= result-ds-1 result-zsxf-1))))
 
-(def tiny-data
-  [{:db/id        -200
-    :movie/title  "The Terminator"
-    :movie/year   1984
-    :movie/sequel -207}
-   ;{:db/id          -201
-   ; :movie/title    "First Blood"
-   ; :movie/year     1982}
-   {:db/id       -207
-    :movie/title "Terminator 2: Judgment Day"
-    :movie/year  1991}])
-
 (def movies-maybe-sequels-ds
   '[:find ?title ?maybe-sequel
     :in $
@@ -745,10 +733,30 @@
     ;[(get-else $ ?m2 :movie/title :no-seq-no-title) ?title2]
     ])
 
+(def tiny-data
+  [{:db/id        -200
+    :movie/title  "The Terminator"
+    :movie/year   1984
+    :movie/sequel -207
+    }
+   {:db/id       -201
+    :movie/title "First Blood"
+    :movie/year  1982}
+   {:db/id       -207
+    :movie/title "Terminator 2: Judgment Day"
+    :movie/year  1991}])
+
+(def outer-join-sequel-title-ds
+  '[:find (pull ?m [:movie/title {:movie/sequel [:movie/title]}])
+    :in $
+    :where
+    [?m :movie/title ?title]
+    ])
+
 (defn outer-join-zsxf [query-state]
   (comp
     (xf/mapcat-zset-transaction-xf)
-    (xf/outer-join-xf
+    (xf/outer-join-xf-2
       {:clause    '[?m :movie/title ?title]
        :path      identity
        :pred      #(d2/datom-attr= % :movie/title)
@@ -758,36 +766,113 @@
        :pred      #(d2/datom-attr= % :movie/sequel)
        :index-kfn d2/datom->eid}
       query-state
-      :output-clause 'outer-join-here!
-      :last? true)
-    (map (fn [post-outer-join-xf] (timbre/spy post-outer-join-xf)))
+      ;:last? true
+      )
+    (map (fn [outer-join-in-between]
+           (timbre/spy outer-join-in-between)))
+    (xf/join-xf
+      {:clause    '[?m :movie/sequel]
+       :path      (util/path-f [1])
+       :pred      #(d2/datom-attr= % :movie/sequel)
+       :index-kfn d2/datom->val}
+      {:clause    '[?m :movie/title ?title]
+       :path      identity
+       :pred      #(d2/datom-attr= % :movie/title)
+       :index-kfn d2/datom->eid}
+      query-state)
+    (map (fn [post-inner-join-xf]
+           (timbre/spy post-inner-join-xf)))
+    (xf/difference-xf
+      {:clause '[?m :movie/title ?title]
+       :path   identity
+       :pred   #(d2/datom-attr= % :movie/title)}
+      {:clause      '[?m :movie/sequel]
+       :path        (util/path-f [1])
+       :pred        #(d2/datom-attr= % :movie/sequel)
+       :zset-item-f first}
+      :output-clause 'diff-xf-1)
+    (xf/union-xf
+      {:clause 'diff-xf-1
+       :pred   #(d2/datom-attr= % :movie/title)}
+      {:clause '[?m :movie/title ?title]
+       :path   (util/path-f [1])
+       :pred   #(d2/datom-attr= % :movie/title)}
+      :last? true
+      )
+    (map (fn [post-diff] (timbre/spy post-diff)))
     (xforms/reduce
       (zs/zset-xf+
         (map (xf/same-meta-f
                (fn [zsi]
                  zsi
-                 #_(if (rel/relation? zsi)
-                   ((juxt
+                 #_((juxt
                       (util/path-f [0 d2/datom->val])
-                      (util/path-f [1 d2/datom->val]))
-                    zsi)
-                   [(d2/datom->val zsi) [:nf]]))))))))
+                      (util/path-f [1 d2/?datom->val]))
+                    zsi))))))))
+
 
 (deftest outer-join-xf-basic
-  (let [_           (set! *print-meta* true)
+  (let [_           (set! *print-meta* false)
         _           (timbre/set-min-level! :trace)
         ;[conn _] (util/load-learn-db-empty)
         [conn _] (util/load-learn-db)
         query       (q/create-query outer-join-zsxf)
         _           (ds/init-query-with-conn query conn)
+        ;_           (d/transact! conn tiny-data)
         result-zsxf (q/get-result query)
-        result-ds   (d/q outer-join-ds @conn)]
+        result-ds   (d/q outer-join-sequel-title-ds @conn)]
     (def conn conn)
     (def query query)
-    result-zsxf
     ;(is (= result-zsxf result-ds))
+    result-ds
+    result-zsxf
     )
   )
+
+(defn transact-ok! [conn tx-data]
+  (d/transact! conn tx-data)
+  (q/get-result query))
+
+(comment
+
+  (transact-ok! conn
+    [{:movie/title "Terminator 1"}])
+
+  (d/q movies-maybe-sequels-ds @conn)
+  (q/get-result query)
+
+  (transact-ok! conn
+    [{:movie/title "Terminator 2"}])
+
+  (d/q movies-maybe-sequels-ds @conn)
+  (q/get-result query)
+
+  (d/transact! conn
+    [{:db/id 1 :movie/sequel 2}])
+  (q/get-result query)
+
+
+  (d/transact! conn [[:db/retract 1 :movie/sequel]])
+  (transact-ok! conn [[:db/retract 52 :movie/sequel]])
+  (q/get-result query)
+
+  (d/q movies-maybe-sequels-ds @conn)
+  (q/get-result query)
+  (q/get-state query)
+
+  (transact-ok! conn
+    [{:movie/title "Terminator 3"}])
+
+  (d/q movies-maybe-sequels-ds @conn)
+
+  (transact-ok! conn
+    [{:db/id 2 :movie/sequel 3}])
+
+  (d/q movies-maybe-sequels-ds @conn)
+
+  )
+
+
 
 (defn outer-join-multiple-zsxf [query-state]
   (let [clause-gen-1 (gensym 'output-join-xf)]
@@ -803,24 +888,18 @@
          :pred      #(d2/datom-attr= % :movie/sequel)
          :index-kfn d2/datom->eid}
         query-state
-        :output-clause clause-gen-1
         :last? true
         )
-      (remove empty?)
+      ;(remove empty?)
       (map (fn [post-outer-join-xf]
-             (timbre/spy (meta post-outer-join-xf))
-
-             (timbre/spy (ffirst post-outer-join-xf))
-             (timbre/spy (meta (ffirst post-outer-join-xf)))
-
-             (timbre/spy (util/sfirst post-outer-join-xf))
-             (timbre/spy (meta (util/sfirst post-outer-join-xf)))
              (timbre/spy post-outer-join-xf)))
-      #_(xf/outer-join-xf
-        ;:can-join-fn (xf/top-clause=)
-        {:clause    clause-gen-1
+      (xf/outer-join-xf
+        {:clause    '[?m :movie/sequel]
          :path      (util/path-f [1])
-         :pred      (fn [x] (d2/datom-attr= x :movie/title))
+         :pred      (fn [x]
+                      (or
+                        (= x [:nf])
+                        (d2/datom-attr= x :movie/sequel)))
          :index-kfn d2/datom->val}
         {:clause    '[?m :movie/title]
          :path      identity
@@ -841,11 +920,24 @@
                         zsi)
                        [(d2/datom->val zsi) [:nf]])))))))))
 
+#_(def tiny-data
+    [{:db/id       -200
+      :movie/title "The Terminator"
+      :movie/year  1984
+      ;:movie/sequel -207
+      }
+     ;{:db/id          -201
+     ; :movie/title    "First Blood"
+     ; :movie/year     1982}
+     #_{:db/id       -207
+        :movie/title "Terminator 2: Judgment Day"
+        :movie/year  1991}])
+
 (deftest outer-join-xf-multiple
-  (let [_           (set! *print-meta* false)
+  (let [_           (set! *print-meta* true)
         _           (timbre/set-min-level! :trace)
-        ;[conn _] (util/load-learn-db-empty)
-        [conn _] (util/load-learn-db)
+        [conn _] (util/load-learn-db-empty)
+        ;[conn _] (util/load-learn-db)
         query       (q/create-query outer-join-multiple-zsxf)
         _           (ds/init-query-with-conn query conn)
         result-zsxf (q/get-result query)
@@ -857,12 +949,12 @@
   )
 
 (def all-movies-optionally-find-sequels-ds
-  '[:find ?title ?m2 #_?title2
+  '[:find ?title ?m2 ?title2
     :in $
     :where
     [?m :movie/title ?title]
     [(get-else $ ?m :movie/sequel [:not-found]) ?m2]
-    ;[(get-else $ ?m2 :movie/title :no-seq-no-title) ?title2]
+    [(get-else $ ?m2 :movie/title :no-seq-no-title) ?title2]
     ])
 
 (def all-movies-optionally-find-sequel-title-ds

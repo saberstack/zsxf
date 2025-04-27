@@ -495,9 +495,8 @@
         (zs/zset-xf+
           (map (xf/same-meta-f
                  (fn [zset-item]
-                   (let [find-rel-result
-                         ;new, find via index
-                                          (vector
+                   ;new, find via index
+                   (let [#_find-rel-result #_(vector
                                             (-> zset-item
                                               (rel/find-clause '[?danny :person/born ?danny-born])
                                               d2/datom->val)
@@ -510,7 +509,7 @@
                                              (comp d2/datom->val (util/path-f [1 0 1])))
                                            zset-item)]
                      ;(timbre/spy (= find-rel-result juxt-path-result))
-                     find-rel-result)))))))))
+                     juxt-path-result)))))))))
 
 (def cartesian-product-danny-ds
   '[:find ?danny-born ?actor-born

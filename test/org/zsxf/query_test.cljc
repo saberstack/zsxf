@@ -754,64 +754,64 @@
     ])
 
 (defn outer-join-zsxf [query-state]
-  (comp
-    (xf/mapcat-zset-transaction-xf)
-    (xf/outer-join-xf-2
-      {:clause    '[?m :movie/title ?title]
-       :path      identity
-       :pred      #(d2/datom-attr= % :movie/title)
-       :index-kfn d2/datom->eid}
-      {:clause    '[?m :movie/sequel]
-       :path      identity
-       :pred      #(d2/datom-attr= % :movie/sequel)
-       :index-kfn d2/datom->eid}
-      query-state
-      ;:last? true
-      )
-    (map (fn [outer-join-in-between]
-           (timbre/spy outer-join-in-between)))
-    (xf/join-xf
-      {:clause    '[?m :movie/sequel]
-       :path      (util/path-f [1])
-       :pred      #(d2/datom-attr= % :movie/sequel)
-       :index-kfn d2/datom->val}
-      {:clause    '[?m :movie/title ?title]
-       :path      identity
-       :pred      #(d2/datom-attr= % :movie/title)
-       :index-kfn d2/datom->eid}
-      query-state)
-    (map (fn [post-inner-join-xf]
-           (timbre/spy post-inner-join-xf)))
-    (xf/difference-xf
-      {:clause '[?m :movie/title ?title]
-       :path   identity
-       :pred   #(d2/datom-attr= % :movie/title)}
-      {:clause      '[?m :movie/sequel]
-       :path        (util/path-f [1])
-       :pred        #(d2/datom-attr= % :movie/sequel)
-       :zset-item-f first}
-      :output-clause 'diff-xf-1)
-    (xf/union-xf
-      {:clause 'diff-xf-1
-       :pred   #(d2/datom-attr= % :movie/title)}
-      {:clause '[?m :movie/title ?title]
-       :path   (util/path-f [1])
-       :pred   #(d2/datom-attr= % :movie/title)}
-      :last? true
-      )
-    (map (fn [post-diff] (timbre/spy post-diff)))
-    (xforms/reduce
-      (zs/zset-xf+
-        (map (xf/same-meta-f
-               (fn [zsi]
-                 zsi
-                 #_((juxt
-                      (util/path-f [0 d2/datom->val])
-                      (util/path-f [1 d2/?datom->val]))
-                    zsi))))))))
+  (let [clause-gen-1 (gensym 'clause-gen-1-)
+        clause-gen-2 (gensym 'clause-gen-2-)
+        clause-gen-3 (gensym 'clause-gen-3-)
+        clause-diff  (gensym 'clause-diff-)
+        ]
+    (comp
+      (xf/mapcat-zset-transaction-xf)
+      (xf/join-xf
+        {:clause     '[?m :movie/title ?title]
+         :clause-out clause-gen-1
+         :path       identity
+         :pred       #(d2/datom-attr= % :movie/title)
+         :index-kfn  d2/datom->eid}
+        {:clause     '[?m :movie/sequel]
+         :clause-out clause-gen-2
+         :path       identity
+         :pred       #(d2/datom-attr= % :movie/sequel)
+         :index-kfn  d2/datom->eid}
+        query-state)
+      (xf/difference-xf
+        {:clause clause-gen-1
+         :path   identity
+         :pred   #(d2/datom-attr= % :movie/title)}
+        {:clause      clause-gen-2
+         :path        (util/path-f [1])
+         :pred        #(d2/datom-attr= % :movie/sequel)
+         :zset-item-f first}
+        :output-clause clause-diff)
+      (xf/union-xf
+        {:clause clause-diff
+         :pred   any?}
+        {:clause clause-gen-2
+         :path   (util/path-f [1])
+         :pred   any?})
+      (xf/join-xf
+        {:clause    clause-gen-2
+         :path      (util/path-f [1])
+         :pred      #(d2/datom-attr= % :movie/sequel)
+         :index-kfn d2/datom->val}
+        {:clause     '[?m :movie/title ?title]
+         :clause-out clause-gen-3
+         :path       identity
+         :pred       #(d2/datom-attr= % :movie/title)
+         :index-kfn  d2/datom->eid}
+        query-state)
+      (xf/union-xf
+        {:clause clause-diff
+         :pred   any?}
+        {:clause clause-gen-3
+         :path   (util/path-f [1])
+         :pred   any?}
+        :last? true)
+      (xforms/reduce
+        (zs/zset-xf+
+          (map (xf/same-meta-f
+                 (fn [zsi] zsi))))))))
 
-
-(deftest outer-join-xf-basic
+(deftest outer-join-xf
   (let [_           (set! *print-meta* false)
         _           (timbre/set-min-level! :trace)
         ;[conn _] (util/load-learn-db-empty)
@@ -825,8 +825,7 @@
     (def query query)
     ;(is (= result-zsxf result-ds))
     result-ds
-    result-zsxf
-    )
+    result-zsxf)
   )
 
 (defn transact-ok! [conn tx-data]
@@ -854,6 +853,8 @@
 
   (d/transact! conn [[:db/retract 1 :movie/sequel]])
   (transact-ok! conn [[:db/retract 52 :movie/sequel]])
+
+  (transact-ok! conn [[:db/add 52 :movie/sequel 62]])
   (q/get-result query)
 
   (d/q movies-maybe-sequels-ds @conn)
@@ -872,54 +873,6 @@
 
   )
 
-
-
-(defn outer-join-multiple-zsxf [query-state]
-  (let [clause-gen-1 (gensym 'output-join-xf)]
-    (comp
-      (xf/mapcat-zset-transaction-xf)
-      (xf/outer-join-xf
-        {:clause    '[?m :movie/title ?title]
-         :path      identity
-         :pred      #(d2/datom-attr= % :movie/title)
-         :index-kfn d2/datom->eid}
-        {:clause    '[?m :movie/sequel]
-         :path      identity
-         :pred      #(d2/datom-attr= % :movie/sequel)
-         :index-kfn d2/datom->eid}
-        query-state
-        :last? true
-        )
-      ;(remove empty?)
-      (map (fn [post-outer-join-xf]
-             (timbre/spy post-outer-join-xf)))
-      (xf/outer-join-xf
-        {:clause    '[?m :movie/sequel]
-         :path      (util/path-f [1])
-         :pred      (fn [x]
-                      (or
-                        (= x [:nf])
-                        (d2/datom-attr= x :movie/sequel)))
-         :index-kfn d2/datom->val}
-        {:clause    '[?m :movie/title]
-         :path      identity
-         :pred      #(d2/datom-attr= % :movie/title)
-         :index-kfn d2/datom->eid}
-        query-state
-        :debug? true
-        :last? true)
-      (xforms/reduce
-        (zs/zset-xf+
-          (map (xf/same-meta-f
-                 (fn [zsi]
-                   zsi
-                   #_(if (rel/relation? zsi)
-                       ((juxt
-                          (util/path-f [0 d2/datom->val])
-                          (util/path-f [1 d2/datom->val]))
-                        zsi)
-                       [(d2/datom->val zsi) [:nf]])))))))))
-
 #_(def tiny-data
     [{:db/id       -200
       :movie/title "The Terminator"
@@ -932,21 +885,6 @@
      #_{:db/id       -207
         :movie/title "Terminator 2: Judgment Day"
         :movie/year  1991}])
-
-(deftest outer-join-xf-multiple
-  (let [_           (set! *print-meta* true)
-        _           (timbre/set-min-level! :trace)
-        [conn _] (util/load-learn-db-empty)
-        ;[conn _] (util/load-learn-db)
-        query       (q/create-query outer-join-multiple-zsxf)
-        _           (ds/init-query-with-conn query conn)
-        result-zsxf (q/get-result query)
-        result-ds   (d/q outer-join-ds @conn)]
-    true
-    result-zsxf
-    ;(is (= result-zsxf result-ds))
-    )
-  )
 
 (def all-movies-optionally-find-sequels-ds
   '[:find ?title ?m2 ?title2

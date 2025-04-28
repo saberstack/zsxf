@@ -92,7 +92,6 @@
   ;=> [0 10 20 30 40 50 60 70 80 90]
   )
 
-;util Clojure-only
 
 (defn >inst [inst-1 inst-2]
   (condp = (compare inst-1 inst-2)
@@ -122,12 +121,12 @@
       '()
       v)))
 
-(defn sfirst [x]
-  (second (first x)))
-
 (comment
   (macroexpand-1 '(path-f []))
   (macroexpand-1 '(path-f [1 2 3])))
+
+(defn sfirst [x]
+  (second (first x)))
 
 #?(:clj
    (defn read-edn-file [file-path]

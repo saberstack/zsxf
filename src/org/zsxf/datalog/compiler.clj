@@ -74,9 +74,13 @@
       `((comp ~(position pos->getter) ~@(clause-to-select locators)) ~zset-item))
     form))
 
+(def built-ins
+  (merge built-ins/query-fns
+         {'clojure.core/distinct? 'clojure.core/distinct?}))
+
 (defn substitute-operator [[op & tail]]
-  {:pre [(contains? built-ins/query-fns op)]}
-  (cons (built-ins/query-fns op) tail))
+  {:pre [(contains? built-ins op)]}
+  (cons  (get built-ins op) tail))
 
 (defn add-predicates [xf-steps-flat variable-index locators predicate-clauses]
   (if (empty? predicate-clauses)
@@ -141,7 +145,7 @@
                                                                find-vars#)))))))))
 
               ;; Stack overflow
-              (> n# 15)
+              (> n# 100)
               {:remaining-nodes remaining-nodes#
                :remaining-components remaining-components#
                :xf-steps xf-steps#

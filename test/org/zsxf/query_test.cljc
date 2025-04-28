@@ -811,7 +811,7 @@
                  (fn [zsi] zsi))))))))
 
 (deftest outer-join-xf
-  (let [_           (set! *print-meta* false)
+  (let [_           (set! *print-meta* true)
         _           (timbre/set-min-level! :trace)
         ;[conn _] (util/load-learn-db-empty)
         [conn _] (util/load-learn-db)

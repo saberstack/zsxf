@@ -255,7 +255,6 @@
     (mapcat identity)
     ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
     (map (fn [zsi]
-           (timbre/spy zsi)
            (let [delta-1 (if (and (can-join? zsi path-f-1 clause-1) (pred-1 (path-f-1 zsi)))
                            (zs/zset #{(zs/zset-item (item-f-1 zsi) (zs/zset-weight zsi))})
                            #{})
@@ -290,6 +289,20 @@
                   ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                   (timbre/spy [difference-xf-delta zset])))))))
 
+(defn update-clauses
+  ;TODO WIP
+  [zsi [clause-1 clause-1-out] [clause-2 clause-2-out]]
+  (let [update-clause-f (fn [meta-map]
+                          (update meta-map :xf.clause
+                            (fn [prev-clause]
+                              (condp = prev-clause
+                                clause-1 clause-1-out
+                                clause-2 clause-2-out))))]
+    (if (d2/datom2? zsi)
+      (vary-meta zsi update-clause-f)
+      (-> zsi
+        (update 0 (fn [datom] (vary-meta datom update-clause-f)))
+        (update 1 (fn [datom] (vary-meta datom update-clause-f)))))))
 
 (defn union-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity item-f-1 identity}}
@@ -330,11 +343,12 @@
                  (zs/zset+
                    (comp
                      (map (same-meta-f
-                            (fn [zsi]
-                              zsi
-                              #_(if (rel/relation? zsi)
-                                  zsi
-                                  [zsi ((with-clause-f clause-1) [:nf])]))))
+                            (fn [union-zsi]
+                              (timbre/spy (count union-zsi))
+                              (timbre/spy union-zsi)
+                              #_(if (rel/relation? union-zsi)
+                                  union-zsi
+                                  [union-zsi ((with-clause-f clause-1) [:nf])]))))
                      final-xf)
                    #{} delta-1 delta-2)
                  ;original zset-item wrapped in a zset
@@ -450,44 +464,44 @@
 
 #_(defn outer-join-xf
 
-  [{clause-1 :clause clause-out-1 :clause-out path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
-   {clause-2 :clause clause-out-2 :clause-out path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
-   query-state
-   & {:keys [last? debug? clause-diff] :or {last? false debug? false}}]
-  (let [clause-diff' (or clause-diff (gensym 'clause-diff-))
-        clause-gen-1 (or clause-out-1 (gensym 'clause-gen-1-))
-        clause-gen-2 (or clause-out-2 (gensym 'clause-gen-2-))]
-    (comp
-      (join-xf
-        ;A
-        {:clause     clause-1
-         :clause-out clause-gen-1
-         :path       path-f-1
-         :pred       pred-1
-         :index-kfn  index-kfn-1}
-        {:clause     clause-2
-         :clause-out clause-gen-2
-         :path       path-f-2
-         :pred       pred-2
-         :index-kfn  index-kfn-2}
-        query-state)
-      (difference-xf
-        ;A
-        {:clause clause-gen-1
-         :path   path-f-1
-         :pred   pred-1}
-        {:clause      clause-gen-2
-         :path        (util/path-f [1])
-         :pred        pred-2
-         :zset-item-f first}
-        :output-clause clause-diff')
-      (union-xf
-        {:clause clause-diff'
-         :pred   any?}
-        {:clause clause-gen-2
-         :path   (util/path-f [1])
-         :pred   any?}
-        :last? last?)
-      ;return one zset
-      ;(xforms/reduce zs/zset+)
-      )))
+    [{clause-1 :clause clause-out-1 :clause-out path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
+     {clause-2 :clause clause-out-2 :clause-out path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
+     query-state
+     & {:keys [last? debug? clause-diff] :or {last? false debug? false}}]
+    (let [clause-diff' (or clause-diff (gensym 'clause-diff-))
+          clause-gen-1 (or clause-out-1 (gensym 'clause-gen-1-))
+          clause-gen-2 (or clause-out-2 (gensym 'clause-gen-2-))]
+      (comp
+        (join-xf
+          ;A
+          {:clause     clause-1
+           :clause-out clause-gen-1
+           :path       path-f-1
+           :pred       pred-1
+           :index-kfn  index-kfn-1}
+          {:clause     clause-2
+           :clause-out clause-gen-2
+           :path       path-f-2
+           :pred       pred-2
+           :index-kfn  index-kfn-2}
+          query-state)
+        (difference-xf
+          ;A
+          {:clause clause-gen-1
+           :path   path-f-1
+           :pred   pred-1}
+          {:clause      clause-gen-2
+           :path        (util/path-f [1])
+           :pred        pred-2
+           :zset-item-f first}
+          :output-clause clause-diff')
+        (union-xf
+          {:clause clause-diff'
+           :pred   any?}
+          {:clause clause-gen-2
+           :path   (util/path-f [1])
+           :pred   any?}
+          :last? last?)
+        ;return one zset
+        ;(xforms/reduce zs/zset+)
+        )))

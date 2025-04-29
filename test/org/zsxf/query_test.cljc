@@ -497,12 +497,12 @@
                  (fn [zset-item]
                    ;new, find via index
                    (let [#_find-rel-result #_(vector
-                                            (-> zset-item
-                                              (rel/find-clause '[?danny :person/born ?danny-born])
-                                              d2/datom->val)
-                                            (-> zset-item
-                                              (rel/find-clause '[?a :person/born ?actor-born])
-                                              d2/datom->val))
+                                               (-> zset-item
+                                                 (rel/find-clause '[?danny :person/born ?danny-born])
+                                                 d2/datom->val)
+                                               (-> zset-item
+                                                 (rel/find-clause '[?a :person/born ?actor-born])
+                                                 d2/datom->val))
                          ;old path approach
                          juxt-path-result ((juxt
                                              (comp d2/datom->val (util/path-f [0 1]))
@@ -763,9 +763,9 @@
         item-set-to-last    (append `~item-to-set-as-last :last? true)]
     `(comp
        ~@(medley.core/replace-nth
-          nth-replace
-          item-set-to-last
-          body))))
+           nth-replace
+           item-set-to-last
+           body))))
 
 (defn outer-join-zsxf [query-state]
   (let [clause-gen-1   (gensym 'clause-gen-1-)
@@ -773,8 +773,11 @@
         clause-gen-3   (gensym 'clause-gen-3-)
         clause-union-1 (gensym 'clause-union-1-)
         clause-diff    (gensym 'clause-diff-)]
+    ;How outer-join-xf works?
+    ; (short explanation in the comments below)
     (comp-zsxf-last?
       (xf/mapcat-zset-transaction-xf)
+      ;Inner join ...
       (xf/join-xf
         {:clause     '[?m :movie/title ?title]
          :clause-out clause-gen-1
@@ -787,22 +790,7 @@
          :pred       #(d2/datom-attr= % :movie/sequel)
          :index-kfn  d2/datom->eid}
         query-state)
-      (xf/difference-xf
-        {:clause clause-gen-1
-         :path   identity
-         :pred   #(d2/datom-attr= % :movie/title)}
-        {:clause      clause-gen-2
-         :path        (util/path-f [1])
-         :pred        #(d2/datom-attr= % :movie/sequel)
-         :zset-item-f first}
-        :clause-out clause-diff)
-      (xf/union-xf
-        {:clause clause-diff
-         :pred   any?}
-        {:clause clause-gen-2
-         :path   (util/path-f [1])
-         :pred   any?}
-        :clause-out clause-union-1)
+      ;Inner join some more ...
       (xf/join-xf
         {:clause    clause-gen-2
          :path      (util/path-f [1])
@@ -814,13 +802,37 @@
          :pred       #(d2/datom-attr= % :movie/title)
          :index-kfn  d2/datom->eid}
         query-state)
-      #_(xf/union-xf
-          {:clause clause-diff
-           :pred   any?}
-          {:clause clause-gen-3
-           :path   (util/path-f [1])
-           :pred   any?}
-          :last? true)
+      ;At the end ...
+      ;
+      ; 1. Calculate a difference between:
+      ;  - the initial set of data
+      ;  - the last inner join output
+      ;
+      ; The output of difference-xf is everything that has been "dropped"
+      ; during inner joins
+      (xf/difference-xf
+        {:clause clause-gen-1
+         :path   identity
+         :pred   #(d2/datom-attr= % :movie/title)}
+        {:clause      clause-gen-3
+         :path        (util/path-f [1])
+         :pred        #(d2/datom-attr= % :movie/title)
+         :zset-item-f (fn [zsi] (-> zsi first first))}
+        :clause-out clause-diff)
+      ;At the end ...
+      ;
+      ; 2. Calculate a union of:
+      ;  - output of the difference (right above)
+      ;  - the last inner join output (same as what the difference used)
+      ;
+      ; The output of union-xf is the final result.
+      (xf/union-xf
+        {:clause clause-diff
+         :pred   any?}
+        {:clause clause-gen-3
+         :path   (util/path-f [1])
+         :pred   #(d2/datom-attr= % :movie/title)}
+        :clause-out clause-union-1)
       (xforms/reduce
         (zs/zset-xf+
           (map (xf/same-meta-f

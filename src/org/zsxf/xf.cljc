@@ -74,6 +74,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn- stop-current-xf?
+  [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
+  ;if none of the predicates were true...
+  (and (empty? delta-1) (empty? delta-2)))
+
 (defn same-meta-f
   "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
   [f]
@@ -216,13 +221,10 @@
                ;return
                [delta-1 delta-2 zset])))
       (cond-branch
-        ;does this join-xf care about the current item?
-        (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
-          ;if none of the predicates were true...
-          (and (empty? delta-1) (empty? delta-2)))
-        (map (fn [[_delta-1 _delta-2 zset]]
-               ;return the zset
-               zset))
+        ;care about the current item?
+        stop-current-xf?
+        ;stop and return zset
+        (map (fn [[_delta-1 _delta-2 zset]] zset))
         ;else, proceed to join
         any?
         (comp
@@ -273,13 +275,10 @@
              ;return
              (timbre/spy [delta-1 delta-2 zset]))))
     (cond-branch
-      ;does difference-xf care about the current item?
-      (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
-        ;if none of the predicates were true...
-        (and (empty? delta-1) (empty? delta-2)))
-      (map (fn [[_delta-1 _delta-2 zset]]
-             ;no – return the zset and stop processing
-             zset))
+      ;care about the current item?
+      stop-current-xf?
+      ;stop and return zset
+      (map (fn [[_delta-1 _delta-2 zset]] zset))
       ;else, proceed to join
       any?
       (comp
@@ -318,13 +317,10 @@
              ;return
              (timbre/spy [delta-1 delta-2 zset]))))
     (cond-branch
-      ;does difference-xf care about the current item?
-      (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
-        ;if none of the predicates were true...
-        (and (empty? delta-1) (empty? delta-2)))
-      (map (fn [[_delta-1 _delta-2 zset]]
-             ;no – return the zset and stop processing
-             zset))
+      ;care about the current item?
+      stop-current-xf?
+      ;stop and return zset
+      (map (fn [[_delta-1 _delta-2 zset]] zset))
       ;else, proceed to join
       any?
       (comp
@@ -372,13 +368,10 @@
                ;return
                [delta-1 delta-2 zset])))
       (cond-branch
-        ;does this join-xf care about the current item?
-        (fn [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
-          ;if none of the predicates were true...
-          (and (empty? delta-1) (empty? delta-2)))
-        (map (fn [[_delta-1 _delta-2 zset]]
-               ;return the zset
-               zset))
+        ;care about the current item?
+        stop-current-xf?
+        ;stop and return zset
+        (map (fn [[_delta-1 _delta-2 zset]] zset))
         ;else, proceed to join
         any?
         (comp

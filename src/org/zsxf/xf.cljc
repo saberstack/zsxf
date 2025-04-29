@@ -3,6 +3,8 @@
 
     # Glossary
 
+   `zsi`: short for zset item
+
    `Clause`: defines a relation, or a part of a relation
 
    `Set of unified clauses`: a set of clauses that are unified via common variables
@@ -99,20 +101,20 @@
       (fn [m]
         (merge (meta data) m)))))
 
-(defn detect-join-type [zset-item path-f clause]
+(defn detect-join-type [zsi path-f clause]
   (cond
     (and
-      #?(:clj  (instance? Datom2 zset-item)
-         :cljs (util/datom-like? zset-item))
-      (nil? (:xf.clause (meta zset-item)))) :datom
+      #?(:clj  (instance? Datom2 zsi)
+         :cljs (util/datom-like? zsi))
+      (nil? (:xf.clause (meta zsi)))) :datom
     (and
-      #?(:clj  (instance? Datom2 zset-item)
-         :cljs (util/datom-like? zset-item))
-      (not (nil? (:xf.clause (meta zset-item))))) :datom-as-relation
-    (rel/relation? zset-item) :relation
+      #?(:clj  (instance? Datom2 zsi)
+         :cljs (util/datom-like? zsi))
+      (not (nil? (:xf.clause (meta zsi))))) :datom-as-relation
+    (rel/relation? zsi) :relation
     :else
-    (throw (ex-info "invalid input zset-item" {:zset-item           zset-item
-                                               :path-f-of-zset-item (path-f zset-item)
+    (throw (ex-info "invalid input zset-item" {:zset-item           zsi
+                                               :path-f-of-zset-item (path-f zsi)
                                                :clause              clause}))))
 
 (defn can-join?
@@ -209,18 +211,21 @@
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
       ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
-      (map (fn [zset-item]
+      (map (fn [zsi]
              (let [delta-1 (if (and
-                                 (can-join? zset-item path-f-1 clause-1)
-                                 (pred-1 (path-f-1 zset-item)))
-                             (zs/index #{zset-item} (comp index-kfn-1 path-f-1))
+                                 (can-join? zsi path-f-1 clause-1)
+                                 (pred-1 (path-f-1 zsi)))
+                             (zs/index #{zsi} (comp index-kfn-1 path-f-1))
                              {})
                    delta-2 (if (and
-                                 (can-join? zset-item path-f-2 clause-2)
-                                 (pred-2 (path-f-2 zset-item)))
-                             (zs/index #{zset-item} (comp index-kfn-2 path-f-2))
+                                 (can-join? zsi path-f-2 clause-2)
+                                 (pred-2 (path-f-2 zsi)))
+                             (zs/index #{zsi} (comp index-kfn-2 path-f-2))
                              {})
-                   zset    (if last? #{} #{zset-item})]
+                   ;If last?, we return an empty zset.
+                   ; The current zset-item has been "offered" to all transducers and is not needed anymore.
+                   ; (!) Returning it would "pollute" the query result with extra data.
+                   zset    (if last? #{} #{zsi})]
                ;return
                [delta-1 delta-2 zset])))
       (cond-branch
@@ -308,15 +313,15 @@
     ;receives a zset, unpacks zset into individual items
     (mapcat identity)
     ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
-    (map (fn [-zset-item]
-           (timbre/spy -zset-item)
-           (let [delta-1 (if (and (can-join-union? -zset-item path-f-1 clause-1) (pred-1 (path-f-1 -zset-item)))
-                           (zs/zset #{(zs/zset-item (item-f-1 -zset-item) (zs/zset-weight -zset-item))})
+    (map (fn [zsi]
+           (timbre/spy zsi)
+           (let [delta-1 (if (and (can-join-union? zsi path-f-1 clause-1) (pred-1 (path-f-1 zsi)))
+                           (zs/zset #{(zs/zset-item (item-f-1 zsi) (zs/zset-weight zsi))})
                            #{})
-                 delta-2 (if (and (can-join-union? -zset-item path-f-2 clause-2) (pred-2 (path-f-2 -zset-item)))
-                           (zs/zset #{(zs/zset-item (item-f-2 -zset-item) (zs/zset-weight -zset-item))})
+                 delta-2 (if (and (can-join-union? zsi path-f-2 clause-2) (pred-2 (path-f-2 zsi)))
+                           (zs/zset #{(zs/zset-item (item-f-2 zsi) (zs/zset-weight zsi))})
                            #{})
-                 zset    (if last? #{} #{-zset-item})]
+                 zset    (if last? #{} #{zsi})]
              ;return
              (timbre/spy [delta-1 delta-2 zset]))))
     (cond-branch
@@ -356,18 +361,18 @@
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
       ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
-      (map (fn [zset-item]
+      (map (fn [zsi]
              (let [delta-1 (if (and
-                                 (can-join? zset-item path-f-1 clause-1)
-                                 (pred-1 (path-f-1 zset-item)))
-                             #{zset-item}
+                                 (can-join? zsi path-f-1 clause-1)
+                                 (pred-1 (path-f-1 zsi)))
+                             #{zsi}
                              {})
                    delta-2 (if (and
-                                 (can-join? zset-item path-f-2 clause-2)
-                                 (pred-2 (path-f-2 zset-item)))
-                             #{zset-item}
+                                 (can-join? zsi path-f-2 clause-2)
+                                 (pred-2 (path-f-2 zsi)))
+                             #{zsi}
                              {})
-                   zset    (if last? #{} #{zset-item})]
+                   zset    (if last? #{} #{zsi})]
                ;return
                [delta-1 delta-2 zset])))
       (cond-branch

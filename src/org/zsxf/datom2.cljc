@@ -1,6 +1,5 @@
 (ns org.zsxf.datom2
-  (:require [org.zsxf.constant :as const]
-            [org.zsxf.util :as util]
+  (:require [org.zsxf.util :as util]
             #?(:clj [org.zsxf.type :as t])
             [org.zsxf.zset :as zs])
   #?(:clj

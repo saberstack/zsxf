@@ -19,8 +19,6 @@
      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
      ... etc."
   (:require [net.cgrand.xforms :as xforms]
-            [org.zsxf.constant :as const]
-            [org.zsxf.datom2 :as d2]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]

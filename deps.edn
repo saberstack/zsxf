@@ -18,7 +18,7 @@
 
  :aliases {:dev
            {:extra-paths ["test" "dev"]
-            :extra-deps  {org.clojure/core.async                    {:mvn/version "1.8.741"}
+            :extra-deps  {org.clojure/core.async                    {:mvn/version "1.9.808-alpha1"}
                           com.taoensso/nippy                        {:mvn/version "3.4.2"}
                           criterium/criterium                       {:mvn/version "0.4.6"}
                           com.cnuernber/charred                     {:mvn/version "1.036"}

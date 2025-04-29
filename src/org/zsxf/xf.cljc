@@ -82,6 +82,9 @@
   ;if both deltas are empty, we can stop processing the current zset item
   (and (empty? delta-1) (empty? delta-2)))
 
+(defn clause= [zsi clause]
+  (= clause (:xf.clause (meta zsi))))
+
 (defn same-meta-f
   "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
   [f]
@@ -303,8 +306,10 @@
                   (timbre/spy [difference-xf-delta zset])))))))
 
 (defn union-xf
-  [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity item-f-1 identity}}
-   {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f :or {path-f-2 identity item-f-2 identity}}
+  [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f
+    :or      {pred-1 any? path-f-1 identity item-f-1 identity}}
+   {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f
+    :or      {pred-2 any? path-f-2 identity item-f-2 identity}}
    & {:keys [last? clause-out]
       :or   {last? false}}]
   (comp

@@ -811,9 +811,8 @@
       ; The output of difference-xf is everything that has been "dropped"
       ; during inner joins
       (xf/difference-xf
-        {:clause clause-gen-1
-         :path   identity
-         :pred   #(d2/datom-attr= % :movie/title)}
+        {:path identity
+         :pred #(d2/datom-attr= % :movie/title)}
         {:clause      clause-gen-3
          :path        (util/path-f [1])
          :pred        #(d2/datom-attr= % :movie/title)
@@ -827,8 +826,7 @@
       ;
       ; The output of union-xf is the final result.
       (xf/union-xf
-        {:clause clause-diff
-         :pred   any?}
+        {:clause clause-diff}
         {:clause clause-gen-3
          :path   (util/path-f [1])
          :pred   #(d2/datom-attr= % :movie/title)}
@@ -854,6 +852,7 @@
     result-ds
     result-zsxf)
   )
+
 
 (defn transact-ok! [conn tx-data]
   (d/transact! conn tx-data)
@@ -901,6 +900,98 @@
 
   (d/q movies-maybe-sequels-ds @conn)
 
+  )
+
+(def outer-join-vector-ds
+  '[:find (pull ?m [:movie/sequel :movie/does-not-exist])
+    :in $
+    :where
+    [?m :movie/title ?title]])
+
+(defn outer-join-vector-zsxf [query-state]
+  (let [clause-gen-1   (gensym 'clause-gen-1-)
+        clause-gen-2   (gensym 'clause-gen-2-)
+        clause-gen-3   (gensym 'clause-gen-3-)
+        clause-union-1 (gensym 'clause-union-1-)
+        clause-diff    (gensym 'clause-diff-)]
+    ;How outer-join-xf works?
+    ; (short explanation in the comments below)
+    (comp-zsxf-last?
+      (xf/mapcat-zset-transaction-xf)
+      ;Inner join ...
+      (xf/join-xf
+        {:clause     '[?m :movie/title ?title]
+         :clause-out clause-gen-1
+         :path       identity
+         :pred       #(d2/datom-attr= % :movie/title)
+         :index-kfn  d2/datom->eid}
+        {:clause     '[?m :movie/sequel]
+         :clause-out clause-gen-2
+         :path       identity
+         :pred       #(d2/datom-attr= % :movie/sequel)
+         :index-kfn  d2/datom->eid}
+        query-state)
+      ;Inner join some more ...
+      (xf/join-xf
+        {:clause    '[?m :movie/title ?title]
+         :path      identity
+         :pred      #(d2/datom-attr= % :movie/title)
+         :index-kfn d2/datom->eid}
+        {:clause     '[?m :movie/does-not-exist]
+         :clause-out clause-gen-3
+         :path       identity
+         :pred       #(d2/datom-attr= % :movie/does-not-exist)
+         :index-kfn  d2/datom->eid}
+        query-state)
+      (xf/union-xf
+        {:clause clause-gen-2
+         :path   (util/path-f [1])
+         :pred   #(d2/datom-attr= % :movie/sequel)}
+        {:clause clause-gen-3
+         :path   (util/path-f [1])
+         :pred   #(d2/datom-attr= % :movie/does-not-exist)}
+        :clause-out clause-union-1)
+      (xf/difference-xf
+        {:path identity
+         :pred #(d2/datom-attr= % :movie/title)}
+        {:clause      clause-union-1
+         :path        identity
+         :pred        (fn [diff-zsi]
+                        (and
+                          (xf/clause= diff-zsi clause-union-1) ;strictly clause matches TODO simplify
+                          (d2/datom-attr= (first diff-zsi) :movie/title)))
+         :zset-item-f (fn [zsi-item-f]
+                        (timbre/spy zsi-item-f)
+                        (-> zsi-item-f first))}
+        :clause-out clause-diff)
+      (xf/union-xf
+        {:clause clause-diff}
+        {:clause clause-union-1
+         :path   identity
+         :pred   (fn [zsi]
+                   (and
+                     (xf/clause= zsi clause-union-1)        ;strictly clause matches TODO simplify
+                     (d2/datom-attr= (first zsi) :movie/title)))})
+      (xforms/reduce
+        (zs/zset-xf+
+          (map (xf/same-meta-f
+                 (fn [zsi] zsi))))))))
+
+(deftest outer-join-vector
+  (let [_           (set! *print-meta* false)
+        _           (timbre/set-min-level! :trace)
+        ;[conn _] (util/load-learn-db-empty)
+        [conn _] (util/load-learn-db)
+        query       (q/create-query outer-join-vector-zsxf)
+        _           (ds/init-query-with-conn query conn)
+        ;_           (d/transact! conn tiny-data)
+        result-zsxf (q/get-result query)
+        result-ds   (d/q outer-join-vector-ds @conn)]
+    (def conn conn)
+    (def query query)
+    ;(is (= result-zsxf result-ds))
+    result-ds
+    result-zsxf)
   )
 
 #_(def tiny-data

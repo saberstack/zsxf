@@ -6,3 +6,6 @@ keys
 dev/
 .nrepl-port
 /out/
+movielens/
+mbrainz/
+classes/

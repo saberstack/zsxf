@@ -24,7 +24,8 @@
                           com.cnuernber/charred                     {:mvn/version "1.036"}
                           com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}
                           com.clojure-goes-fast/clj-java-decompiler {:mvn/version "0.3.4"}
-                          org.clojars.abhinav/snitch                {:mvn/version "0.1.15"}}}
+                          org.clojars.abhinav/snitch                {:mvn/version "0.1.15"}
+                          org.scicloj/noj                           {:mvn/version "2-alpha12"}}}
            ; use this alias for clj-memory-meter to work
            ; clj -M:add-opens -m org.zsxf.core
            :add-opens

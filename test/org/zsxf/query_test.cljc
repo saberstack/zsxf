@@ -879,7 +879,10 @@
 
 
   (d/transact! conn [[:db/retract 1 :movie/sequel]])
-  (transact-ok! conn [[:db/retract 52 :movie/sequel]])
+  (transact-ok! conn [[:db/retract 52 :movie/sequel]])      ;Terminator 2
+  (transact-ok! conn [[:db/retract 52 :movie/title]])       ;Terminator 2
+  (transact-ok! conn [[:db/retract 62 :movie/title]])       ;Terminator 3
+  (transact-ok! conn [[:db/retract 56 :movie/title]])       ;Predator 2
 
   (transact-ok! conn [[:db/add 52 :movie/sequel 62]])
   (q/get-result query)

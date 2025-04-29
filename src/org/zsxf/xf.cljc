@@ -187,7 +187,7 @@
   [{clause-1 :clause clause-1-out :clause-out path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
    {clause-2 :clause clause-2-out :clause-out path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
    query-state
-   & {:keys [last? return-zset-item-xf can-join-fn]
+   & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
   (let [uuid-1        [clause-1 (random-uuid)]
@@ -256,8 +256,8 @@
 (defn difference-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity item-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f :or {path-f-2 identity item-f-2 identity}}
-   & {:keys [last? return-zset-item-xf clause-out]
-      :or   {last? false return-zset-item-xf (map identity)}}]
+   & {:keys [last? clause-out]
+      :or   {last? false}}]
   (comp
     ;receives a zset, unpacks zset into individual items
     (mapcat identity)
@@ -300,10 +300,8 @@
 (defn union-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity item-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f :or {path-f-2 identity item-f-2 identity}}
-   & {:keys [clause-out last? final-xf]
-      :or   {last?    false
-             final-xf (map identity)}}]
-  (timbre/info "union-xf...")
+   & {:keys [last? clause-out]
+      :or   {last? false}}]
   (comp
     ;receives a zset, unpacks zset into individual items
     (mapcat identity)
@@ -336,11 +334,7 @@
                  (zs/zset+
                    (comp
                      (map (fn [union-zsi]
-                            (with-clause union-zsi clause-out)
-                            #_(if (rel/relation? union-zsi)
-                                union-zsi
-                                [union-zsi ((with-clause-f clause-1) [:nf])])))
-                     final-xf)
+                            (with-clause union-zsi clause-out))))
                    #{} delta-1 delta-2)
                  ;original zset-item wrapped in a zset
                  zset)))
@@ -451,48 +445,3 @@
     #{}
     (filter (apply some-fn preds))
     zset))
-
-
-#_(defn outer-join-xf
-
-    [{clause-1 :clause clause-out-1 :clause-out path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
-     {clause-2 :clause clause-out-2 :clause-out path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
-     query-state
-     & {:keys [last? debug? clause-diff] :or {last? false debug? false}}]
-    (let [clause-diff' (or clause-diff (gensym 'clause-diff-))
-          clause-gen-1 (or clause-out-1 (gensym 'clause-gen-1-))
-          clause-gen-2 (or clause-out-2 (gensym 'clause-gen-2-))]
-      (comp
-        (join-xf
-          ;A
-          {:clause     clause-1
-           :clause-out clause-gen-1
-           :path       path-f-1
-           :pred       pred-1
-           :index-kfn  index-kfn-1}
-          {:clause     clause-2
-           :clause-out clause-gen-2
-           :path       path-f-2
-           :pred       pred-2
-           :index-kfn  index-kfn-2}
-          query-state)
-        (difference-xf
-          ;A
-          {:clause clause-gen-1
-           :path   path-f-1
-           :pred   pred-1}
-          {:clause      clause-gen-2
-           :path        (util/path-f [1])
-           :pred        pred-2
-           :zset-item-f first}
-          :clause-out clause-diff')
-        (union-xf
-          {:clause clause-diff'
-           :pred   any?}
-          {:clause clause-gen-2
-           :path   (util/path-f [1])
-           :pred   any?}
-          :last? last?)
-        ;return one zset
-        ;(xforms/reduce zs/zset+)
-        )))

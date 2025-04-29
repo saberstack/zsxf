@@ -134,6 +134,14 @@
   (fn [item]
     (vary-meta item (fn [m] (assoc m :xf.clause clause)))))
 
+(defn with-clause
+  "If ?clause is not nil, set it as metadata.
+  Otherwise, return the item unchanged."
+  [item ?clause]
+  (if (not (nil? ?clause))
+    (vary-meta item (fn [m] (assoc m :xf.clause ?clause)))
+    item))
+
 (defn- join-xf-impl
   [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]] [clause-1 clause-2]]
   ;add :where clauses as metadata to the joined relations (a zset)
@@ -289,28 +297,13 @@
                   ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                   (timbre/spy [difference-xf-delta zset])))))))
 
-(defn update-clauses
-  ;TODO WIP
-  [zsi [clause-1 clause-1-out] [clause-2 clause-2-out]]
-  (let [update-clause-f (fn [meta-map]
-                          (update meta-map :xf.clause
-                            (fn [prev-clause]
-                              (condp = prev-clause
-                                clause-1 clause-1-out
-                                clause-2 clause-2-out))))]
-    (if (d2/datom2? zsi)
-      (vary-meta zsi update-clause-f)
-      (-> zsi
-        (update 0 (fn [datom] (vary-meta datom update-clause-f)))
-        (update 1 (fn [datom] (vary-meta datom update-clause-f)))))))
-
 (defn union-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity item-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f :or {path-f-2 identity item-f-2 identity}}
-   & {:keys [last? final-xf]
+   & {:keys [clause-out last? final-xf]
       :or   {last?    false
              final-xf (map identity)}}]
-  (timbre/info "union-xf setup...")
+  (timbre/info "union-xf...")
   (comp
     ;receives a zset, unpacks zset into individual items
     (mapcat identity)
@@ -342,13 +335,11 @@
                (vector
                  (zs/zset+
                    (comp
-                     (map (same-meta-f
-                            (fn [union-zsi]
-                              (timbre/spy (count union-zsi))
-                              (timbre/spy union-zsi)
-                              #_(if (rel/relation? union-zsi)
-                                  union-zsi
-                                  [union-zsi ((with-clause-f clause-1) [:nf])]))))
+                     (map (fn [union-zsi]
+                            (with-clause union-zsi clause-out)
+                            #_(if (rel/relation? union-zsi)
+                                union-zsi
+                                [union-zsi ((with-clause-f clause-1) [:nf])])))
                      final-xf)
                    #{} delta-1 delta-2)
                  ;original zset-item wrapped in a zset

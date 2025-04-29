@@ -756,8 +756,8 @@
   (let [clause-gen-1 (gensym 'clause-gen-1-)
         clause-gen-2 (gensym 'clause-gen-2-)
         clause-gen-3 (gensym 'clause-gen-3-)
-        clause-diff  (gensym 'clause-diff-)
-        ]
+        clause-union-1 (gensym 'clause-union-1-)
+        clause-diff  (gensym 'clause-diff-)]
     (comp
       (xf/mapcat-zset-transaction-xf)
       (xf/join-xf
@@ -786,8 +786,10 @@
          :pred   any?}
         {:clause clause-gen-2
          :path   (util/path-f [1])
-         :pred   any?})
-      (xf/join-xf
+         :pred   any?}
+        :clause-out clause-union-1
+        :last? true)
+      #_(xf/join-xf
         {:clause    clause-gen-2
          :path      (util/path-f [1])
          :pred      #(d2/datom-attr= % :movie/sequel)
@@ -798,7 +800,7 @@
          :pred       #(d2/datom-attr= % :movie/title)
          :index-kfn  d2/datom->eid}
         query-state)
-      (xf/union-xf
+      #_(xf/union-xf
         {:clause clause-diff
          :pred   any?}
         {:clause clause-gen-3

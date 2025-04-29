@@ -75,8 +75,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- stop-current-xf?
+  "Based on the computed deltas, decide if we should stop processing the current zset item."
   [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
-  ;if none of the predicates were true...
+  ;if both deltas are empty, we can stop processing the current zset item
   (and (empty? delta-1) (empty? delta-2)))
 
 (defn same-meta-f

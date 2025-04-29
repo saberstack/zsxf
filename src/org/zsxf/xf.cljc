@@ -256,7 +256,7 @@
 (defn difference-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity item-f-1 identity}}
    {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f :or {path-f-2 identity item-f-2 identity}}
-   & {:keys [last? return-zset-item-xf output-clause]
+   & {:keys [last? return-zset-item-xf clause-out]
       :or   {last? false return-zset-item-xf (map identity)}}]
   (comp
     ;receives a zset, unpacks zset into individual items
@@ -289,7 +289,7 @@
                (vector
                  (zs/zset+
                    (map (fn [item]
-                          (if output-clause ((with-clause-f output-clause) item) item)))
+                          (if clause-out ((with-clause-f clause-out) item) item)))
                    #{} delta-1 (zs/zset-negate delta-2))
                  ;original zset-item wrapped in a zset
                  zset)))
@@ -485,7 +485,7 @@
            :path        (util/path-f [1])
            :pred        pred-2
            :zset-item-f first}
-          :output-clause clause-diff')
+          :clause-out clause-diff')
         (union-xf
           {:clause clause-diff'
            :pred   any?}

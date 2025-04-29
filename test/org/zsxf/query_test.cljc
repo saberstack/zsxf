@@ -651,7 +651,7 @@
          :path        (util/path-f [1])
          :pred        #(d2/datom-attr= % :movie/sequel)
          :zset-item-f first}
-        :output-clause clause-gen-1)
+        :clause-out clause-gen-1)
       (xf/union-xf
         {:clause      '[?m :movie/sequel]
          :path        (util/path-f [1])
@@ -780,7 +780,7 @@
          :path        (util/path-f [1])
          :pred        #(d2/datom-attr= % :movie/sequel)
          :zset-item-f first}
-        :output-clause clause-diff)
+        :clause-out clause-diff)
       (xf/union-xf
         {:clause clause-diff
          :pred   any?}

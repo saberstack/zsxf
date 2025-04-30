@@ -98,7 +98,13 @@
       (update xf-steps-flat last-index
               concat [:return-zset-item-xf xf]))))
 
+(defn pre-parse-query
+  "Accept quoted and non-quoted queries, i.e. '[:find ...] and [:find ...]"
+  [query]
+  (if (= 'quote (first query)) (first (rest query)) query))
+
 (defmacro static-compile [query]
+ (let [query (pre-parse-query query)]
   (condp = (s/conform ::parser-spec/query query)
     ::s/invalid
     `(ex-info "Invalid or unsupported query"
@@ -193,7 +199,7 @@
                               (update-vals (select-keys locators# covered-nodes#) #(conj % `safe-first))
                               {to# [`safe-second]})
                        remaining-components#
-                       (inc n#))))))))
+                       (inc n#)))))))))
 
 (defn runtime-compile
   "Runtime compile a datalog query.

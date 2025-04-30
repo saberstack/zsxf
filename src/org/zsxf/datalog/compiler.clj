@@ -1,12 +1,12 @@
 (ns org.zsxf.datalog.compiler
   (:require [medley.core :as medley]
             [org.zsxf.datalog.parser :as parser]
+            [org.zsxf.datalog.fn :as dfn]
             [org.zsxf.datalog.parser.spec :as parser-spec]
             [org.zsxf.datom :as d2]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as xf]
             [clojure.spec.alpha :as s]
-            [datascript.built-ins :as built-ins]
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
 
@@ -74,13 +74,10 @@
       `((comp ~(position pos->getter) ~@(clause-to-select locators)) ~zset-item))
     form))
 
-(def built-ins
-  (merge built-ins/query-fns
-         {'clojure.core/distinct? 'clojure.core/distinct?}))
-
 (defn substitute-operator [[op & tail]]
-  {:pre [(contains? built-ins op)]}
-  (cons  (get built-ins op) tail))
+  {:pre [(contains? dfn/query-fns op)]}
+  (let [[_ fq-symbol] (find dfn/query-fns op)]
+    (cons fq-symbol tail)))
 
 (defn add-predicates [xf-steps-flat variable-index locators predicate-clauses]
   (if (empty? predicate-clauses)

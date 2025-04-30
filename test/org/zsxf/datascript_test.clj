@@ -4,7 +4,7 @@
    [datascript.core :as d]
    [net.cgrand.xforms :as xforms]
    [org.zsxf.datascript :as ds]
-   [org.zsxf.datalog.compiler :refer [sprinkle-dbsp-on]]
+   [org.zsxf.datalog.compiler :refer [static-compile]]
    [org.zsxf.query :as q]
    [org.zsxf.util :as util]
    [org.zsxf.xf :as xf]
@@ -21,7 +21,7 @@
 (defmacro test-query-gives-result [query result]
   `(let [conn#           (load-learn-db)
          query#           (q/create-query
-                           (sprinkle-dbsp-on [~@query]))]
+                           (static-compile [~@query]))]
      (ds/init-query-with-conn query# conn#)
      (is (= (q/get-result query#)
             (d/q (quote ~query) @conn#)
@@ -30,7 +30,7 @@
 (defmacro test-query-matches-db [query]
   `(let [conn#           (load-learn-db)
          query#           (q/create-query
-                           (sprinkle-dbsp-on [~@query]))]
+                           (static-compile [~@query]))]
      (ds/init-query-with-conn query# conn#)
      (is (= (q/get-result query#)
             (d/q (quote ~query) @conn#)))))

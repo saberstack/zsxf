@@ -98,7 +98,7 @@
       (update xf-steps-flat last-index
               concat [:return-zset-item-xf xf]))))
 
-(defmacro sprinkle-dbsp-on [query]
+(defmacro static-compile [query]
   (condp = (s/conform ::parser-spec/query query)
     ::s/invalid
     `(ex-info "Invalid or unsupported query"
@@ -201,8 +201,8 @@
 
   IMPORTANT: Use only with trusted sources.
   runtime-compile can execute arbitrary code."
-  [datalog-query]
-  (eval `(sprinkle-dbsp-on ~datalog-query)))
+  [query]
+  (eval `(static-compile ~query)))
 
 (comment
   ;Runtime compilation of a query

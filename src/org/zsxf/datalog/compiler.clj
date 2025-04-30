@@ -2,7 +2,7 @@
   (:require [medley.core :as medley]
             [org.zsxf.datalog.parser :as parser]
             [org.zsxf.datalog.parser.spec :as parser-spec]
-            [org.zsxf.datom2 :as d2]
+            [org.zsxf.datom :as d2]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as xf]
             [clojure.spec.alpha :as s]

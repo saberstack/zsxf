@@ -9,7 +9,7 @@
    [net.cgrand.xforms :as xforms]
    [org.zsxf.datascript :as ds]
    [clojure.set :as set]
-   [org.zsxf.datom2 :as d2]
+   [org.zsxf.datom :as d2]
    [org.zsxf.lib.result-set-xf.core :as rsxf]
    [org.zsxf.query :as q]
    [org.zsxf.datalog.compiler]
@@ -452,7 +452,7 @@
         {:clause    '[?danny :person/born ?danny-born],
          :path      identity,
          :pred      #(d2/datom-attr= % :person/born),
-         :index-kfn org.zsxf.datom2/datom->eid}
+         :index-kfn org.zsxf.datom/datom->eid}
         state)
 
       ;rel2
@@ -469,11 +469,11 @@
       (xf/join-xf
         {:clause    '[?a :person/name ?actor]
          :path      (util/path-f [0])
-         :pred      #(org.zsxf.datom2/datom-attr= % :person/name)
+         :pred      #(org.zsxf.datom/datom-attr= % :person/name)
          :index-kfn d2/datom->eid}
         {:clause    '[_ :movie/cast ?a]
          :path      identity
-         :pred      #(org.zsxf.datom2/datom-attr= % :movie/cast)
+         :pred      #(org.zsxf.datom/datom-attr= % :movie/cast)
          :index-kfn d2/datom->val}
         state)
       ;debug
@@ -483,10 +483,10 @@
       (xf/cartesian-xf
         {:clause '[?danny :person/born ?danny-born]
          :path   (util/path-f [1])
-         :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
+         :pred   #(org.zsxf.datom/datom-attr= % :person/born)}
         {:clause '[?a :person/born ?actor-born]
          :path   (util/path-f [0 1])
-         :pred   #(org.zsxf.datom2/datom-attr= % :person/born)}
+         :pred   #(org.zsxf.datom/datom-attr= % :person/born)}
         state
         :last? true)
       ;debug

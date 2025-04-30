@@ -6,7 +6,7 @@
             [clj-memory-meter.core :as mm]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.datascript :as ds]
-            [org.zsxf.datom2 :as d2]
+            [org.zsxf.datom :as d2]
             [taoensso.nippy :as nippy]
             [org.zsxf.query :as q]
             [org.zsxf.util :as util]

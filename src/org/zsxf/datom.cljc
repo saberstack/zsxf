@@ -1,4 +1,4 @@
-(ns org.zsxf.datom2
+(ns org.zsxf.datom
   (:require [org.zsxf.util :as util]
             #?(:clj [org.zsxf.type :as t])
             [org.zsxf.zset :as zs])

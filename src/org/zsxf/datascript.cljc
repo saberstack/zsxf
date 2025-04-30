@@ -1,6 +1,6 @@
 (ns org.zsxf.datascript
   (:require [org.zsxf.query :as q]
-            [org.zsxf.datom2 :as d2]
+            [org.zsxf.datom :as d2]
             [datascript.core :as d]))
 
 (defn listen!

@@ -3,7 +3,7 @@
            org.clojure/clojurescript {:mvn/version "1.12.35"}
            net.cgrand/xforms         {:mvn/version "0.19.4"}
            datascript/datascript     {:git/url "https://github.com/saberstack/datascript"
-                                      :git/sha "4562d2c32901fcf02d048cfeaa83c69637e42c53"}
+                                      :git/sha "c6dd4ac6ec784d4720dd0a5ecabd055e2fda9c95"}
            dev.weavejester/medley    {:mvn/version "1.8.1"}
            ;TODO potentially remove
            com.aphyr/bifurcan-clj    {:mvn/version "0.1.3"}

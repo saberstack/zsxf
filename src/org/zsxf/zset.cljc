@@ -229,8 +229,8 @@
       (index
         (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
         (fn [m] (first (:name m)))))
-  [zset kfn]
-  (into {} (index-xf kfn) zset))
+  [zset kfn & {:keys [initial-map] :or {initial-map {}}}]
+  (into initial-map (index-xf kfn) zset))
 
 (defn indexed-zset->zset
   "Convert an indexed zset back into a zset"
@@ -261,7 +261,7 @@
   ([]
    {})
   ([indexed-zset]
-   (indexed-zset-pos+ indexed-zset {}))
+   (indexed-zset-pos+ indexed-zset (empty indexed-zset)))
   ([indexed-zset-1 indexed-zset-2]
    (transduce
      (map identity)
@@ -283,7 +283,8 @@
                indexed-zset-1-accum
                ;else, add new zset-pos
                (assoc indexed-zset-1-accum k-2 new-zset))))))
-     indexed-zset-1
+     ;if indexed-zset-1 is nil, use the same type of empty map as indexed-zset-1 for the initial value
+     (or indexed-zset-1 (empty indexed-zset-2))
      indexed-zset-2)))
 
 (defn key-intersection

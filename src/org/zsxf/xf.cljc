@@ -166,6 +166,10 @@
       ;ΔA ⋈ ΔB
       (zs/intersect-indexed* delta-1 delta-2 f1 f2 rel/index-clauses))))
 
+(defn initial-map [index-kfn]
+  ;WIP
+  {})
+
 (defn join-xf
   "Receives:
 
@@ -216,12 +220,16 @@
              (let [delta-1 (if (and
                                  (can-join? zsi path-f-1 clause-1)
                                  (pred-1 (path-f-1 zsi)))
-                             (zs/index #{zsi} (comp index-kfn-1 path-f-1))
+                             (zs/index #{zsi} (comp index-kfn-1 path-f-1)
+                               ;{:initial-map (initial-map index-kfn-1)}
+                               )
                              {})
                    delta-2 (if (and
                                  (can-join? zsi path-f-2 clause-2)
                                  (pred-2 (path-f-2 zsi)))
-                             (zs/index #{zsi} (comp index-kfn-2 path-f-2))
+                             (zs/index #{zsi} (comp index-kfn-2 path-f-2)
+                               ;{:initial-map (initial-map index-kfn-2)}
+                               )
                              {})
                    ;If last?, we return an empty zset.
                    ; The current zset-item has been "offered" to all transducers and is not needed anymore.

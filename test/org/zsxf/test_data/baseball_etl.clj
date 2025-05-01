@@ -4,7 +4,8 @@
             [honey.sql :as sql]
             [honey.sql.helpers :as h]
             [clojure.set :as set]
-            [datascript.core :as d]))
+            [datascript.core :as d]
+            [taoensso.timbre :as timbre]))
 ;; SQLite database connection
 (def db-spec {:dbtype "sqlite"
               :dbname "resources/baseball.sqlite"})
@@ -115,13 +116,39 @@
          (group-by (juxt :playerID :teamID))
          vals)))
 
+(def conn-registry (atom {}))
+
+(defn conn-for-range [low high]
+  (if (contains? @conn-registry [low high])
+    (get @conn-registry [low high])
+    (let [conn (fresh-conn)]
+      (populate-datascript-db conn {:min-year low :max-year high})
+      (swap! conn-registry assoc [low high] conn)
+      conn)))
+
 (comment
   (time (do
           (let [opts {:min-year 1980
                       :max-year 1985}]
             (def conn (fresh-conn))
             (populate-datascript-db conn opts))))
-  @conn
+
   (count (d/datoms @conn :aevt :tenure/year))
+
+  (doseq [range [[1980 1985]
+                 [1975 2000]
+                 [1950 2000]
+                 [1900 2000]]]
+    (let [conn (apply conn-for-range range)]
+      (timbre/infof ("Range %s has %s datoms" range (count @conn)))
+      (time (d/q '[:find ?player ?team ?year
+                   :where
+                   [?p :player/name ?player]
+                   [?ten :tenure/player ?p]
+                   [?ten :tenure/team ?t]
+                   [?ten :tenure/year ?year]
+                   [?t :team/name ?team]
+                   :order ?year]
+                 @conn))))
 
   )

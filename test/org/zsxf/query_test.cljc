@@ -327,6 +327,8 @@
              query-size-in-mb          (util/megabytes query-size)
              expected-query-size-in-mb 116]
          (when (<= 24 (util/jvm-version))
+           (timbre/info query-size-in-mb)
+           (timbre/info expected-query-size-in-mb)
            ;check that impl changes haven't increased the query size
            (is (<= query-size-in-mb expected-query-size-in-mb)))
          ;check query result
@@ -578,7 +580,6 @@
 
 (deftest movies-without-sequels
   (let [_           (timbre/set-min-level! :trace)
-        [conn _] (util/load-learn-db-empty)
         [conn _] (util/load-learn-db)
         query       (q/create-query basic-difference-zsxf)
         _           (ds/init-query-with-conn query conn)

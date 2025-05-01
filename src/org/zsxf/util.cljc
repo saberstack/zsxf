@@ -5,7 +5,7 @@
             #?(:clj [clojure.java.io :as io])
             #?(:clj [taoensso.encore :as enc]))
   #?(:clj
-     (:import (clojure.lang IObj Util)
+     (:import (clojure.lang IObj)
               (java.io PushbackReader))))
 
 (defn fpred
@@ -240,17 +240,16 @@
     (apply vary-meta obj f args)
     obj))
 
-#?(:clj
-   (defn all-identical?
-     "Like clojure.core/identical? but supports multiple items, similar to clojure.core/="
-     ([x y]
-      (identical? x y))
-     ([x y & more]
-      (if (Util/identical x y)
-        (if (next more)
-          (recur y (first more) (next more))
-          (Util/identical y (first more)))
-        false))))
+(defn all-identical?
+  "Like clojure.core/identical? but supports multiple items, similar to clojure.core/="
+  ([x y]
+   (identical? x y))
+  ([x y & more]
+   (if (identical? x y)
+     (if (next more)
+       (recur y (first more) (next more))
+       (identical? y (first more)))
+     false)))
 
 (comment
   (scaffold clojure.lang.IPersistentMap)

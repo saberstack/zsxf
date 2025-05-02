@@ -66,9 +66,6 @@
 (defn local-date->instant [local-date]
   (-> local-date (.atStartOfDay (ZoneId/systemDefault)) (.toInstant)))
 
-(defn fresh-conn []
-  (d/create-conn schema))
-
 (defn populate-datascript-db [conn]
   (do
     ;; First, insert the movies.
@@ -125,7 +122,7 @@
     ))
 
 (comment
-  (def conn (fresh-conn))
+  (def conn (d/create-conn schema))
   (time (populate-datascript-db conn))
 
   (count (d/datoms @conn :aevt :movie/cast))

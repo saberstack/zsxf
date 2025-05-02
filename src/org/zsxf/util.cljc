@@ -251,7 +251,22 @@
        (identical? y (first more)))
      false)))
 
+(defmacro fn+
+  "Same as clojure.core/fn but also attach the source to the function as metadata"
+  [& body]
+  `(with-meta (fn ~@body) {:source '(fn ~@body)}))
+
+(defn source
+  "Return the source as data of a fn created via fn+"
+  [f]
+  (:source (meta f)))
+
+
 (comment
+
+  (let [f (fn+ [a b c] (+ a b c 42))]
+    (source f))
+
   (scaffold clojure.lang.IPersistentMap)
 
   (scaffold clojure.lang.IPersistentCollection)

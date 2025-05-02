@@ -28,3 +28,11 @@
   (is (true? (util/all-identical? #{} #{} #{} #{})))
 
   (is (false? (util/all-identical? 1 2 3))))
+
+(deftest fn-with-source-test-1
+  (let [expected-source '(clojure.core/fn [a b c] (+ a b c 42))
+        f               (util/fn+ [a b c] (+ a b c 42))]
+    ;check source
+    (is (= expected-source (util/source f)))
+    ;check fn works
+    (is (= 45 (f 1 1 1)))))

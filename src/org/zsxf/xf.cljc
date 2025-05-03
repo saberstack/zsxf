@@ -26,7 +26,7 @@
             #?(:clj [org.zsxf.type.datom :as td])                  ;don't remove! type import fails
             [org.zsxf.util :as util])
   #?(:clj
-     (:import (org.zsxf.type Datom2))))
+     (:import (org.zsxf.type.datom Datom2))))
 
 (defn rf-branchable
   "Helper to adapt a reducing function to a branching transducer.

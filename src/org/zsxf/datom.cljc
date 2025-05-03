@@ -3,7 +3,7 @@
             #?(:clj [org.zsxf.type.datom :as td])
             [org.zsxf.zset :as zs])
   #?(:clj
-     (:import (org.zsxf.type Datom2))))
+     (:import (org.zsxf.type.datom Datom2))))
 
 
 (defn datom2

@@ -23,7 +23,7 @@
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]
-            #?(:clj [org.zsxf.type :as t])                  ;don't remove! type import fails
+            #?(:clj [org.zsxf.type.datom :as td])                  ;don't remove! type import fails
             [org.zsxf.util :as util])
   #?(:clj
      (:import (org.zsxf.type Datom2))))

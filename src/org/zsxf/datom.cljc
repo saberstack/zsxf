@@ -1,6 +1,6 @@
 (ns org.zsxf.datom
   (:require [org.zsxf.util :as util]
-            #?(:clj [org.zsxf.type :as t])
+            #?(:clj [org.zsxf.type.datom :as td])
             [org.zsxf.zset :as zs])
   #?(:clj
      (:import (org.zsxf.type Datom2))))
@@ -11,7 +11,7 @@
    (datom2 datascript-datom nil))
   ([datascript-datom metadata]
    #?(:clj
-      (t/->Datom2 datascript-datom metadata)
+      (td/->Datom2 datascript-datom metadata)
       :cljs
       ;TODO implement Datom2 for CLJS
       (let [[e a v _t add-or-retract :as datom] datascript-datom]

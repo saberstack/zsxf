@@ -1,0 +1,56 @@
+(ns org.zsxf.experimental.repl
+  (:require [clj-memory-meter.core :as mm]
+            [org.zsxf.query :as q]
+            [taoensso.timbre :as timbre]))
+
+
+(defn sample-indices
+  [query & {:keys [n vfn clause print-stats]
+            :or   {n 2 vfn identity}}]
+  (transduce
+    (comp
+      (filter (fn [[k v]]
+                (when print-stats
+                  (timbre/info
+                    k
+                    "original mm:"
+                    (mm/measure v)))
+                (and (vector? k) (uuid? (second k)))))
+      (if clause
+        (filter (fn [[k v]] (= clause k)))
+        (map identity))
+      (map (fn [[k v]]
+             (when print-stats
+               (let [hypothetical (into (empty v) (map (fn [[k v]] [k (vfn v)])) v)]
+                 (timbre/info
+                   k "original count:" (count v))
+                 (timbre/info
+                   k "hypothetical mm:" (mm/measure hypothetical))
+                 (timbre/info
+                   k "hypothetical count:" (count hypothetical))))
+
+             [k (into (empty v)
+                  (comp
+                    (take n)
+                    (map (fn [[k v]]
+                           (timbre/info "type:" (type (vfn v)))
+                           [k (vfn v)])))
+                  v)])))
+    conj
+    {}
+    @(::q/state query)))
+
+
+(comment
+  (set! *print-meta* false)
+
+  ((comp type ffirst second first)
+   (sample-indices org.zsxf.query-test/query
+     :clause '[[?m :movie/cast ?a] #uuid"ff8de2cc-8e1b-42fb-9052-690e513875f9"]
+     :print-stats true))
+
+
+  (sample-indices org.zsxf.test-data.movielens/iron-man-sm
+    :print-stats true
+    :vfn first)
+  )

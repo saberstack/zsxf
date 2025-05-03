@@ -12,65 +12,38 @@
 ;; Note: goes OOM on both datascript and on zsxf
 ;; The graph branches out very fast, so any algorithm would need to be clever here.
 #_(def danny-4 (q/create-query
-               (static-compile '[:find ?a3-name ?m3-name ?a2-name ?m2-name ?a1-name ?m1-name ?a0-name ?m0-name ?danny-name
-                                 :where
-                                 [?danny :actor/name "Danny Glover"]
-                                 [?m0 :movie/cast ?danny]
-                                 [?m0 :movie/cast ?actor-0]
-                                 [?m1 :movie/cast ?actor-0]
-                                 [?m1 :movie/cast ?actor-1]
-                                 [?m2 :movie/cast ?actor-1]
-                                 [?m2 :movie/cast ?actor-2]
-                                 [?m3 :movie/cast ?actor-2]
-                                 [?m3 :movie/cast ?actor-3]
-                                 [?m0 :movie/title ?m0-name]
-                                 [?m1 :movie/title ?m1-name]
-                                 [?m2 :movie/title ?m2-name]
-                                 [?m3 :movie/title ?m3-name]
-                                 [?danny :actor/name ?danny-name]
-                                 [?actor-0 :actor/name ?a0-name]
-                                 [?actor-1 :actor/name ?a1-name]
-                                 [?actor-2 :actor/name ?a2-name]
-                                 [?actor-3 :actor/name ?a3-name]
-                                 [(clojure.core/distinct? ?danny ?actor-0 ?actor-1 ?actor-2 ?actor-3)]
-                                 [(clojure.core/distinct? ?m0 ?m1 ?m2 ?m3)]])))
+                 (static-compile '[:find ?a3-name ?m3-name ?a2-name ?m2-name ?a1-name ?m1-name ?a0-name ?m0-name ?danny-name
+                                   :where
+                                   [?danny :actor/name "Danny Glover"]
+                                   [?m0 :movie/cast ?danny]
+                                   [?m0 :movie/cast ?actor-0]
+                                   [?m1 :movie/cast ?actor-0]
+                                   [?m1 :movie/cast ?actor-1]
+                                   [?m2 :movie/cast ?actor-1]
+                                   [?m2 :movie/cast ?actor-2]
+                                   [?m3 :movie/cast ?actor-2]
+                                   [?m3 :movie/cast ?actor-3]
+                                   [?m0 :movie/title ?m0-name]
+                                   [?m1 :movie/title ?m1-name]
+                                   [?m2 :movie/title ?m2-name]
+                                   [?m3 :movie/title ?m3-name]
+                                   [?danny :actor/name ?danny-name]
+                                   [?actor-0 :actor/name ?a0-name]
+                                   [?actor-1 :actor/name ?a1-name]
+                                   [?actor-2 :actor/name ?a2-name]
+                                   [?actor-3 :actor/name ?a3-name]
+                                   [(clojure.core/distinct? ?danny ?actor-0 ?actor-1 ?actor-2 ?actor-3)]
+                                   [(clojure.core/distinct? ?m0 ?m1 ?m2 ?m3)]])))
 
 ;; What was the cast that worked with Danny on all of his movies?
 (def danny-1-query
-  '[:find ?a0-name
+  '[:find ?a-name
     :where
-    ;[?m0 :movie/cast ?danny]
+    ;[?m :movie/cast ?danny]
     ;[?danny :actor/name "Danny Glover"]
-    [?m0 :movie/cast ?actor-0]
-    [?actor-0 :actor/name ?a0-name]
-    [?m0 :movie/title "Iron Man"]])
-
-;; What was the cast that worked with Danny on all of his movies?
-(comment
-  (def danny-1
-    (q/create-query
-      (static-compile
-        '[:find ?a0-name
-          :where
-          ;[?m0 :movie/cast ?danny]
-          ;[?danny :actor/name "Danny Glover"]
-          [?m0 :movie/cast ?actor-0]
-          [?actor-0 :actor/name ?a0-name]
-          [?m0 :movie/title "Iron Man"]])
-      ))
-
-  (def danny-1b
-    (q/create-query
-      (static-compile
-        '[:find ?a0-name
-          :where
-          ;[?m0 :movie/cast ?danny]
-          ;[?danny :actor/name "Danny Glover"]
-          [?m0 :movie/cast ?actor-0]
-          [?actor-0 :actor/name ?a0-name]
-          [?m0 :movie/title "Iron Man"]])
-      ))
-  )
+    [?m :movie/cast ?actor]
+    [?actor :actor/name ?a-name]
+    [?m :movie/title "Iron Man"]])
 
 
 ;; What movies has Danny appeared in?
@@ -118,6 +91,55 @@
 
   (init-data)
 
+  (mm/measure conn)
+
+  (ds/unlisten-all! conn)
+
+  (let [iron-man-lg (q/create-query
+                      (static-compile
+                        '[:find ?a-name
+                          :where
+                          ;[?m0 :movie/cast ?danny]
+                          ;[?danny :actor/name "Danny Glover"]
+                          [?m :movie/title "Iron Man"]
+                          [?m :movie/cast ?actor]
+                          [?actor :actor/name ?a-name]])
+                      )
+        iron-man-sm (q/create-query
+                      (static-compile
+                        '[:find ?a-name
+                          :where
+                          ;[?m0 :movie/cast ?danny]
+                          ;[?danny :actor/name "Danny Glover"]
+                          [?m :movie/cast ?actor]
+                          [?actor :actor/name ?a-name]
+                          [?m :movie/title "Iron Man"]])
+                      )]
+
+    (time (ds/init-query-with-conn iron-man-sm conn))
+
+    ;(def iron-man-lg iron-man-lg)
+    (def iron-man-sm iron-man-sm)
+
+
+    ;(mm/measure iron-man-lg)
+    (mm/measure iron-man-sm)
+
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
+
+
+
+
+
+(comment
   ; Size of db
   (for [attribute [:movie/title :movie/cast :actor/name]]
     (count (d/datoms @conn :aevt attribute)))               ; (45319 560550 206158)
@@ -155,9 +177,12 @@
       (d/q danny-1-query @conn)
       :done))
   (= (q/get-result danny-1) (d/q danny-1-query @conn))
-  (mm/measure danny-1)
+
+
+
   (mm/measure conn)
   (mm/measure [conn danny-1])
+  (mm/measure [conn danny-1b])
 
   (time
     (do

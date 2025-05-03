@@ -126,7 +126,7 @@
   (binding [*out* w]
     (let [^Datom d (.-datom datom2)]
       (print-meta datom2 w)
-      ;(.write w "#D2")
+      (.write w "#d2")
       (pr [(.-e d) (.-a d) (.-v d)]))))
 
 ;New print
@@ -153,7 +153,7 @@
 (defn datom-from-reader [v]
   ; This does not seem possible until this is solved:
   ; https://clojure.atlassian.net/jira/software/c/projects/CLJ/issues/CLJ-2904
-  (->Datom2 (apply ddb/datom v) nil))
+  `(->Datom2 (ddb/datom ~@v) nil))
 
 ;; Custom printing end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

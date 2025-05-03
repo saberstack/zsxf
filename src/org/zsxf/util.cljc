@@ -271,6 +271,9 @@
 
   (scaffold clojure.lang.IPersistentSet)
 
+  (scaffold clojure.lang.APersistentSet)
+  (scaffold clojure.lang.PersistentHashSet)
+
   (scaffold clojure.lang.IPersistentCollection)
 
   (scaffold clojure.lang.IPersistentVector))

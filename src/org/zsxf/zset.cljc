@@ -4,7 +4,7 @@
   #?(:cljs (:refer-clojure :rename {+ +' * *'}))
   (:require [clojure.spec.alpha :as s]
             [org.zsxf.constant :as const]
-            [org.zsxf.relation :as rel]
+            [org.zsxf.type.one-item-set :as ois]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
             [net.cgrand.xforms :as xforms]
@@ -131,8 +131,8 @@
            (if (not= 0 (zset-weight new-zsi))
              (conj s new-zsi)
              s)))
-       (fn [accum]
-         accum))
+       (fn [accum-final]
+         (ois/optimize-one-item-set accum-final)))
      zset-1
      more)))
 
@@ -174,7 +174,7 @@
              (conj s new-zset-item)
              s)))
        (fn [accum]
-         accum))
+         (ois/optimize-one-item-set accum)))
      zset-1
      [zset-2])))
 
@@ -213,15 +213,13 @@
   Groups input items based on the return value of kfn.
   Each group is gathered into-coll (typically a set)."
   ([kfn]
-   (index-xf kfn #{}))
-  ([kfn into-coll]
    (xforms/by-key
      kfn
      (fn [zset-item] zset-item)
      (fn [k zset-of-grouped-items]
-       (if k {k zset-of-grouped-items} {}))
+       (if k {k (ois/optimize-one-item-set zset-of-grouped-items)} {}))
      ;turn grouped items into a zset
-     (xforms/into into-coll))))
+     (xforms/into #{}))))
 
 (defn index
   "Convert a zset into a map indexed by a key function"

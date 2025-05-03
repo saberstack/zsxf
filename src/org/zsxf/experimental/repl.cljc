@@ -5,7 +5,7 @@
 
 
 (defn sample-indices
-  [query & {:keys [n vfn clause print-stats]
+  [query & {:keys [n vfn clause clause-f print-stats]
             :or   {n 2 vfn identity}}]
   (transduce
     (comp
@@ -18,6 +18,9 @@
                 (and (vector? k) (uuid? (second k)))))
       (if clause
         (filter (fn [[k v]] (= clause k)))
+        (map identity))
+      (if clause-f
+        (filter (fn [[k v]] (clause-f k)))
         (map identity))
       (map (fn [[k v]]
              (when print-stats
@@ -51,6 +54,9 @@
 
 
   (sample-indices org.zsxf.test-data.movielens/iron-man-sm
+    :n 5
+    :clause-f (fn [k] (= '[?actor :actor/name ?a-name] (first k)))
     :print-stats true
-    :vfn first)
+    :vfn (comp (fn [d2] (.-datom d2)) first)
+    )
   )

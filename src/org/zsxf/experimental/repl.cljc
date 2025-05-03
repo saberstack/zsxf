@@ -36,6 +36,7 @@
                   (comp
                     (take n)
                     (map (fn [[k v]]
+                           (timbre/info "v cnt" (count v))
                            (timbre/info "type:" (type (vfn v)))
                            [k (vfn v)])))
                   v)])))
@@ -52,11 +53,12 @@
      :clause '[[?m :movie/cast ?a] #uuid"ff8de2cc-8e1b-42fb-9052-690e513875f9"]
      :print-stats true))
 
+  (mm/measure org.zsxf.test-data.movielens/iron-man-sm)
 
   (sample-indices org.zsxf.test-data.movielens/iron-man-sm
-    :n 5
+    :n 50
     :clause-f (fn [k] (= '[?actor :actor/name ?a-name] (first k)))
     :print-stats true
-    :vfn (comp (fn [d2] (.-datom d2)) first)
+    ;:vfn first
     )
   )

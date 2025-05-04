@@ -1,7 +1,7 @@
 (ns org.zsxf.type.pair-vector
   #?(:clj
      (:import
-      (clojure.lang Associative Counted ILookup IObj IPersistentCollection IPersistentStack
+      (clojure.lang Associative Counted IHashEq ILookup IObj IPersistentCollection IPersistentStack
                     IPersistentVector Indexed MapEntry Reversible Seqable))))
 
 (declare pair-vector)
@@ -14,6 +14,9 @@
      IPersistentCollection
      (empty [this] [])
      (equiv [this other] (.equals [a b] other))
+     IHashEq
+     (hasheq [this]
+       (hash-ordered-coll [a b]))
      Counted
      (count [this] 2)
      Seqable
@@ -62,7 +65,11 @@
      (valAt [this idx]
        (nth this idx))
      (valAt [this idx nf]
-       (nth this idx nf))))
+       (nth this idx nf)))
+   :cljs
+   (comment
+     ;TODO implement if needed
+     ))
 
 
 (defn pair-vector [a b]

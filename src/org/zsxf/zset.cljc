@@ -6,7 +6,7 @@
             [org.zsxf.constant :as const]
             [org.zsxf.type.one-item-set :as ois]
             [org.zsxf.zset :as-alias zs]
-            [org.zsxf.type.pair-vector :as vv]
+            [org.zsxf.type.pair-vector :as pv]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
@@ -205,7 +205,7 @@
              new-weight (*' weight-1 weight-2)]
          (pair-f
            (zset-item
-             (vv/pair-vector
+             (pv/pair-vector
                (item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
                (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
              new-weight))
@@ -321,7 +321,7 @@
      (into
        {}
        (map (fn [common]
-              (vv/pair-vector
+              (pv/pair-vector
                 common
                 (zset*
                   (indexed-zset-1 common)

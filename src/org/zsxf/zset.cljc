@@ -6,6 +6,7 @@
             [org.zsxf.constant :as const]
             [org.zsxf.type.one-item-set :as ois]
             [org.zsxf.zset :as-alias zs]
+            [org.zsxf.type.pair-vector :as vv]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
@@ -204,9 +205,15 @@
              new-weight (*' weight-1 weight-2)]
          (pair-f
            (zset-item
-             [(item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
-              (item-2-f (vary-meta item-2 dissoc-meta-weight))] ;remove weight
-             new-weight)))))))
+             (vv/pair-vector
+               (item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
+               (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
+             new-weight))
+         #_(pair-f
+             (zset-item
+               [(item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
+                (item-2-f (vary-meta item-2 dissoc-meta-weight))] ;remove weight
+               new-weight)))))))
 
 (defn index-xf
   "Returns a group-by-style transducer.
@@ -314,10 +321,12 @@
      (into
        {}
        (map (fn [common]
-              [common (zset*
-                        (indexed-zset-1 common)
-                        (indexed-zset-2 common)
-                        zset*-item-1-f
-                        zset*-item-2-f
-                        pair-f)]))
+              (vv/pair-vector
+                common
+                (zset*
+                  (indexed-zset-1 common)
+                  (indexed-zset-2 common)
+                  zset*-item-1-f
+                  zset*-item-2-f
+                  pair-f))))
        commons))))

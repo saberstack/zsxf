@@ -54,10 +54,12 @@
 
 (defn optimize-one-item-set [s]
   #?(:clj
-     (if (= 1 (count s))
-       (one-item-set
-
-         (first s))
+     (if (and
+           (= 1 (count s))
+           (not (instance? OneItemSet s))
+           ;needed because sets with metadata not currently supported
+           (nil? (meta s)))
+       (one-item-set (first s))
        s)
      ;TODO in CLJS (if relevant)
      :cljs s))

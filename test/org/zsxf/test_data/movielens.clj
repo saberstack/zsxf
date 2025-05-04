@@ -117,13 +117,14 @@
                       )]
 
     (time (ds/init-query-with-conn iron-man-sm conn))
+    (time (ds/init-query-with-conn iron-man-lg conn))
 
-    ;(def iron-man-lg iron-man-lg)
+    (def iron-man-lg iron-man-lg)
     (def iron-man-sm iron-man-sm)
 
 
-    ;(mm/measure iron-man-lg)
-    (mm/measure iron-man-sm)
+    [(mm/measure iron-man-lg)
+     (mm/measure iron-man-sm)]
 
     )
   )

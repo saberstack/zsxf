@@ -56,9 +56,18 @@
   (mm/measure org.zsxf.test-data.movielens/iron-man-sm)
 
   (sample-indices org.zsxf.test-data.movielens/iron-man-sm
-    :n 50
+    :n 5
     :clause-f (fn [k] (= '[?actor :actor/name ?a-name] (first k)))
     :print-stats true
     ;:vfn first
     )
+
+  (sample-indices org.zsxf.test-data.movielens/iron-man-lg
+    :n 1
+    :clause-f (fn [k]
+                (or
+                  ;(= '[?actor :actor/name ?a-name] (first k))
+                  (= '[?m :movie/cast ?actor] (first k))
+                  ))
+    :print-stats true)
   )

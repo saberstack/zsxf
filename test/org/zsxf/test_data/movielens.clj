@@ -65,6 +65,11 @@
         [?m0 :movie/cast ?danny]
         [?m0 :movie/title ?m0-name]])))
 
+(def iron-man-query-ds
+  '[:find ?eid
+    :where
+    [?eid :movie/title "The Terminator"]])
+
 (comment
   (time (ds/init-query-with-conn danny-0 conn))
   (mm/measure danny-0))
@@ -91,6 +96,8 @@
 
   (init-data)
 
+  (d/q iron-man-query-ds @conn)
+
   (mm/measure conn)
 
   (ds/unlisten-all! conn)
@@ -101,7 +108,7 @@
                           :where
                           ;[?m0 :movie/cast ?danny]
                           ;[?danny :actor/name "Danny Glover"]
-                          [?m :movie/title "Iron Man"]
+                          [?m :movie/title "The Terminator"]
                           [?m :movie/cast ?actor]
                           [?actor :actor/name ?a-name]])
                       )
@@ -113,7 +120,7 @@
                           ;[?danny :actor/name "Danny Glover"]
                           [?m :movie/cast ?actor]
                           [?actor :actor/name ?a-name]
-                          [?m :movie/title "Iron Man"]])
+                          [?m :movie/title "The Terminator"]])
                       )]
 
     (time (ds/init-query-with-conn iron-man-sm conn))

@@ -36,8 +36,8 @@
                   (comp
                     (take n)
                     (map (fn [[k v]]
-                           (timbre/info "v cnt" (count v))
-                           (timbre/info "type:" (type (vfn v)))
+                           ;(timbre/info "v cnt" (count v))
+                           ;(timbre/info "type:" (type (vfn v)))
                            [k (vfn v)])))
                   v)])))
     conj
@@ -61,6 +61,12 @@
     :print-stats true
     ;:vfn first
     )
+
+  (mm/measure org.zsxf.test-data.movielens/iron-man-lg)
+
+  (sample-indices org.zsxf.test-data.movielens/iron-man-lg
+    :n 3
+    :print-stats true)
 
   (sample-indices org.zsxf.test-data.movielens/iron-man-lg
     :n 1

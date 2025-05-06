@@ -1,6 +1,8 @@
-(ns org.zsxf.experimental.repl
+(ns org.zsxf.alpha.repl
   (:require [clj-memory-meter.core :as mm]
             [org.zsxf.query :as q]
+            [org.zsxf.util :as util]
+            [taoensso.nippy :as nippy]
             [taoensso.timbre :as timbre]))
 
 
@@ -24,13 +26,18 @@
         (map identity))
       (map (fn [[k v]]
              (when print-stats
-               (let [hypothetical (into (empty v) (map (fn [[k v]] [k (vfn v)])) v)]
+               (let [;hypothetical (into (empty v) (map (fn [[k v]] [k (vfn v)])) v)
+                     ba          (util/time-f (nippy/freeze v) #(timbre/info "freeze time" %))
+                     _           (util/time-f (nippy/thaw ba) #(timbre/info "thaw time" %))
+                     frozen-size (mm/measure ba)]
                  (timbre/info
                    k "original count:" (count v))
+                 ;(timbre/info
+                 ;  k "hypothetical mm:" (mm/measure hypothetical))
+                 ;(timbre/info
+                 ;  k "hypothetical count:" (count hypothetical))
                  (timbre/info
-                   k "hypothetical mm:" (mm/measure hypothetical))
-                 (timbre/info
-                   k "hypothetical count:" (count hypothetical))))
+                   k "frozen size" frozen-size)))
 
              [k (into (empty v)
                   (comp
@@ -64,7 +71,15 @@
 
   (mm/measure org.zsxf.test-data.movielens/iron-man-lg)
 
+  (sample-indices org.zsxf.test-data.movielens/iron-man-sm
+    :n 3
+    :print-stats true)
+
   (sample-indices org.zsxf.test-data.movielens/iron-man-lg
+    :n 3
+    :print-stats true)
+
+  (sample-indices org.zsxf.test-data.movielens/iron-man-3
     :n 3
     :print-stats true)
 

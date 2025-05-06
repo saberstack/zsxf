@@ -31,7 +31,6 @@
 
 (nippy/extend-thaw :datascript.db/Datom
   [data-input]
-  (println (type data-input))
   (nippy-thaw-datom data-input))
 
 (nippy/extend-freeze Datom2 :org.zsxf.type/Datom2

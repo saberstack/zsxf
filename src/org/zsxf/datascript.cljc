@@ -40,7 +40,7 @@
     true))
 
 (defn get-result
-  "Experimental proof-of-concept for parametererized queries"
+  "Experimental proof-of-concept for parameterized queries"
   [conn query param]
   (d/transact! conn [{:zsxf.input/id param}])
   (let [return (q/get-result query)]

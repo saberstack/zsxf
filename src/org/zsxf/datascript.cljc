@@ -39,6 +39,14 @@
     ;return
     true))
 
+(defn get-result
+  "Experimental proof-of-concept for parametererized queries"
+  [conn query param]
+  (d/transact! conn [{:zsxf.input/id param}])
+  (let [return (q/get-result query)]
+    (d/transact! conn [[:db/retractEntity [:zsxf.input/id param]]])
+    return))
+
 (defn take-last-datoms
   "Helper to see recently added datoms"
   [conn n]

@@ -7,11 +7,11 @@
 
 
 (def schema
-  {:cell/id   {:db/cardinality :db.cardinality/one
-               :db/unique      :db.unique/identity}
-   :input/id  {:db/cardinality :db.cardinality/one
-               :db/unique      :db.unique/identity}
-   :cell/data {}})
+  {:cell/id       {:db/cardinality :db.cardinality/one
+                   :db/unique      :db.unique/identity}
+   :zsxf.input/id {:db/cardinality :db.cardinality/one
+                   :db/unique      :db.unique/identity}
+   :cell/data     {}})
 
 (defn gen-cells [n]
   (into []
@@ -72,17 +72,11 @@
     conj
     (state-queries 500)))
 
-(defn get-result [conn query param]
-  (d/transact! conn [{:input/id param}])
-  (let [return (q/get-result query)]
-    (d/transact! conn [[:db/retractEntity [:input/id param]]])
-    return))
-
 (comment
 
   (init-queries)
 
-  (init 100000)
+  (init 1000)
 
   (mm/measure *conn)
 
@@ -101,18 +95,18 @@
                         :where
                         [?e :cell/data ?d]
                         [?e :cell/id ?cell-id]
-                        [?p :input/id ?cell-id]]))]
+                        [?p :zsxf.input/id ?cell-id]]))]
     (def query-all query-all)
     (ds/init-query-with-conn query-all @*conn))
 
   (q/get-result query-all)
 
   (time
-    (get-result @*conn query-all (rand-int 100000)))
+    (ds/get-result @*conn query-all (rand-int 1000)))
 
   (dotimes [_ 100]
     (time
-      (get-result @*conn query-all (rand-int 100000))))
+      (ds/get-result @*conn query-all (rand-int 1000))))
 
   (dotimes [_ 100]
     (time
@@ -123,11 +117,11 @@
           [?e :cell/id ?cell-id]
           [?e :cell/data ?d]]
         @@*conn
-        (rand-int 100000))))
+        (rand-int 1000))))
 
 
   (time
-    (get-result @*conn query-all 1000))
+    (ds/get-result @*conn query-all 1000))
 
   (org.zsxf.alpha.repl/sample-indices query-all)
 

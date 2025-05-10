@@ -3,9 +3,6 @@
   This reduces memory usage when there are many sets with one item.
   Raw performance is a non-goal, focusing on memory usage instead."
   #?(:clj
-     (:require [clj-memory-meter.core :as mm]
-               [taoensso.timbre :as timbre]))
-  #?(:clj
      (:import (clojure.lang IFn IHashEq IObj IPersistentCollection IPersistentSet Counted SeqIterator Seqable)
               (java.util Set))))
 
@@ -49,8 +46,9 @@
      IFn
      (invoke [this x] (when (= item x) item))))
 
-(defn one-item-set [item]
-  (->OneItemSet item))
+#?(:clj
+   (defn one-item-set [item]
+     (->OneItemSet item)))
 
 (defn optimize-one-item-set [s]
   #?(:clj

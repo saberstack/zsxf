@@ -1,5 +1,6 @@
 (ns org.zsxf.demo.react
-  (:require [datascript.core :as d]
+  (:require [clj-memory-meter.core :as mm]
+            [datascript.core :as d]
             [org.zsxf.datalog.compiler :refer [static-compile]]
             [org.zsxf.datascript :as ds]
             [org.zsxf.query :as q]))
@@ -7,6 +8,8 @@
 
 (def schema
   {:cell/id   {:db/cardinality :db.cardinality/one
+               :db/unique      :db.unique/identity}
+   :input/id  {:db/cardinality :db.cardinality/one
                :db/unique      :db.unique/identity}
    :cell/data {}})
 
@@ -69,20 +72,78 @@
     conj
     (state-queries 500)))
 
-(comment
+(defn get-result [conn query param]
+  (d/transact! conn [{:input/id param}])
+  (let [return (q/get-result query)]
+    (d/transact! conn [[:db/retractEntity [:input/id param]]])
+    return))
 
-  (init 500)
+(comment
 
   (init-queries)
 
-  (let [query (q/create-query
-                (static-compile
-                  '[:find ?d
-                    :where
-                    [?e :cell/id 3]
-                    [?e :cell/data ?d]]))]
-    (def query query)
-    (ds/init-query-with-conn query @*conn))
+  (init 100000)
+
+  (mm/measure *conn)
+
+  ;(let [query (q/create-query
+  ;              (static-compile
+  ;                '[:find ?d
+  ;                  :where
+  ;                  [?e :cell/id 3]
+  ;                  [?e :cell/data ?d]]))]
+  ;  (def query query)
+  ;  (ds/init-query-with-conn query @*conn))
+
+  (let [query-all (q/create-query
+                    (static-compile
+                      '[:find ?d
+                        :where
+                        [?e :cell/data ?d]
+                        [?e :cell/id ?cell-id]
+                        [?p :input/id ?cell-id]]))]
+    (def query-all query-all)
+    (ds/init-query-with-conn query-all @*conn))
+
+  (q/get-result query-all)
+
+  (time
+    (get-result @*conn query-all (rand-int 100000)))
+
+  (dotimes [_ 100]
+    (time
+      (get-result @*conn query-all (rand-int 100000))))
+
+  (dotimes [_ 100]
+    (time
+      (d/q
+        '[:find ?d
+          :in $ ?cell-id
+          :where
+          [?e :cell/id ?cell-id]
+          [?e :cell/data ?d]]
+        @@*conn
+        (rand-int 100000))))
+
+
+  (time
+    (get-result @*conn query-all 1000))
+
+  (org.zsxf.alpha.repl/sample-indices query-all)
+
+  (mm/measure query-all)
+
+  (d/q
+    '[:find ?cell-id
+      :where
+      [?e :cell/data ?d]
+      [?e :cell/id ?cell-id]
+      [?p :input/param ?param-value]
+      [(= ?cell-id ?param-value)]]
+    @@*conn)
+
+  (time
+    (d/transact! @*conn [{:input/param 3}]))
 
   (set-cell-data! 3 "new data")
 

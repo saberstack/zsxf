@@ -13,7 +13,7 @@
      (withMeta [this m] (PairVector. a b m))
      IPersistentCollection
      (empty [this] [])
-     (equiv [this other] (.equals [a b] other))
+     (equiv [this other] (.equiv [a b] other))
      IHashEq
      (hasheq [this]
        (hash-ordered-coll [a b]))

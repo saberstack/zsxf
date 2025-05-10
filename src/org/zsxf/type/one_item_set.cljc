@@ -35,7 +35,7 @@
      (cons [this x]
        (conj #{item} x))
      (equiv [this other]
-       (.equals #{item} other))
+       (.equiv #{item} other))
      IHashEq
      (hasheq [this]
        (hash-unordered-coll #{item}))

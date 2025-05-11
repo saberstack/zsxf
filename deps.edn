@@ -23,6 +23,7 @@
             :extra-deps  {org.clojure/core.async                    {:mvn/version "1.9.808-alpha1"}
                           criterium/criterium                       {:mvn/version "0.4.6"}
                           com.cnuernber/charred                     {:mvn/version "1.036"}
+                          hato/hato                                 {:mvn/version "1.0.0"}
                           com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}
                           com.clojure-goes-fast/clj-java-decompiler {:mvn/version "0.3.4"}
                           org.clojars.abhinav/snitch                {:mvn/version "0.1.15"}

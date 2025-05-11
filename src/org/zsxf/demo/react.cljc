@@ -2,6 +2,8 @@
   (:require [charred.api :as charred]
             [clj-memory-meter.core :as mm]
             [datascript.core :as d]
+            [taoensso.nippy :as nippy]
+            [taoensso.nippy :as nippy]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.datalog.compiler :refer [static-compile]]
             [org.zsxf.datascript :as ds]
@@ -176,6 +178,8 @@
     []
     @*messages))
 
+(defn on-message [ws msg last?]
+  (swap! *messages conj msg))
 
 (defn init-ds []
   (let [conn (d/create-conn {})]
@@ -189,15 +193,76 @@
       [?te :product_id ?currency]]
     @conn))
 
+(defn trade-stats-sell-ds [conn]
+  (d/q
+    '[:find ?currency (count ?te)
+      :where
+      [?te :side "buy"]
+      [?te :product_id ?currency]]
+    @conn))
+
+(defn trade-currencies-ds [conn]
+  (d/q
+    '[:find ?currency
+      :where
+      [?te :product_id ?currency]]
+    @conn))
+
 #?(:clj
    (defn init-coinbase-ws []
-     (reset! *messages [])
      (let [ws @(hws/websocket "wss://ws-feed.exchange.coinbase.com"
-                 {:on-message (fn [ws msg last?]
-                                (swap! *messages conj msg)
-                                (println "Received message:" msg))
+                 {:on-message on-message
                   :on-close   (fn [ws status reason]
                                 (println "WebSocket closed!"))})]
        (def ws ws)
        (hws/send! ws (coinbase-subscribe-msg)))
      ))
+
+(comment
+
+  (hws/close! ws)
+
+  (do
+    (init-ds)
+    :done)
+
+
+  (let [query (q/create-query
+                (static-compile
+                  '[:find ?currency
+                    :where
+                    [?te :side "buy"]
+                    [?te :product_id ?currency]]))]
+    (ds/init-query-with-conn query conn)
+    (def query query)
+    (q/get-result query))
+
+  (time
+    (d/q '[:find ?currency
+           :where
+           [?te :side "buy"]
+           [?te :product_id ?currency]]
+      @conn))
+
+  (time (trade-currencies-ds conn))
+
+  (time (trade-stats-ds conn))
+
+  (time (trade-stats-sell-ds conn))
+
+  (dotimes [_ 100]
+    (time (trade-stats-ds conn)))
+
+  (mm/measure @*messages)
+
+  (mm/measure conn)
+
+  (count @*messages)
+
+  (message-stats)
+
+  (count
+    (nippy/thaw-from-file
+      "resources/price_ticker/vector_of_maps.nippy"))
+
+  )

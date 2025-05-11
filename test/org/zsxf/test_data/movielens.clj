@@ -70,6 +70,15 @@
     :where
     [?eid :movie/title "The Terminator"]])
 
+(def movie-query-ds
+  '[:find ?a-name
+    :where
+    ;[?m0 :movie/cast ?danny]
+    ;[?danny :actor/name "Danny Glover"]
+    [?m :movie/title "The Terminator"]
+    [?actor :actor/name ?a-name]
+    [?m :movie/cast ?actor]])
+
 (comment
   (time (ds/init-query-with-conn danny-0 conn))
   (mm/measure danny-0))
@@ -96,7 +105,11 @@
 
   (init-data)
 
+  (dx/inspect "movie-conn" conn)
+
   (d/q iron-man-query-ds @conn)
+
+  (time (d/q movie-query-ds @conn))
 
   (mm/measure conn)
 
@@ -121,19 +134,34 @@
                           [?m :movie/cast ?actor]
                           [?actor :actor/name ?a-name]
                           [?m :movie/title "The Terminator"]])
+                      )
+
+        iron-man-3  (q/create-query
+                      (static-compile
+                        '[:find ?a-name
+                          :where
+                          ;[?m0 :movie/cast ?danny]
+                          ;[?danny :actor/name "Danny Glover"]
+                          [?actor :actor/name ?a-name]
+                          [?m :movie/cast ?actor]
+                          [?m :movie/title "The Terminator"]])
                       )]
 
     (time (ds/init-query-with-conn iron-man-sm conn))
     (time (ds/init-query-with-conn iron-man-lg conn))
+    (time (ds/init-query-with-conn iron-man-3 conn))
 
     (def iron-man-lg iron-man-lg)
     (def iron-man-sm iron-man-sm)
+    (def iron-man-3 iron-man-3)
 
 
     [(mm/measure iron-man-lg)
-     (mm/measure iron-man-sm)]
+     (mm/measure iron-man-sm)
+     (mm/measure iron-man-3)]
 
     )
+  (mm/measure [conn iron-man-3])
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

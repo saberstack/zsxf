@@ -2,10 +2,12 @@
   (:require [charred.api :as charred]
             [clj-memory-meter.core :as mm]
             [datascript.core :as d]
+            [net.cgrand.xforms :as xforms]
             [org.zsxf.datalog.compiler :refer [static-compile]]
             [org.zsxf.datascript :as ds]
             [org.zsxf.query :as q]
-            #?(:clj [hato.websocket :as hws])))
+            #?(:clj [hato.websocket :as hws])
+            [org.zsxf.xf :as xf]))
 
 
 (def schema
@@ -128,15 +130,71 @@
 
 (defn coinbase-subscribe-msg []
   (charred/write-json-str
-    {"product_ids" ["ETH-USD" "ETH-EUR"]
+    {"product_ids" ["ETH-USD" "LTC-USD" "BTC-USD"]
      "type"        "subscribe"
-     "channels"    ["level2" "heartbeat" {"product_ids" ["ETH-BTC" "ETH-USD"] "name" "ticker"}]}))
+     "channels"    [
+                    "ticker"
+                    ;"heartbeat"
+                    ;{"product_ids" ["ETH-BTC" "ETH-USD"] "name" "ticker"}
+                    ]}))
 
+
+(defonce *messages (atom []))
+
+
+(defn parse-messages []
+  (transduce
+    (comp
+      (map str)
+      (map (fn [s]
+             (try
+               (charred/read-json s :key-fn keyword)
+               (catch Throwable e nil))))
+      (filter :product_id))
+    conj
+    []
+    @*messages))
+
+(defn message-stats []
+  (transduce
+    (comp
+      (map str)
+      (map (fn [s]
+             (try
+               (charred/read-json s :key-fn keyword)
+               (catch Throwable e nil))))
+      (filter :product_id)
+      (xforms/by-key
+        :product_id
+        (fn [item] item)
+        (fn [k items]
+          (if k {k {:count (count items)
+                    ;:items items
+                    }} {}))
+        (xforms/into [])))
+    conj
+    []
+    @*messages))
+
+
+(defn init-ds []
+  (let [conn (d/create-conn {})]
+    (def conn conn)
+    (d/transact! conn (parse-messages))))
+
+(defn trade-stats-ds [conn]
+  (d/q
+    '[:find ?currency (count ?te)
+      :where
+      [?te :product_id ?currency]]
+    @conn))
 
 #?(:clj
    (defn init-coinbase-ws []
+     (reset! *messages [])
      (let [ws @(hws/websocket "wss://ws-feed.exchange.coinbase.com"
                  {:on-message (fn [ws msg last?]
+                                (swap! *messages conj msg)
                                 (println "Received message:" msg))
                   :on-close   (fn [ws status reason]
                                 (println "WebSocket closed!"))})]

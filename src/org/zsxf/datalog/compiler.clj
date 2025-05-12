@@ -4,6 +4,7 @@
             [org.zsxf.datalog.fn :as dfn]
             [org.zsxf.datalog.parser.spec :as parser-spec]
             [org.zsxf.datom :as d2]
+            [org.zsxf.datalog.macro-util :as mu]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as xf]
             [clojure.spec.alpha :as s]
@@ -13,14 +14,6 @@
 (def pos->getter
   {:entity `d2/datom->eid
    :value  `d2/datom->val})
-
-(defn safe-first [thing]
-  (when (vector? thing)
-    (first thing)))
-
-(defn safe-second [thing]
-  (when (vector? thing)
-    (second thing)))
 
 (defn clause-pred [_ a v]
   (if (parser/variable? v)
@@ -59,8 +52,8 @@
         (recur (next connected-components)
                (conj new-joins cartesian-join)
                (merge locators
-                      (update-vals (select-keys locators component-1) #(conj % `safe-first))
-                      (update-vals (select-keys locators component-2) #(conj % `safe-second))))))))
+                      (update-vals (select-keys locators component-1) #(conj % `mu/safe-first))
+                      (update-vals (select-keys locators component-2) #(conj % `mu/safe-second))))))))
 
 (defn mark-last [xf-steps-flat]
   (let [last-index (dec (count xf-steps-flat))]
@@ -191,10 +184,10 @@
                        (update xf-steps# 0 conj new-join#)
                        (conj covered-nodes# to#)
                        (disj remaining-nodes# to#)
-                       (merge {from# [`safe-first]}
+                       (merge {from# [`mu/safe-first]}
                               locators#
-                              (update-vals (select-keys locators# covered-nodes#) #(conj % `safe-first))
-                              {to# [`safe-second]})
+                              (update-vals (select-keys locators# covered-nodes#) #(conj % `mu/safe-first))
+                              {to# [`mu/safe-second]})
                        remaining-components#
                        (inc n#)))))))))
 

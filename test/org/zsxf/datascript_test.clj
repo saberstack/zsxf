@@ -35,6 +35,11 @@
      (is (= (q/get-result query#)
             (d/q (quote ~query) @conn#)))))
 
+(deftest single-clause-query "Special case with just one clause"
+  (test-query-gives-result [:find ?value
+                          :where [1 :person/name ?value]]
+                           #{["James Cameron"]}))
+
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"
   (test-query-gives-result [:find ?name
                             :where

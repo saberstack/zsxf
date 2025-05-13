@@ -55,6 +55,31 @@
                       (update-vals (select-keys locators component-1) #(conj % `mu/safe-first))
                       (update-vals (select-keys locators component-2) #(conj % `mu/safe-second))))))))
 
+
+(defn handle-single-clause
+  "Handle special/trivial case of a single-clause query, by joining the clause to itself."
+  [xf-steps predicates variable-index named-clauses]
+  (if (not= xf-steps [[]])
+    [xf-steps predicates]
+    (let [clause-name (first (keys named-clauses))
+          [e1 a1 v1 :as c1] (get named-clauses clause-name)
+          _ (do
+              (assert (= 1 (count (keys named-clauses))) "This query has only one where clause.")
+              (assert (or (parser/variable? e1)
+                          (parser/variable? v1)) "There is a variable in the where body."))
+          pred (clause-pred e1 a1 v1)
+          var-position (-> variable-index vals first (get clause-name))]
+      [[[`(xf/join-xf
+           {:clause (quote ~c1)
+            :pred ~pred
+            :path identity
+            :index-kfn ~(var-position pos->getter)}
+           {:clause (quote ~c1)
+            :pred ~pred
+            :path identity
+            :index-kfn ~(var-position pos->getter)})]]
+       [pred]])))
+
 (defn mark-last [xf-steps-flat]
   (let [last-index (dec (count xf-steps-flat))]
     (-> xf-steps-flat
@@ -121,7 +146,8 @@
              n# 1]
 
         (cond (and (empty? remaining-nodes#) (empty? remaining-components#))
-              (let [{:keys [locators cartesian-joins]} (join-isolated-components named-clauses# locators# state connected-components#)
+              (let [[xf-steps# preds#] (handle-single-clause xf-steps# preds# variable-index# named-clauses#)
+                    {:keys [locators cartesian-joins]} (join-isolated-components named-clauses# locators# state connected-components#)
                     xf-steps-flat# (-> (if (empty? cartesian-joins)
                                           (first xf-steps#)
                                           (->> xf-steps# (cons cartesian-joins) reverse vec (apply concat)))

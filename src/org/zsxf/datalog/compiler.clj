@@ -56,11 +56,11 @@
                       (update-vals (select-keys locators component-2) #(conj % `mu/safe-second))))))))
 
 
-(defn handle-single-clause
+(defn* handle-single-clause
   "Handle special/trivial case of a single-clause query, by joining the clause to itself."
-  [xf-steps predicates variable-index named-clauses]
+  [xf-steps predicates locators state variable-index named-clauses]
   (if (not= xf-steps [[]])
-    [xf-steps predicates]
+    [xf-steps predicates locators]
     (let [clause-name (first (keys named-clauses))
           [e1 a1 v1 :as c1] (get named-clauses clause-name)
           _ (do
@@ -77,8 +77,10 @@
            {:clause (quote ~c1)
             :pred ~pred
             :path identity
-            :index-kfn ~(var-position pos->getter)})]]
-       [pred]])))
+            :index-kfn ~(var-position pos->getter)}
+           ~state)]]
+       [pred]
+       (update locators clause-name conj mu/safe-first)])))
 
 (defn mark-last [xf-steps-flat]
   (let [last-index (dec (count xf-steps-flat))]
@@ -146,7 +148,7 @@
              n# 1]
 
         (cond (and (empty? remaining-nodes#) (empty? remaining-components#))
-              (let [[xf-steps# preds#] (handle-single-clause xf-steps# preds# variable-index# named-clauses#)
+              (let [[xf-steps# preds# locators#] (handle-single-clause xf-steps# preds# locators# state variable-index# named-clauses#)
                     {:keys [locators cartesian-joins]} (join-isolated-components named-clauses# locators# state connected-components#)
                     xf-steps-flat# (-> (if (empty? cartesian-joins)
                                           (first xf-steps#)

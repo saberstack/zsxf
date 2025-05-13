@@ -56,7 +56,7 @@
                       (update-vals (select-keys locators component-2) #(conj % `mu/safe-second))))))))
 
 
-(defn* handle-single-clause
+(defn handle-single-clause
   "Handle special/trivial case of a single-clause query, by joining the clause to itself."
   [xf-steps predicates locators state variable-index named-clauses]
   (if (not= xf-steps [[]])

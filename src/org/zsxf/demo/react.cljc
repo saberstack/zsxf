@@ -1,13 +1,12 @@
 (ns org.zsxf.demo.react
-  (:require [charred.api :as charred]
-            [clj-memory-meter.core :as mm]
+  (:require [clj-memory-meter.core :as mm]
             [datascript.core :as d]
-            [taoensso.nippy :as nippy]
             [taoensso.nippy :as nippy]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.datalog.compiler :refer [static-compile]]
             [org.zsxf.datascript :as ds]
             [org.zsxf.query :as q]
+            #?(:clj [charred.api :as charred])
             #?(:clj [hato.websocket :as hws])
             [org.zsxf.xf :as xf]))
 
@@ -143,28 +142,31 @@
 
 (defonce *messages (atom []))
 
+(defn read-json [s]
+  #?(:clj
+     (try
+       (charred/read-json s :key-fn keyword)
+       (catch Throwable e nil)))
+  #?(:cljs
+     (try
+       (js->clj (js/JSON.parse s) :keywordize-keys true)
+       (catch js/Error e nil))))
 
 (defn parse-messages []
   (transduce
     (comp
       (map str)
-      (map (fn [s]
-             (try
-               (charred/read-json s :key-fn keyword)
-               (catch Throwable e nil))))
+      (map (fn [s] (read-json s)))
       (filter :product_id))
     conj
     []
     @*messages))
 
-(defn message-stats []
+(defn message-stats [messages]
   (transduce
     (comp
-      (map str)
-      (map (fn [s]
-             (try
-               (charred/read-json s :key-fn keyword)
-               (catch Throwable e nil))))
+      ;(map str)
+      ;(map (fn [s] (read-json s)))
       (filter :product_id)
       (xforms/by-key
         :product_id
@@ -176,15 +178,16 @@
         (xforms/into [])))
     conj
     []
-    @*messages))
+    messages))
 
 (defn on-message [ws msg last?]
   (swap! *messages conj msg))
 
-(defn init-ds []
+(defn init-ds [messages]
   (let [conn (d/create-conn {})]
     (def conn conn)
-    (d/transact! conn (parse-messages))))
+    (d/transact! conn messages)
+    :done))
 
 (defn trade-stats-ds [conn]
   (d/q
@@ -223,7 +226,7 @@
   (hws/close! ws)
 
   (do
-    (init-ds)
+    (init-ds (parse-messages))
     :done)
 
 
@@ -259,10 +262,13 @@
 
   (count @*messages)
 
-  (message-stats)
+  (message-stats @*messages)
 
   (count
     (nippy/thaw-from-file
       "resources/price_ticker/vector_of_maps.nippy"))
+
+  (init-ds (nippy/thaw-from-file
+             "resources/price_ticker/vector_of_maps.nippy"))
 
   )

@@ -44,7 +44,17 @@
     (test-query-gives-result
      [:find ?value
       :where [1 :person/name ?value]]
-     #{["James Cameron"]})))
+     #{["James Cameron"]}))
+  (testing "eid literal with attr wildcard"
+    (test-query-gives-result
+     [:find ?value
+      :where [1 _ ?value]]
+     #{["James Cameron"]
+       [#inst"1954-08-16"]}))
+  (testing "all values in the db"
+    (test-query-matches-db
+     [:find ?value
+      :where [_ _ ?value]])))
 
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"
   (test-query-gives-result [:find ?name

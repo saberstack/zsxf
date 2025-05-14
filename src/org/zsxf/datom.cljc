@@ -7,6 +7,7 @@
 
 
 (defn datom2
+  "Takes a datom, i.e. (datascript.core/datom 1 :a 'v) and returns a Datom2"
   ([datascript-datom]
    (datom2 datascript-datom nil))
   ([datascript-datom metadata]

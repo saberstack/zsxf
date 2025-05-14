@@ -50,11 +50,6 @@
   (when (datom2? datom)
     (nth datom 2 nil)))
 
-(defn ?datom->val [datom]
-  (if (datom2? datom)
-    (nth datom 2 nil)
-    datom))
-
 (defn datom-val= [datom value]
   (= (datom->val datom) value))
 

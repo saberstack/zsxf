@@ -228,7 +228,7 @@
     (/ num-of-bytes 1000000)))
 
 (defn datom-like?
-  "A REPL helper fn to allow working with vectors instead of datoms"
+  "A helper fn to allow working with vectors instead of datoms"
   [x]
   (boolean
     (and (nth2 x 0) (nth2 x 1) (nth2 x 2)

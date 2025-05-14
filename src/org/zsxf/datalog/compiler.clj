@@ -156,7 +156,7 @@
       (loop [preds# #{}
              xf-steps# [[]]
              covered-nodes# #{first-clause#}
-             remaining-nodes# (set remaining-clauses#)
+             remaining-nodes# (apply sorted-set remaining-clauses#)
              locators# {first-clause# []}
              remaining-components# remaining-components#
              n# 1]

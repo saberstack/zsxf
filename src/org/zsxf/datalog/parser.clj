@@ -70,28 +70,28 @@
 
   Returns a set of nodes."
   [adjacency-list already-connected clause]
-  (let [degree-one (set (keys (get adjacency-list clause)))
+  (let [degree-one (apply sorted-set (keys (get adjacency-list clause)))
         next-nodes (set/difference degree-one already-connected)]
     (if (empty? next-nodes)
-      #{clause}
+      (sorted-set clause)
       (let [now-connected (set/union already-connected next-nodes)
             recur-on-next (partial connected-to adjacency-list now-connected)
-            sets-of-nodes (concat [#{clause} next-nodes] (map recur-on-next next-nodes))]
+            sets-of-nodes (concat [(sorted-set clause) next-nodes] (map recur-on-next next-nodes))]
         (reduce set/union sets-of-nodes)))))
 
 (defn find-connected-components
   "Given a graph, represented as an adjacency list, returns a vector of
   sets of connected components within that graph."
   [adjacency-list]
-  (let [[first-clause & _ :as all-clauses] (set (keys adjacency-list))
-        first-component (connected-to adjacency-list #{first-clause} first-clause)]
-      (loop [components [first-component]
-             covered first-component
-             [next-clause & _ :as  remaining] (clojure.set/difference all-clauses first-component)]
-        (if (empty? remaining)
-          components
-          (let [next-component (connected-to adjacency-list covered next-clause)]
-            (recur
-            (conj components next-component)
-            (clojure.set/intersection covered next-component)
-            (clojure.set/difference remaining next-component)))))))
+  (let [[first-clause & _ :as all-clauses] (apply sorted-set (keys adjacency-list))
+         first-component (connected-to adjacency-list (sorted-set first-clause) first-clause)]
+        (loop [components [first-component]
+           covered first-component
+           [next-clause & _ :as  remaining] (clojure.set/difference all-clauses first-component)]
+      (if (empty? remaining)
+        components
+        (let [next-component (connected-to adjacency-list covered next-clause)]
+          (recur
+           (conj components next-component)
+           (clojure.set/intersection covered next-component)
+           (clojure.set/difference remaining next-component)))))))

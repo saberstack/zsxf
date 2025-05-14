@@ -42,6 +42,9 @@
 (defn datom-attr= [datom attr]
   (= (datom->attr datom) attr))
 
+(defn datom-eid= [datom eid]
+  (= (datom->eid datom) eid))
+
 (defn datom->val [datom]
   (when (datom2? datom)
     (nth datom 2 nil)))

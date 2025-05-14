@@ -15,10 +15,19 @@
   {:entity `d2/datom->eid
    :value  `d2/datom->val})
 
-(defn clause-pred [_ a v]
-  (if (parser/variable? v)
-    `#(d2/datom-attr= % ~a)
-    `#(d2/datom-attr-val= % ~a ~v)))
+(defn clause-pred [e a v]
+  (let [preds (cond-> []
+                (number? e)
+                (conj `#(d2/datom-eid= % ~e))
+
+                (parser/variable? v)
+                (conj `#(d2/datom-attr= % ~a))
+
+                (not (parser/variable? v))
+                (conj `#(d2/datom-attr-val= % ~a ~v)))]
+    (if (= (count preds) 1)
+      (first preds)
+      `(every-pred ~@preds))))
 
 (defn path-f [[f & _ :as locator-vec]]
   (condp = (count locator-vec)

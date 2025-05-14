@@ -1,6 +1,6 @@
 (ns org.zsxf.datascript-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [datascript.core :as d]
    [net.cgrand.xforms :as xforms]
    [org.zsxf.datascript :as ds]
@@ -35,9 +35,16 @@
      (is (= (q/get-result query#)
             (d/q (quote ~query) @conn#)))))
 
-(deftest single-clause-query "Special case with just one clause"
-  (test-query-matches-db [:find ?value
-                          :where [_ :person/name ?value]]))
+(deftest single-clause-queries "Special case with just one clause"
+  (testing "wildcard eid"
+    (test-query-matches-db
+     [:find ?value
+      :where [_ :person/name ?value]]))
+  (testing "eid literal"
+    (test-query-gives-result
+     [:find ?value
+      :where [1 :person/name ?value]]
+     #{["James Cameron"]})))
 
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"
   (test-query-gives-result [:find ?name

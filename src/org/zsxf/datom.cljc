@@ -25,6 +25,14 @@
      ;TODO implement Datom2 for CLJS
      (util/datom-like? x)))
 
+(comment
+  ;; Used sometimes for hand testing
+  (defn tuple->datom2
+   ([[e a v]]
+    (datom2 (datascript.core/datom e a v)))
+   ([e a v]
+    (datom2 (datascript.core/datom e a v)))))
+
 (defn datom->weight [datom]
   (let [weight (condp = (nth datom 4) true 1 false -1)]
     weight))

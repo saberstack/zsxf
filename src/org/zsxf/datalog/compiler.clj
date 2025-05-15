@@ -20,13 +20,18 @@
                 (number? e)
                 (conj `#(d2/datom-eid= % ~e))
 
-                (parser/variable? v)
+                (and (keyword? a) (parser/variable? v))
                 (conj `#(d2/datom-attr= % ~a))
 
-                (not (parser/variable? v))
+                (and (keyword? a) (not (parser/variable? v)))
                 (conj `#(d2/datom-attr-val= % ~a ~v)))]
-    (if (= (count preds) 1)
+    (condp = (count preds)
+      0
+      `(constantly true)
+
+      1
       (first preds)
+
       `(every-pred ~@preds))))
 
 (defn path-f [[f & _ :as locator-vec]]
@@ -151,7 +156,7 @@
       (loop [preds# #{}
              xf-steps# [[]]
              covered-nodes# #{first-clause#}
-             remaining-nodes# (set remaining-clauses#)
+             remaining-nodes# (apply sorted-set remaining-clauses#)
              locators# {first-clause# []}
              remaining-components# remaining-components#
              n# 1]

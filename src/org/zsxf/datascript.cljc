@@ -1,16 +1,20 @@
 (ns org.zsxf.datascript
   (:require [org.zsxf.query :as q]
             [org.zsxf.datom :as d2]
-            [datascript.core :as d]))
+            [datascript.core :as d]
+            [org.zsxf.util :as util]
+            [taoensso.timbre :as timbre]))
 
 (defn listen!
   "Initialize a listener for a given query and connection.
   Supports a time-f function that will be called with the time taken to process each transaction.
   Returns true"
-  [conn query]
+  [conn query & {:keys [tx-time-f] :or {tx-time-f identity}}]
   (d/listen! conn (q/get-id query)
     (fn [tx-report]
-      (q/input query (d2/tx-datoms->datoms2->zsets (:tx-data tx-report)))))
+      (util/time-f
+        (q/input query (d2/tx-datoms->datoms2->zsets (:tx-data tx-report)))
+        tx-time-f)))
   ;return
   true)
 
@@ -27,7 +31,7 @@
   `:listen?` defaults to true
     false can be used for testing/REPL purposes,
     or whenever we need the result of a query just once without continuous updates."
-  [query conn & {:keys [listen?] :or {listen? true}}]
+  [query conn & {:keys [listen? tx-time-f] :or {listen? true tx-time-f identity}}]
   (let [db      @conn
         ;load all existing data from a stable db state
         _result (q/input query
@@ -35,7 +39,7 @@
                     (d/seek-datoms db :eavt)))]
     ;setup listener
     (when listen?
-      (listen! conn query))
+      (listen! conn query :tx-time-f tx-time-f))
     ;return
     true))
 

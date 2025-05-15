@@ -61,12 +61,17 @@
     (subvec v (max 0 (- cnt n)) cnt)))
 
 
+(defn system-time2 []
+  #?(:clj (. System (nanoTime))
+     :cljs (system-time)))
+
 (defmacro time-f
   "Like time but accepts a function to call with the elapsed time."
   [expr f]
-  `(let [start# (. System (nanoTime))
+  `(let [start# (system-time2)
          ret#   ~expr
-         time#  (/ (double (- (. System (nanoTime)) start#)) 1000000.0)]
+         end#   (system-time2)
+         time#  (/ (double (- end# start#)) 1000000.0)]
      (~f time#)
      ret#))
 

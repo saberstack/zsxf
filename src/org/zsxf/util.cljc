@@ -65,13 +65,17 @@
   #?(:clj (. System (nanoTime))
      :cljs (system-time)))
 
+(defn system-time-ms [start end]
+  #?(:clj (/ (double (- end start)) 1000000.0)
+     :cljs (.toFixed ^js/Object (- end start) 6)))
+
 (defmacro time-f
   "Like time but accepts a function to call with the elapsed time."
   [expr f]
   `(let [start# (system-time2)
          ret#   ~expr
          end#   (system-time2)
-         time#  (/ (double (- end# start#)) 1000000.0)]
+         time#  (system-time-ms start# end#)]
      (~f time#)
      ret#))
 

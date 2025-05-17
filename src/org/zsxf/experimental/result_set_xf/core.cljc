@@ -1,4 +1,4 @@
-(ns org.zsxf.lib.result-set-xf.core
+(ns org.zsxf.experimental.result-set-xf.core
   (:require [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]))
 

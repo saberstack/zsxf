@@ -1,8 +1,8 @@
-(ns org.zsxf.lib.result-set-xf.core-test
+(ns org.zsxf.experimental.result-set-xf.core-test
   (:require
    #?(:clj  [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer-macros [deftest is]])
-   [org.zsxf.lib.result-set-xf.core :as rsxf]))
+   [org.zsxf.experimental.result-set-xf.core :as rsxf]))
 
 
 (deftest result-set-xf-basic-pull

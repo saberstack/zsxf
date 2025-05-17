@@ -10,7 +10,6 @@
    [org.zsxf.datascript :as ds]
    [clojure.set :as set]
    [org.zsxf.datom :as d2]
-   [org.zsxf.lib.result-set-xf.core :as rsxf]
    [org.zsxf.query :as q]
    [org.zsxf.datalog.compiler]
    [org.zsxf.relation :as rel]

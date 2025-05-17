@@ -8,7 +8,3 @@
 (defn safe-second [thing]
   (when (vector? thing)
     (second thing)))
-
-(def pos->getter
-  {:entity `d2/datom->eid
-   :value  `d2/datom->val})

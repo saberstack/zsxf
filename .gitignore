@@ -10,3 +10,4 @@ movielens/
 mbrainz/
 classes/
 baseball.sqlite
+/datomic/

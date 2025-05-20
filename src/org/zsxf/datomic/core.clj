@@ -1,23 +1,19 @@
 (ns org.zsxf.datomic.core
   (:require
+   [datascript.core :as d]
    [datomic.api :as dd]
+   [org.zsxf.datom :as d2]
    [taoensso.timbre :as timbre]))
 
 (defn db-uri [db-name]
   (str "datomic:sql://" db-name "?jdbc:sqlite:./datomic/storage/sqlite.db"))
 
-(defn get-database-schema [db-uri]
-  (let [conn (dd/connect db-uri)]
-    (dd/q
-      '[:find ?attr ?type ?card
-        :where
-        [_ :db.install/attribute ?a]
-        [?a :db/valueType ?t]
-        [?a :db/cardinality ?c]
-        [?a :db/ident ?attr]
-        [?t :db/ident ?type]
-        [?c :db/ident ?card]]
-      (dd/db conn))))
+(defn get-all-idents [conn]
+  (dd/q
+    '[:find ?e ?attr
+      :where
+      [?e :db/ident ?attr]]
+    (dd/db conn)))
 
 (defn test-tx []
   (let [conn (dd/connect (db-uri "zsxf"))]
@@ -36,19 +32,32 @@
 
 (defonce run-datomic-cdc? (atom true))
 
-(defn start-cdc
-  "Starts a Change Data Capture.
-     - `conn`: The Datomic connection.
-     - `handler`: A function that takes (e, a, v, added, t) and processes each change."
-  [conn handler]
-  (let [log    (dd/log conn)
-        last-t (dd/basis-t (dd/db conn))]
-    (let [transactions (dd/tx-range log nil nil)]
-      ;TODO WIP
-      (eduction
-        (map (fn [{:keys [data t]}]
-               data))
-        transactions))))
+
+(defn tx-data->datom-vs [idents-m data]
+  (mapv
+    (fn [[e a v t tf :as datom]]
+      (let [a' (get idents-m a)]
+        [e a' v t tf]
+        datom))
+    data))
+
+(defn get-log-transactions
+  "- `conn`: The Datomic connection."
+  [conn]
+  (let [log          (dd/log conn)
+        idents-m     (into {} (get-all-idents conn))
+        transactions (dd/tx-range log nil nil)]
+    ;TODO WIP
+    (eduction
+      (map (fn [{:keys [data t]}]
+             (tx-data->datom-vs idents-m data)))
+      transactions)))
+
+(defn init-query-with-conn
+  "Initial naive implementation. No listeners or change data capture.
+  Read all transactions datoms."
+  [query conn]
+  (get-log-transactions conn))
 
 (comment
 
@@ -58,15 +67,17 @@
 
   (dd/connect (db-uri "zsxf"))
 
-  (start-cdc
-    conn (fn [e a v added t]
-           (println [:datomic-datom [e a v added t]])))
+  (get-log-transactions conn)
 
 
   (def conn (dd/connect (db-uri "zsxf")))
 
 
-  (get-database-schema (db-uri "zsxf"))
+  (get-all-idents (dd/connect (db-uri "zsxf")))
+
+  ;return all datoms in the db (including internal setup datoms)
+  (into []
+    (dd/seek-datoms (dd/db (dd/connect (db-uri "zsxf"))) :eavt))
 
   (let [conn (dd/connect (db-uri "zsxf"))]
     (dd/transact conn [{:db/ident       :movie/title
@@ -83,6 +94,4 @@
         :where [?e :movie/title ?v]]
       (dd/db conn)))
 
-  (dd/delete-database (db-uri "zsxf"))
-
-  )
+  (dd/delete-database (db-uri "zsxf")))

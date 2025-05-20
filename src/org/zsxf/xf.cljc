@@ -23,10 +23,10 @@
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]
-            #?(:clj [org.zsxf.type.datom :as td])                  ;don't remove! type import fails
+            #?(:clj [org.zsxf.type.datascript.datom2])                  ;don't remove! type import fails
             [org.zsxf.util :as util])
   #?(:clj
-     (:import (org.zsxf.type.datom Datom2))))
+     (:import (org.zsxf.type.datascript.datom2 Datom2))))
 
 (defn rf-branchable
   "Helper to adapt a reducing function to a branching transducer.

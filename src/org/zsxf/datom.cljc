@@ -1,10 +1,9 @@
 (ns org.zsxf.datom
   (:require [org.zsxf.util :as util]
-            #?(:clj [org.zsxf.type.datom :as td])
+            #?(:clj [org.zsxf.type.datascript.datom2 :as td])
             [org.zsxf.zset :as zs])
   #?(:clj
-     (:import (org.zsxf.type.datom Datom2))))
-
+     (:import (org.zsxf.type.datascript.datom2 Datom2))))
 
 (defn datom2
   "Takes a datom, i.e. (datascript.core/datom 1 :a 'v) and returns a Datom2"

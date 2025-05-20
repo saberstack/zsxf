@@ -1,1 +1,1 @@
-{d2 org.zsxf.type.datom/datom-from-reader}
+{d2 org.zsxf.type.datascript.datom2/datom-from-reader}

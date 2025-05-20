@@ -285,4 +285,7 @@
 
   (scaffold clojure.lang.IPersistentCollection)
 
-  (scaffold clojure.lang.IPersistentVector))
+  (scaffold clojure.lang.IPersistentVector)
+
+  (scaffold datomic.db.Datum)
+  )

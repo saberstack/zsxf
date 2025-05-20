@@ -1,4 +1,4 @@
-(ns org.zsxf.type.datom
+(ns org.zsxf.type.datascript.datom2
   (:require [datascript.core :as d]
             [datascript.db :as ddb])
   (:import (clojure.lang Associative IHashEq ILookup IObj IPersistentCollection Indexed Seqable)

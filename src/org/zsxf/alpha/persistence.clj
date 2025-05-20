@@ -5,7 +5,7 @@
             [taoensso.nippy :as nippy])
   (:import (datascript.db Datom)
            (java.io DataInputStream DataOutputStream)
-           (org.zsxf.type.datom Datom2)))
+           (org.zsxf.type.datascript.datom2 Datom2)))
 
 (defn nippy-freeze-datom
   [^DataOutputStream data-output ^Datom datom]

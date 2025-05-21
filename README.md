@@ -26,7 +26,7 @@ the need
 to answer queries in at least *some fashion* without crashing the entire database gave rise to batch-oriented [warehouses](http://snowflake.com) .
 Unfortunately,
 most warehouse setups have latencies of minutes or even hour once the time
-it takes to synchronize each batch of data is included.
+it takes to synchronize each batch of data is accounted for.
 
 ### Goals
 - Queries are always correct

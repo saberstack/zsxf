@@ -13,8 +13,11 @@
             [org.zsxf.experimental.bifurcan :as clj-bf]
             [org.zsxf.xf :as xf]
             [org.zsxf.zset :as zs]
+            [medley.core :as medley]
             [criterium.core :as criterium]
             [datascript.core :as d]
+            [datomic.api :as dd]
+            [org.zsxf.datomic.core :as dc]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang IAtom)))
 
@@ -32,6 +35,41 @@
                                     :db/valueType   :db.type/ref}
              :country/name-alpha-2 {:db/cardinality :db.cardinality/one
                                     :db/unique      :db.unique/identity}})
+
+(def datomic-schema
+  [{:db/valueType   :db.type/string,
+    :db/cardinality :db.cardinality/one,
+    :db/unique      :db.unique/identity,
+    :db/ident       :artist/name}
+   {:db/valueType   :db.type/string,
+    :db/cardinality :db.cardinality/one,
+    :db/unique      :db.unique/identity,
+    :db/ident       :artist/id}
+   {:db/valueType   :db.type/ref,
+    :db/cardinality :db.cardinality/many,
+    :db/ident       :artist/genres}
+   {:db/valueType   :db.type/string,
+    :db/cardinality :db.cardinality/one,
+    :db/unique      :db.unique/identity,
+    :db/ident       :genre/name}
+   {:db/valueType   :db.type/string,
+    :db/cardinality :db.cardinality/one,
+    :db/ident       :artist/type}
+   {:db/cardinality :db.cardinality/one,
+    :db/valueType   :db.type/ref,
+    :db/ident       :artist/country}
+   {:db/valueType   :db.type/string,
+    :db/cardinality :db.cardinality/one,
+    :db/unique      :db.unique/identity,
+    :db/ident       :country/name-alpha-2}])
+
+(defn datascript-schema->datomic-schema
+  "Convert a Datascript schema to a Datomic schema."
+  [schema]
+  (into []
+    (map (fn [[k v]]
+           (assoc v :db/ident k)))
+    schema))
 
 (defonce *conn (atom (d/create-conn schema)))
 (defonce *query-1 (atom nil))
@@ -175,18 +213,62 @@
                   (d/datom e a v tx b))
                 thawing))))}))
 
-(defn init-artist-db->conn []
+(defn datom->attr-value-map
+  [datom]
+  (let [[_ a v _ _] datom]
+    {a v}))
+
+(defn datoms->attr-value-map
+  [datoms]
+  (apply merge
+    (map datom->attr-value-map datoms)))
+
+(defn datascript-artist-db-conn []
   (d/conn-from-db
     (d/init-db (thaw-artist-datoms!) schema)))
+
+(defn datomic-artist-db-conn []
+  (let [^String db-uri (dc/db-uri "mbrainz")
+        _              (dd/delete-database db-uri)
+        _              (dd/create-database db-uri)
+        conn           (dd/connect db-uri)
+        tx             (dd/transact conn datomic-schema)]
+    conn))
+
+(defn datomic-init [conn]
+  (let [datoms-from-thaw (thaw-artist-datoms!)
+        v                (into []
+                           (comp
+                             (partition-by first)
+                             (map datoms->attr-value-map)
+                             (medley.core/partition-before :artist/id)
+                             (take 1)
+                             #_(map (fn [tx]
+                                    (try
+                                      @(dd/transact conn tx)
+                                      (catch Throwable e (do (timbre/spy tx) (throw e)))))))
+                           datoms-from-thaw)
+        #_#_v (into []
+                (comp
+                  (partition-by first)
+                  (map datoms->attr-value-map)
+                  (remove :country/name-alpha-2)
+                  (remove :genre/name)
+                  (take 100)
+                  #_(map (fn [tx]
+                           (try
+                             @(dd/transact conn tx)
+                             (catch Throwable e (do (timbre/spy tx) (throw e)))))))
+                datoms-from-thaw)]
+    v))
 
 (defn init-load-all
   "Main loading fn"
   ([^IAtom an-atom]
    (timbre/set-min-level! :info)
-   (let [conn (init-artist-db->conn)]
+   (let [conn (datascript-artist-db-conn)]
      (reset! an-atom conn)
-     :done))
-  )
+     :done)))
 
 (defn init-query
   "Main fn to setup ZSXF queries with loaded db"

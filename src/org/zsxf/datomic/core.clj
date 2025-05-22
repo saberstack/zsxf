@@ -37,8 +37,8 @@
   (mapv
     (fn [[e a v t tf :as datom]]
       (let [a' (get idents-m a)]
-        [e a' v t tf]
-        datom))
+        ;datom
+        [e a' v t tf]))
     data))
 
 (defn get-log-transactions

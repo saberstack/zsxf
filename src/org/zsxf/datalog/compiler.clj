@@ -50,8 +50,7 @@
        new-joins []
        locators locators]
     (if (nil? component-2)
-      {:cartesian-joins new-joins
-       :locators locators}
+      [new-joins locators]
 
       (let [[c1-name#  c2-name# :as clause-names] (map first connected-components)
             [c1# c2#] (map named-clauses clause-names)
@@ -134,6 +133,14 @@
   [query]
   (if (= 'quote (first query)) (first (rest query)) query))
 
+(defn find-reduction [find-vars variable-index locators]
+  `(xforms/reduce (zs/zset-xf+ (map
+                                (xf/same-meta-f
+                                 (juxt ~@(map (fn [find-var]
+                                                (let [[[clause-to-select position] & _] (find-var variable-index)]
+                                                  `(comp ~(position pos->getter) ~@(clause-to-select locators))))
+                                              find-vars)))))))
+
 (defmacro static-compile [query]
  (let [query (pre-parse-query query)]
   (condp = (s/conform ::parser-spec/query query)
@@ -163,24 +170,21 @@
 
         (cond (and (empty? remaining-nodes#) (empty? remaining-components#))
               (let [[xf-steps# preds# locators#] (handle-single-clause xf-steps# preds# locators# state variable-index# named-clauses#)
-                    {:keys [locators cartesian-joins]} (join-isolated-components named-clauses# locators# state connected-components#)
-                    xf-steps-flat# (-> (if (empty? cartesian-joins)
+                    [cartesian-joins# locators#] (join-isolated-components named-clauses# locators# state connected-components#)
+                    xf-steps-flat# (-> (if (empty? cartesian-joins#)
                                           (first xf-steps#)
-                                          (->> xf-steps# (cons cartesian-joins) reverse vec (apply concat)))
+                                          (->> xf-steps# (cons cartesian-joins#) reverse vec (apply concat)))
                                         (mark-last)
-                                        (add-predicates variable-index# locators predicate-clauses#))]
+                                        (add-predicates variable-index# locators# predicate-clauses#))
+                    fr# (find-reduction find-vars# variable-index# locators#)]
+
                 `(fn [~state]
-                  (comp
-                   (xf/mapcat-zset-transaction-xf)
-                   (map (fn [zset#]
-                          (xf/disj-irrelevant-items zset# ~@preds#)))
-                   ~@xf-steps-flat#
-                   (xforms/reduce (zs/zset-xf+ (map
-                                                (xf/same-meta-f
-                                                  (juxt ~@(map (fn [find-var#]
-                                                                 (let [[[clause-to-select# position#] & _] (find-var# variable-index#)]
-                                                                   `(comp ~(position# pos->getter) ~@(clause-to-select# locators))))
-                                                               find-vars#)))))))))
+                   (comp
+                    (xf/mapcat-zset-transaction-xf)
+                    (map (fn [zset#]
+                           (xf/disj-irrelevant-items zset# ~@preds#)))
+                    ~@xf-steps-flat#
+                    ~fr#)))
 
               ;; Stack overflow
               (> n# 100)

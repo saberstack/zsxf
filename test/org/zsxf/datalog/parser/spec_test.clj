@@ -177,6 +177,10 @@
                                         [?p :friend ?f]
                                         [?f :name ?friend-name]])))
 
+  (testing "Valid queries - aggregate"
+    (is (s/valid? ::parser-spec/query '[:find ?name (count ?name)
+                                        :where [?p :name ?name]])))
+
   (testing "Valid queries - multiple find vars"
     (is (s/valid? ::parser-spec/query '[:find ?name ?age
                                         :where
@@ -211,4 +215,10 @@
     (is (not (s/valid? ::parser-spec/query '[:find ?name ...
                                              :where [?p :name ?name]])))
     (is (not (s/valid? ::parser-spec/query '[:find ?name .
-                                             :where [?p :name ?name]])))))
+                                             :where [?p :name ?name]]))))
+
+  (testing "Invalid queries - unsupported aggregate"
+    (is (not (s/valid? ::parser-spec/query '[:find ?name (min ?height)
+                                             :where
+                                             [?p :person/name ?name]
+                                             [?p :person/height ?height]])))))

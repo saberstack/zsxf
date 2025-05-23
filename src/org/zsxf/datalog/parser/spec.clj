@@ -31,7 +31,9 @@
 
 (s/def ::where-clauses (s/cat :where-kw #{:where} :clauses (s/+ ::clause)))
 
-(s/def ::find-rel (s/+ ::variable))
+(s/def ::aggregate (s/cat :aggregate-fn #{'sum 'count} :variable ::variable))
+
+(s/def ::find-rel (s/+ (s/or :variable ::variable :aggregate ::aggregate)))
 
 (s/def ::find-spec (s/cat :find-kw #{:find} :find-spec ::find-rel))
 

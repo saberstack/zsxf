@@ -60,6 +60,7 @@
  {:season/player -3 :season/year 1949 :season/hits 194 :season/home-runs 43 :season/at-bats 566}
  {:season/player -3 :season/year 1950 :season/hits 106 :season/home-runs 28 :season/at-bats 334}
  {:season/player -3 :season/year 1951 :season/hits 169 :season/home-runs 30 :season/at-bats 531}
+ {:season/player -3 :season/year 1952 :season/hits 4 :season/home-runs 1  :season/at-bats 10}
  {:season/player -3 :season/year 1953 :season/hits 37 :season/home-runs 13 :season/at-bats 91}
  {:season/player -3 :season/year 1954 :season/hits 133 :season/home-runs 29 :season/at-bats 386}
  {:season/player -3 :season/year 1955 :season/hits 114 :season/home-runs 28 :season/at-bats 320}

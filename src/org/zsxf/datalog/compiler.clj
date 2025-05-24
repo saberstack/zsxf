@@ -7,6 +7,7 @@
             [org.zsxf.datalog.macro-util :as mu]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as xf]
+            [org.zsxf.util :as u]
             [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
@@ -133,13 +134,43 @@
   [query]
   (if (= 'quote (first query)) (first (rest query)) query))
 
-(defn find-reduction [find-vars variable-index locators]
-  `(xforms/reduce (zs/zset-xf+ (map
-                                (xf/same-meta-f
-                                 (juxt ~@(map (fn [find-var]
-                                                (let [[[clause-to-select position] & _] (find-var variable-index)]
-                                                  `(comp ~(position pos->getter) ~@(clause-to-select locators))))
-                                              find-vars)))))))
+(defn find-reduction [find-vars aggregate-vars variable-index locators]
+  (let [find-var-juxt `(juxt ~@(map (fn [find-var]
+                                      (let [[[clause-to-select position] & _] (find-var variable-index)]
+                                        `(comp ~(position pos->getter) ~@(clause-to-select locators))))
+                                    find-vars))]
+    (if (empty? aggregate-vars)
+      [`(xforms/reduce
+          (zs/zset-xf+
+           (map
+            (xf/same-meta-f
+             ~find-var-juxt))))]
+      (let [aggregations (gensym 'aggregations)]
+        [`(xforms/reduce zs/zset+)
+         `(xf/group-by-xf
+           ~find-var-juxt
+           (comp
+            (xforms/transjuxt
+             [~@(map (fn [{:keys [aggregate-fn variable]}]
+                       (condp = aggregate-fn
+                         'sum
+                         (let [[[clause-to-select position] & _] (variable variable-index)
+                               getter `(comp ~(position pos->getter) ~@(clause-to-select locators))]
+                           `(xforms/reduce
+                             (zs/zset-sum+ ~getter)))
+
+                         'count
+                         `(xforms/reduce zs/zset-count+)))
+                     aggregate-vars)])
+            (mapcat (fn [~aggregations]
+                      [~@(map-indexed
+                          (fn [idx {:keys [ aggregate-fn]}]
+                            (condp = aggregate-fn
+                              'sum
+                              `(zs/zset-sum-item (nth ~aggregations ~idx))
+                              'count
+                              `(zs/zset-count-item (nth ~aggregations ~idx))))
+                          aggregate-vars)]))))]))))
 
 (defmacro static-compile [query]
  (let [query (pre-parse-query query)]
@@ -147,8 +178,11 @@
     ::s/invalid
     `(ex-info "Invalid or unsupported query"
               {:explain-data ~(s/explain-data ::parser-spec/query query)})
-    (let [{where-clauses# :where find-vars# :find} (parser/query->map query)
+    (let [{where-clauses# :where find-rel# :find} (parser/query->map query)
           {predicate-clauses# true pattern-clauses# false} (group-by (partial s/valid? ::parser-spec/predicate) where-clauses#)
+           {aggregate-vars# :aggregate find-vars# :variable} (->> find-rel#
+                                                                  (s/conform ::parser-spec/find-rel)
+                                                                  (u/group-and-map first second))
           named-clauses# (parser/name-clauses pattern-clauses#)
           variable-index# (parser/index-variables named-clauses#)
           adjacency-list# (parser/build-adjacency-list named-clauses#)
@@ -176,7 +210,7 @@
                                           (->> xf-steps# (cons cartesian-joins#) reverse vec (apply concat)))
                                         (mark-last)
                                         (add-predicates variable-index# locators# predicate-clauses#))
-                    fr# (find-reduction find-vars# variable-index# locators#)]
+                    fr# (find-reduction find-vars# aggregate-vars# variable-index# locators#)]
 
                 `(fn [~state]
                    (comp
@@ -184,7 +218,7 @@
                     (map (fn [zset#]
                            (xf/disj-irrelevant-items zset# ~@preds#)))
                     ~@xf-steps-flat#
-                    ~fr#)))
+                    ~@fr#)))
 
               ;; Stack overflow
               (> n# 100)

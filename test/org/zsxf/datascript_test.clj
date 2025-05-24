@@ -10,54 +10,57 @@
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]))
 
-(defn load-learn-db
-  []
-  (let [schema (util/read-edn-file "resources/learndatalogtoday/schema_datascript.edn")
-        data (util/read-edn-file   "resources/learndatalogtoday/data_datascript.edn")
+(defn load-test-db
+  [dir]
+  (let [schema (util/read-edn-file (format "resources/%s/schema_datascript.edn" dir))
+        data (util/read-edn-file   (format "resources/%s/data_datascript.edn" dir))
         conn (d/create-conn schema)]
     (d/transact! conn data)
     conn))
 
-(defmacro test-query-gives-result [query result]
-  `(let [conn#           (load-learn-db)
-         query#           (q/create-query
-                           (static-compile [~@query]))]
-     (ds/init-query-with-conn query# conn#)
-     (is (= (q/get-result query#)
-            (d/q (quote ~query) @conn#)
-            ~result))))
+(defmacro test-query-gives-result
+  [dir query result]
+   `(let [conn#           (load-test-db ~dir)
+          query#           (q/create-query
+                            (static-compile [~@query]))]
+      (ds/init-query-with-conn query# conn#)
+      (is (= (q/get-result query#)
+             (d/q (quote ~query) @conn#)
+             ~result))))
 
-(defmacro test-query-matches-db [query]
-  `(let [conn#           (load-learn-db)
-         query#           (q/create-query
-                           (static-compile [~@query]))]
-     (ds/init-query-with-conn query# conn#)
-     (is (= (q/get-result query#)
-            (d/q (quote ~query) @conn#)))))
+(defmacro test-query-matches-db
+  [dir query]
+   `(let [conn#           (load-test-db ~dir)
+          query#           (q/create-query
+                            (static-compile [~@query]))]
+      (ds/init-query-with-conn query# conn#)
+      (is (= (q/get-result query#)
+             (d/q (quote ~query) @conn#)))))
 
 (deftest single-clause-queries "Special case with just one clause"
   (testing "wildcard eid"
-    (test-query-matches-db
+    (test-query-matches-db "learndatalogtoday"
      [:find ?value
       :where [_ :person/name ?value]]))
   (testing "eid literal"
-    (test-query-gives-result
+    (test-query-gives-result "learndatalogtoday"
      [:find ?value
       :where [1 :person/name ?value]]
      #{["James Cameron"]}))
   (testing "eid literal with attr wildcard"
-    (test-query-gives-result
+    (test-query-gives-result "learndatalogtoday"
      [:find ?value
       :where [1 _ ?value]]
      #{["James Cameron"]
        [#inst"1954-08-16"]}))
   (testing "all values in the db"
-    (test-query-matches-db
+    (test-query-matches-db "learndatalogtoday"
      [:find ?value
       :where [_ _ ?value]])))
 
 (deftest test-robocop-with-query-api "basic datalog query, with internal query api"
-  (test-query-gives-result [:find ?name
+  (test-query-gives-result "learndatalogtoday"
+                           [:find ?name
                             :where
                             [?p :person/name ?name]
                             [?m :movie/title "RoboCop"]
@@ -65,20 +68,20 @@
                            #{["Paul Verhoeven"]}))
 
 (deftest test-ahhnold "Another basic query"
-  (test-query-gives-result
-   [:find ?name
-    :where
-    [?m :movie/cast ?p]
-    [?p :person/name "Arnold Schwarzenegger"]
-    [?m :movie/director ?d]
-    [?d :person/name ?name]]
+  (test-query-gives-result "learndatalogtoday"
+                           [:find ?name
+                            :where
+                            [?m :movie/cast ?p]
+                            [?p :person/name "Arnold Schwarzenegger"]
+                            [?m :movie/director ?d]
+                            [?d :person/name ?name]]
    #{["Mark L. Lester"]
      ["Jonathan Mostow"]
      ["John McTiernan"]
      ["James Cameron"]}))
 
 (deftest test-b "another ad-hoc query"
-  (test-query-gives-result
+  (test-query-gives-result "learndatalogtoday"
    [:find ?title ?year
     :where
     [?m :movie/title ?title]
@@ -95,7 +98,8 @@
      ["Rambo III" 1988] ["Lethal Weapon 3" 1992]}))
 
 (deftest test-danny-cartesian "query with cartesian product"
-  (test-query-matches-db [:find ?danny-born ?actor-born
+  (test-query-matches-db "learndatalogtoday"
+                         [:find ?danny-born ?actor-born
                           :where
                           [?danny :person/name "Danny Glover"]
                           [?danny :person/born ?danny-born]
@@ -104,7 +108,8 @@
                           [_ :movie/cast ?a]]))
 
 (deftest test-danny-pred "query with predicate"
-  (test-query-gives-result [:find ?actor
+  (test-query-gives-result "learndatalogtoday"
+                           [:find ?actor
                             :where
                             [?danny :person/name "Danny Glover"]
                             [?danny :person/born ?danny-born]
@@ -116,6 +121,16 @@
                              ["Alan Rickman"] ["Tina Turner"] ["Bruce Spence"]
                              ["Michael Preston"] ["Charles Napier"] ["Gary Busey"]
                              ["Sylvester Stallone"] ["Ronny Cox"] ["Richard Crenna"]}))
+
+#_(deftest test-sum
+  (testing "career home runs"
+    (test-query-gives-result "baseball-legends"
+                             [:find ?name (sum ?home-runs)
+                               :where
+                               [?p :player/name ?name]
+                               [?s :season/player ?p]
+                               [?s :season/home-runs ?home-runs]]
+                           #{["foo"]})))
 
 (comment
   (set! *print-meta* false)

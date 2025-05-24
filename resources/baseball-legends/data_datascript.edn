@@ -1,0 +1,70 @@
+;; data.edn - Baseball player statistics data for Datascript
+
+[;; Players
+ {:db/id -1 :player/name "Babe Ruth"}
+ {:db/id -2 :player/name "Mickey Mantle"}
+ {:db/id -3 :player/name "Ted Williams"}
+
+ ;; Babe Ruth season statistics
+ {:season/player -1 :season/year 1914 :season/hits 2 :season/home-runs 0 :season/at-bats 10}
+ {:season/player -1 :season/year 1915 :season/hits 92 :season/home-runs 4 :season/at-bats 317}
+ {:season/player -1 :season/year 1916 :season/hits 136 :season/home-runs 3 :season/at-bats 395}
+ {:season/player -1 :season/year 1917 :season/hits 40 :season/home-runs 2 :season/at-bats 123}
+ {:season/player -1 :season/year 1918 :season/hits 95 :season/home-runs 11 :season/at-bats 317}
+ {:season/player -1 :season/year 1919 :season/hits 139 :season/home-runs 29 :season/at-bats 432}
+ {:season/player -1 :season/year 1920 :season/hits 172 :season/home-runs 54 :season/at-bats 458}
+ {:season/player -1 :season/year 1921 :season/hits 204 :season/home-runs 59 :season/at-bats 540}
+ {:season/player -1 :season/year 1922 :season/hits 128 :season/home-runs 35 :season/at-bats 406}
+ {:season/player -1 :season/year 1923 :season/hits 205 :season/home-runs 41 :season/at-bats 522}
+ {:season/player -1 :season/year 1924 :season/hits 200 :season/home-runs 46 :season/at-bats 529}
+ {:season/player -1 :season/year 1925 :season/hits 104 :season/home-runs 25 :season/at-bats 359}
+ {:season/player -1 :season/year 1926 :season/hits 184 :season/home-runs 47 :season/at-bats 495}
+ {:season/player -1 :season/year 1927 :season/hits 192 :season/home-runs 60 :season/at-bats 540}
+ {:season/player -1 :season/year 1928 :season/hits 173 :season/home-runs 54 :season/at-bats 536}
+ {:season/player -1 :season/year 1929 :season/hits 172 :season/home-runs 46 :season/at-bats 499}
+ {:season/player -1 :season/year 1930 :season/hits 186 :season/home-runs 49 :season/at-bats 518}
+ {:season/player -1 :season/year 1931 :season/hits 199 :season/home-runs 46 :season/at-bats 534}
+ {:season/player -1 :season/year 1932 :season/hits 156 :season/home-runs 41 :season/at-bats 457}
+ {:season/player -1 :season/year 1933 :season/hits 138 :season/home-runs 34 :season/at-bats 459}
+ {:season/player -1 :season/year 1934 :season/hits 105 :season/home-runs 22 :season/at-bats 365}
+ {:season/player -1 :season/year 1935 :season/hits 13 :season/home-runs 6 :season/at-bats 72}
+
+ ;; Mickey Mantle season statistics
+ {:season/player -2 :season/year 1951 :season/hits 91 :season/home-runs 13 :season/at-bats 341}
+ {:season/player -2 :season/year 1952 :season/hits 171 :season/home-runs 23 :season/at-bats 549}
+ {:season/player -2 :season/year 1953 :season/hits 136 :season/home-runs 21 :season/at-bats 461}
+ {:season/player -2 :season/year 1954 :season/hits 163 :season/home-runs 27 :season/at-bats 543}
+ {:season/player -2 :season/year 1955 :season/hits 158 :season/home-runs 37 :season/at-bats 517}
+ {:season/player -2 :season/year 1956 :season/hits 188 :season/home-runs 52 :season/at-bats 533}
+ {:season/player -2 :season/year 1957 :season/hits 173 :season/home-runs 34 :season/at-bats 474}
+ {:season/player -2 :season/year 1958 :season/hits 158 :season/home-runs 42 :season/at-bats 519}
+ {:season/player -2 :season/year 1959 :season/hits 154 :season/home-runs 31 :season/at-bats 541}
+ {:season/player -2 :season/year 1960 :season/hits 145 :season/home-runs 40 :season/at-bats 527}
+ {:season/player -2 :season/year 1961 :season/hits 160 :season/home-runs 54 :season/at-bats 514}
+ {:season/player -2 :season/year 1962 :season/hits 121 :season/home-runs 30 :season/at-bats 377}
+ {:season/player -2 :season/year 1963 :season/hits 133 :season/home-runs 15 :season/at-bats 443}
+ {:season/player -2 :season/year 1964 :season/hits 141 :season/home-runs 35 :season/at-bats 465}
+ {:season/player -2 :season/year 1965 :season/hits 92 :season/home-runs 19 :season/at-bats 361}
+ {:season/player -2 :season/year 1966 :season/hits 96 :season/home-runs 23 :season/at-bats 333}
+ {:season/player -2 :season/year 1967 :season/hits 108 :season/home-runs 22 :season/at-bats 440}
+ {:season/player -2 :season/year 1968 :season/hits 103 :season/home-runs 18 :season/at-bats 435}
+
+ ;; Ted Williams season statistics
+ {:season/player -3 :season/year 1939 :season/hits 185 :season/home-runs 31 :season/at-bats 565}
+ {:season/player -3 :season/year 1940 :season/hits 193 :season/home-runs 23 :season/at-bats 561}
+ {:season/player -3 :season/year 1941 :season/hits 185 :season/home-runs 37 :season/at-bats 456}
+ {:season/player -3 :season/year 1942 :season/hits 186 :season/home-runs 36 :season/at-bats 522}
+ {:season/player -3 :season/year 1946 :season/hits 176 :season/home-runs 38 :season/at-bats 514}
+ {:season/player -3 :season/year 1947 :season/hits 181 :season/home-runs 32 :season/at-bats 528}
+ {:season/player -3 :season/year 1948 :season/hits 188 :season/home-runs 25 :season/at-bats 509}
+ {:season/player -3 :season/year 1949 :season/hits 194 :season/home-runs 43 :season/at-bats 566}
+ {:season/player -3 :season/year 1950 :season/hits 106 :season/home-runs 28 :season/at-bats 334}
+ {:season/player -3 :season/year 1951 :season/hits 169 :season/home-runs 30 :season/at-bats 531}
+ {:season/player -3 :season/year 1953 :season/hits 37 :season/home-runs 13 :season/at-bats 91}
+ {:season/player -3 :season/year 1954 :season/hits 133 :season/home-runs 29 :season/at-bats 386}
+ {:season/player -3 :season/year 1955 :season/hits 114 :season/home-runs 28 :season/at-bats 320}
+ {:season/player -3 :season/year 1956 :season/hits 138 :season/home-runs 24 :season/at-bats 400}
+ {:season/player -3 :season/year 1957 :season/hits 163 :season/home-runs 38 :season/at-bats 420}
+ {:season/player -3 :season/year 1958 :season/hits 135 :season/home-runs 26 :season/at-bats 411}
+ {:season/player -3 :season/year 1959 :season/hits 69 :season/home-runs 10 :season/at-bats 272}
+ {:season/player -3 :season/year 1960 :season/hits 98 :season/home-runs 29 :season/at-bats 310}]

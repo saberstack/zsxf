@@ -102,16 +102,30 @@
         vec
         (update last-index concat [:last? true]))))
 
-(defn var-to-getter [variable-index locators zset-item form]
-  (if (parser/variable? form)
-    (let [[[clause-to-select position] & _] (form variable-index)]
-      `((comp ~(position pos->getter) ~@(clause-to-select locators)) ~zset-item))
-    form))
+(defn var-to-getter
+  "Takes a variable and returns a function
+  for getting the value corresponding to that variable
+  out of a zset item in the current query context.
+  `variable-index` stores in what clauses a variable appears,
+  and in what position. `locators` stores where in the zset item the values
+  for a given clause are stored."
+  [variable-index locators variable]
+  (let [[[clause-to-select position] & _] (variable variable-index)]
+      `(comp ~(position pos->getter) ~@(clause-to-select locators))))
 
-(defn substitute-operator [[op & tail]]
-  {:pre [(contains? dfn/query-fns op)]}
-  (let [[_ fq-symbol] (find dfn/query-fns op)]
-    (cons fq-symbol tail)))
+(defn transpile-predicate-clause
+  "Takes a query predicate like [(< ?var 3)]
+  and turns it into a Clojure predicate for evaluating
+  that condition at query runtime."
+  [variable-index locators zset-item [op & tail]]
+  (let [new-op (get dfn/query-fns op)
+        new-tail (map (fn [form]
+                        (if (parser/variable? form)
+                          (let [getter (var-to-getter variable-index locators form)]
+                            `(~getter ~zset-item))
+                          form))
+                      tail)]
+    (cons new-op new-tail)))
 
 (defn add-predicates [xf-steps-flat variable-index locators predicate-clauses]
   (if (empty? predicate-clauses)
@@ -120,9 +134,7 @@
           (map (fn [[predicate-clause]]
                  (let [zset-item (gensym 'zset-item)]
                    `(filter (fn [~zset-item]
-                              (~@(->> predicate-clause
-                                      (substitute-operator)
-                                      (map (partial var-to-getter variable-index locators zset-item))))))))
+                              (~@(transpile-predicate-clause variable-index locators zset-item predicate-clause))))))
                predicate-clauses)
           xf `(comp ~@pred-fns)
           last-index (dec (count xf-steps-flat))]

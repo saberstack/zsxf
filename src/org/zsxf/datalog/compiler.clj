@@ -127,7 +127,13 @@
                       tail)]
     (cons new-op new-tail)))
 
-(defn add-predicates [xf-steps-flat variable-index locators predicate-clauses]
+(defn add-predicates
+  "When a query has predicates, transpile those predicates and
+  add them to the query's execution.
+
+  Predicates are currently just a filter function executed at the end,
+  so quite unoptimized."
+  [xf-steps-flat variable-index locators predicate-clauses]
   (if (empty? predicate-clauses)
     xf-steps-flat
     (let [pred-fns
@@ -147,10 +153,9 @@
   (if (= 'quote (first query)) (first (rest query)) query))
 
 (defn find-reduction [find-vars aggregate-vars variable-index locators]
-  (let [find-var-juxt `(juxt ~@(map (fn [find-var]
-                                      (let [[[clause-to-select position] & _] (find-var variable-index)]
-                                        `(comp ~(position pos->getter) ~@(clause-to-select locators))))
-                                    find-vars))]
+  (let [find-var-juxt `(juxt ~@(map
+                                (partial var-to-getter variable-index locators)
+                                find-vars))]
     (if (empty? aggregate-vars)
       [`(xforms/reduce
           (zs/zset-xf+
@@ -166,10 +171,8 @@
              [~@(map (fn [{:keys [aggregate-fn variable]}]
                        (condp = aggregate-fn
                          'sum
-                         (let [[[clause-to-select position] & _] (variable variable-index)
-                               getter `(comp ~(position pos->getter) ~@(clause-to-select locators))]
-                           `(xforms/reduce
-                             (zs/zset-sum+ ~getter)))
+                         `(xforms/reduce
+                           (zs/zset-sum+ ~(var-to-getter variable-index locators variable)))
 
                          'count
                          `(xforms/reduce zs/zset-count+)))

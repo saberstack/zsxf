@@ -122,17 +122,29 @@
                              ["Michael Preston"] ["Charles Napier"] ["Gary Busey"]
                              ["Sylvester Stallone"] ["Ronny Cox"] ["Richard Crenna"]}))
 
-#_(deftest test-sum
-  (testing "career home runs"
-    (test-query-gives-result "baseball-legends"
-                             [:find ?name (sum ?home-runs)
-                               :where
-                               [?p :player/name ?name]
-                               [?s :season/player ?p]
-                               [?s :season/home-runs ?home-runs]]
-                           #{["foo"]})))
+(deftest test-aggregates
+  (testing "career home runs and seasons played"
+    (let [conn (load-test-db "baseball-legends")
+      q '[:find ?name (count ?year) (sum ?home-runs)
+          :where
+          [?p :player/name ?name]
+          [?s :season/player ?p]
+          [?s :season/year ?year]
+          [?s :season/home-runs ?home-runs]]
+      query (q/create-query (static-compile [:find ?name (count ?year) (sum ?home-runs)
+                                              :where
+                                              [?p :player/name ?name]
+                                              [?s :season/player ?p]
+                                              [?s :season/year ?year]
+                                              [?s :season/home-runs ?home-runs]]))]
+
+  (ds/init-query-with-conn query conn)
+  (is (= [["Ted Williams" 19 521] ["Mickey Mantle" 18 536] ["Babe Ruth" 22 714]] (d/q q @conn)))
+  (is  (= {["Babe Ruth"] #{[:sum 714] [:count 22]}
+           ["Mickey Mantle"] #{[:count 18] [:sum 536]}
+           ["Ted Williams"] #{[:count 19] [:sum 521]}}
+          (q/get-aggregate-result query))))))
 
 (comment
   (set! *print-meta* false)
-
   )

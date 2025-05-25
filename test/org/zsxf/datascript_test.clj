@@ -143,6 +143,11 @@
   (is  (= {["Babe Ruth"] #{[:sum 714] [:count 22]}
            ["Mickey Mantle"] #{[:count 18] [:sum 536]}
            ["Ted Williams"] #{[:count 19] [:sum 521]}}
+          (q/get-aggregate-result query)))
+  (d/transact! conn [{:season/player 1 :season/year 1975 :season/hits 150 :season/home-runs 62 :season/at-bats 500}])
+  (is  (= {["Babe Ruth"] #{[:sum 776] [:count 23]}
+           ["Mickey Mantle"] #{[:count 18] [:sum 536]}
+           ["Ted Williams"] #{[:count 19] [:sum 521]}}
           (q/get-aggregate-result query))))))
 
 (comment

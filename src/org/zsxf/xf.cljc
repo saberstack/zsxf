@@ -18,12 +18,13 @@
      [[:R1 :R2] :R3] ;three relations (still a pair!)
      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
      ... etc."
-  (:require [net.cgrand.xforms :as xforms]
+  (:require [medley.core :as medley]
+            [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]
-            #?(:clj [org.zsxf.type.datascript.datom2])                  ;don't remove! type import fails
+            #?(:clj [org.zsxf.type.datascript.datom2])      ;don't remove! type import fails
             [org.zsxf.util :as util])
   #?(:clj
      (:import (org.zsxf.type.datascript.datom2 Datom2))))
@@ -426,23 +427,26 @@
                     [cartesian-xf-delta zset])))))))
 
 (defn group-by-xf
-  ;wip
-  ([f xform]
-   (group-by-xf f xform identity))
-  ([f xform set-f]
-   (comp
-     (map (fn [zset] (zs/index zset f)))
-     (map (fn [indexed-zset]
-            (update-vals indexed-zset
-              (fn [indexed-zset-item]
-                (set-f
-                  (into #{} xform indexed-zset-item)))))))))
-
-
-(def group-by-count-xform
+  [group-by-path xform]
   (comp
-    (xforms/transjuxt {:cnt (xforms/reduce zs/zset-count+)})
-    (mapcat (fn [{:keys [cnt]}] [(zs/zset-count-item cnt)]))))
+    (map (fn [zset] (zs/index zset group-by-path)))
+    (map (fn [indexed-zset]
+           (update-vals indexed-zset
+             (fn [indexed-zset-item]
+               (into #{} xform indexed-zset-item)))))))
+
+(defn group-by-aggregate-config
+  [config-m]
+  (comp
+    (xforms/transjuxt
+      (-> config-m
+        (medley/update-existing :cnt (fn [_] (xforms/reduce zs/zset-count+)))
+        (medley/update-existing :sum (fn [sum-path-f] (xforms/reduce (zs/zset-sum+ sum-path-f))))))
+    (mapcat (fn [{:keys [cnt sum]}]
+              (into []
+                (remove nil?)
+                [(when sum (zs/zset-sum-item sum))
+                 (when cnt (zs/zset-count-item cnt))])))))
 
 
 

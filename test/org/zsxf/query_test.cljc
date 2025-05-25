@@ -61,14 +61,9 @@
     ;group by aggregates
     (xf/group-by-xf
       #(-> % (util/nth2 0) (util/nth2 1) d2/datom->val)
-      (comp
-        (xforms/transjuxt {:sum (xforms/reduce
-                                  (zs/zset-sum+
-                                    #(-> % (util/nth2 1) d2/datom->val)))
-                           :cnt (xforms/reduce zs/zset-count+)})
-        (mapcat (fn [{:keys [sum cnt]}]
-                  [(zs/zset-sum-item sum)
-                   (zs/zset-count-item cnt)]))))
+      (xf/group-by-aggregate-config
+        {:sum #(-> % (util/nth2 1) d2/datom->val)
+         :cnt true}))
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
 
 (deftest simple-aggregate-1
@@ -278,23 +273,29 @@
       ;group by aggregates
       (xf/group-by-xf
         #(-> % (nth2 0) d2/datom->val)
-        xf/group-by-count-xform))))
+        (xf/group-by-aggregate-config
+          {:cnt true})))))
+
+(defonce *artist-datoms (atom nil))
 
 #?(:clj
    (defn thaw-artist-datoms!
      "Returns a vector of thawed datoms from the nippy file."
      []
-     (try
-       (nippy/thaw-from-file
-         "resources/mbrainz/artists_datoms.nippy"
-         {:thaw-xform
-          (comp
-            (map (fn [thawing]
-                   (if (vector? thawing)
-                     (let [[e a v tx b] thawing]
-                       (d/datom e a v tx b))
-                     thawing))))})
-       (catch Throwable _e (timbre/info "Cannot load artist datoms. Missing a nippy data file?") nil))))
+     (if-let [artist-datoms @*artist-datoms]
+       artist-datoms
+       (try
+         (reset! *artist-datoms
+           (nippy/thaw-from-file
+             "resources/mbrainz/artists_datoms.nippy"
+             {:thaw-xform
+              (comp
+                (map (fn [thawing]
+                       (if (vector? thawing)
+                         (let [[e a v tx b] thawing]
+                           (d/datom e a v tx b))
+                         thawing))))}))
+         (catch Throwable _e (timbre/info "Cannot load artist datoms. Missing a nippy data file?") nil)))))
 
 #?(:clj
    (defn init-artist-db->conn [artists-datoms]

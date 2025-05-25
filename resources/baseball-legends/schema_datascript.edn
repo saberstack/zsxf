@@ -2,7 +2,8 @@
 
 {
  ;; Player attributes
- :player/name {:db/cardinality :db.cardinality/one}
+ :player/name {:db/cardinality :db.cardinality/one
+               :db/unique :db.unique/identity}
 
  ;; Season statistics attributes
  :season/player {:db/valueType :db.type/ref

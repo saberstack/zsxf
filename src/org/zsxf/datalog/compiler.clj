@@ -152,7 +152,11 @@
   [query]
   (if (= 'quote (first query)) (first (rest query)) query))
 
-(defn find-reduction [find-vars aggregate-vars variable-index locators]
+(defn find-reduction
+  "Takes the zset items at the end of a query join and reduces them
+  into form specified in the :find part of the query.
+  Queries without aggregate functions are handled differently than those with."
+  [find-vars aggregate-vars variable-index locators]
   (let [find-var-juxt `(juxt ~@(map
                                 (partial var-to-getter variable-index locators)
                                 find-vars))]

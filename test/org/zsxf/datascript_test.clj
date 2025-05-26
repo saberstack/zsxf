@@ -123,42 +123,38 @@
                              ["Sylvester Stallone"] ["Ronny Cox"] ["Richard Crenna"]}))
 
 (deftest test-aggregates
-  (testing "career home runs and seasons played"
-    (let [conn (load-test-db "baseball-legends")
-      q '[:find ?name (count ?year) (sum ?hits) (sum ?home-runs)
-          :where
-          [?p :player/name ?name]
-          [?s :season/player ?p]
-          [?s :season/year ?year]
-          [?s :season/hits ?hits]
-          [?s :season/home-runs ?home-runs]]
-      query (q/create-query (static-compile [:find ?name (count ?year) (sum ?hits) (sum ?home-runs)
-                                              :where
-                                              [?p :player/name ?name]
-                                              [?s :season/player ?p]
-                                              [?s :season/year ?year]
-                                              [?s :season/hits ?hits]
-                                              [?s :season/home-runs ?home-runs]]))]
+  (let [conn (load-test-db "baseball-legends")
+        q '[:find ?name (count ?year) (sum ?hits) (sum ?home-runs)
+            :where
+            [?p :player/name ?name]
+            [?s :season/player ?p]
+            [?s :season/year ?year]
+            [?s :season/hits ?hits]
+            [?s :season/home-runs ?home-runs]]
+        query (q/create-query (static-compile [:find ?name (count ?year) (sum ?hits) (sum ?home-runs)
+                                               :where
+                                               [?p :player/name ?name]
+                                               [?s :season/player ?p]
+                                               [?s :season/year ?year]
+                                               [?s :season/hits ?hits]
+                                               [?s :season/home-runs ?home-runs]]))]
 
-  (ds/init-query-with-conn query conn)
-  (is (= [["Ted Williams" 19 521] ["Mickey Mantle" 18 536] ["Babe Ruth" 22 714]] (d/q q @conn)))
-  (is  (= {["Babe Ruth"] #{[:sum 714] [:count 22]}
-           ["Mickey Mantle"] #{[:count 18] [:sum 536]}
-           ["Ted Williams"] #{[:count 19] [:sum 521]}}
-          (q/get-aggregate-result query)))
-  #_(d/transact! conn [{:season/player 1 :season/year 1975 :season/hits 150 :season/home-runs 62 :season/at-bats 500}])
-  #_(is  (= {["Babe Ruth"] #{[:sum 776] [:count 23]}
-           ["Mickey Mantle"] #{[:count 18] [:sum 536]}
-           ["Ted Williams"] #{[:count 19] [:sum 521]}}
-          (q/get-aggregate-result query))))))
+    (testing "career home runs and seasons played"
+      (ds/init-query-with-conn query conn)
+      (is (= [["Babe Ruth" 22 3035 714] ["Ted Williams" 19 2654 521] ["Mickey Mantle" 18 2491 536]]
+             (d/q q @conn)))
+      (is  (= {["Babe Ruth"] #{['?year 22] ['?home-runs 714] ['?hits 3035]}
+               ["Ted Williams"] #{['?year 19] ['?hits 2654] ['?home-runs 521]}
+               ["Mickey Mantle"]#{['?year 18] ['?hits 2491] ['?home-runs 536]}}
+              (q/get-aggregate-result query))))
+    (testing "an additional transaction doesn't break the query"
+      (d/transact! conn [{:season/player 1 :season/year 1975 :season/hits 150 :season/home-runs 62 :season/at-bats 500}])
+      (is  (= {["Babe Ruth"] #{['?year 23] ['?home-runs 776] ['?hits 3185]}
+               ["Ted Williams"] #{['?year 19] ['?hits 2654] ['?home-runs 521]}
+               ["Mickey Mantle"]#{['?year 18] ['?hits 2491] ['?home-runs 536]}}
+              (q/get-aggregate-result query))))))
 
 (comment
   (set! *print-meta* false)
-  (static-compile [:find ?name (count ?year) (sum ?hits) (sum ?home-runs)
-                   :where
-                   [?p :player/name ?name]
-                   [?s :season/player ?p]
-                   [?s :season/year ?year]
-                   [?s :season/hits ?hits]
-                   [?s :season/home-runs ?home-runs]])
+
   )

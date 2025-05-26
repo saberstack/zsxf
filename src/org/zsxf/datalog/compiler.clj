@@ -183,12 +183,12 @@
                      aggregate-vars)])
             (mapcat (fn [~aggregations]
                       [~@(map-indexed
-                          (fn [idx {:keys [ aggregate-fn]}]
+                          (fn [idx {:keys [aggregate-fn variable]}]
                             (condp = aggregate-fn
                               'sum
-                              `(zs/zset-sum-item (nth ~aggregations ~idx))
+                              `(zs/zset-sum-item (nth ~aggregations ~idx) (quote ~variable))
                               'count
-                              `(zs/zset-count-item (nth ~aggregations ~idx))))
+                              `(zs/zset-count-item (nth ~aggregations ~idx) (quote ~variable))))
                           aggregate-vars)]))))]))))
 
 (defmacro static-compile [query]

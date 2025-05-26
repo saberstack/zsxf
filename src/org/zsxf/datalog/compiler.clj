@@ -7,6 +7,7 @@
             [org.zsxf.datalog.macro-util :as mu]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as xf]
+            [org.zsxf.util :as u]
             [clojure.spec.alpha :as s]
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
@@ -50,8 +51,7 @@
        new-joins []
        locators locators]
     (if (nil? component-2)
-      {:cartesian-joins new-joins
-       :locators locators}
+      [new-joins locators]
 
       (let [[c1-name#  c2-name# :as clause-names] (map first connected-components)
             [c1# c2#] (map named-clauses clause-names)
@@ -102,27 +102,45 @@
         vec
         (update last-index concat [:last? true]))))
 
-(defn var-to-getter [variable-index locators zset-item form]
-  (if (parser/variable? form)
-    (let [[[clause-to-select position] & _] (form variable-index)]
-      `((comp ~(position pos->getter) ~@(clause-to-select locators)) ~zset-item))
-    form))
+(defn var-to-getter
+  "Takes a variable and returns a function
+  for getting the value corresponding to that variable
+  out of a zset item in the current query context.
+  `variable-index` stores in what clauses a variable appears,
+  and in what position. `locators` stores where in the zset item the values
+  for a given clause are stored."
+  [variable-index locators variable]
+  (let [[[clause-to-select position] & _] (variable variable-index)]
+      `(comp ~(position pos->getter) ~@(clause-to-select locators))))
 
-(defn substitute-operator [[op & tail]]
-  {:pre [(contains? dfn/query-fns op)]}
-  (let [[_ fq-symbol] (find dfn/query-fns op)]
-    (cons fq-symbol tail)))
+(defn transpile-predicate-clause
+  "Takes a query predicate like [(< ?var 3)]
+  and turns it into a Clojure predicate for evaluating
+  that condition at query runtime."
+  [variable-index locators zset-item [op & tail]]
+  (let [new-op (get dfn/query-fns op)
+        new-tail (map (fn [form]
+                        (if (parser/variable? form)
+                          (let [getter (var-to-getter variable-index locators form)]
+                            `(~getter ~zset-item))
+                          form))
+                      tail)]
+    (cons new-op new-tail)))
 
-(defn add-predicates [xf-steps-flat variable-index locators predicate-clauses]
+(defn add-predicates
+  "When a query has predicates, transpile those predicates and
+  add them to the query's execution.
+
+  Predicates are currently just a filter function executed at the end,
+  so quite unoptimized."
+  [xf-steps-flat variable-index locators predicate-clauses]
   (if (empty? predicate-clauses)
     xf-steps-flat
     (let [pred-fns
           (map (fn [[predicate-clause]]
                  (let [zset-item (gensym 'zset-item)]
                    `(filter (fn [~zset-item]
-                              (~@(->> predicate-clause
-                                      (substitute-operator)
-                                      (map (partial var-to-getter variable-index locators zset-item))))))))
+                              (~@(transpile-predicate-clause variable-index locators zset-item predicate-clause))))))
                predicate-clauses)
           xf `(comp ~@pred-fns)
           last-index (dec (count xf-steps-flat))]
@@ -134,14 +152,56 @@
   [query]
   (if (= 'quote (first query)) (first (rest query)) query))
 
+(defn find-reduction
+  "Takes the zset items at the end of a query join and reduces them
+  into form specified in the :find part of the query.
+  Queries without aggregate functions are handled differently than those with."
+  [find-vars aggregate-vars variable-index locators]
+  (let [find-var-juxt `(juxt ~@(map
+                                (partial var-to-getter variable-index locators)
+                                find-vars))]
+    (if (empty? aggregate-vars)
+      [`(xforms/reduce
+          (zs/zset-xf+
+           (map
+            (xf/same-meta-f
+             ~find-var-juxt))))]
+      (let [aggregations (gensym 'aggregations)]
+        [`(xforms/reduce zs/zset+)
+         `(xf/group-by-xf
+           ~find-var-juxt
+           (comp
+            (xforms/transjuxt
+             [~@(map (fn [{:keys [aggregate-fn variable]}]
+                       (condp = aggregate-fn
+                         'sum
+                         `(xforms/reduce
+                           (zs/zset-sum+ ~(var-to-getter variable-index locators variable)))
+
+                         'count
+                         `(xforms/reduce zs/zset-count+)))
+                     aggregate-vars)])
+            (mapcat (fn [~aggregations]
+                      [~@(map-indexed
+                          (fn [idx {:keys [aggregate-fn variable]}]
+                            (condp = aggregate-fn
+                              'sum
+                              `(zs/zset-sum-item (nth ~aggregations ~idx) (quote ~variable))
+                              'count
+                              `(zs/zset-count-item (nth ~aggregations ~idx) (quote ~variable))))
+                          aggregate-vars)]))))]))))
+
 (defmacro static-compile [query]
  (let [query (pre-parse-query query)]
   (condp = (s/conform ::parser-spec/query query)
     ::s/invalid
     `(ex-info "Invalid or unsupported query"
               {:explain-data ~(s/explain-data ::parser-spec/query query)})
-    (let [{where-clauses# :where find-vars# :find} (parser/query->map query)
+    (let [{where-clauses# :where find-rel# :find} (parser/query->map query)
           {predicate-clauses# true pattern-clauses# false} (group-by (partial s/valid? ::parser-spec/predicate) where-clauses#)
+           {aggregate-vars# :aggregate find-vars# :variable} (->> find-rel#
+                                                                  (s/conform ::parser-spec/find-rel)
+                                                                  (u/group-and-map first second))
           named-clauses# (parser/name-clauses pattern-clauses#)
           variable-index# (parser/index-variables named-clauses#)
           adjacency-list# (parser/build-adjacency-list named-clauses#)
@@ -163,24 +223,21 @@
 
         (cond (and (empty? remaining-nodes#) (empty? remaining-components#))
               (let [[xf-steps# preds# locators#] (handle-single-clause xf-steps# preds# locators# state variable-index# named-clauses#)
-                    {:keys [locators cartesian-joins]} (join-isolated-components named-clauses# locators# state connected-components#)
-                    xf-steps-flat# (-> (if (empty? cartesian-joins)
+                    [cartesian-joins# locators#] (join-isolated-components named-clauses# locators# state connected-components#)
+                    xf-steps-flat# (-> (if (empty? cartesian-joins#)
                                           (first xf-steps#)
-                                          (->> xf-steps# (cons cartesian-joins) reverse vec (apply concat)))
+                                          (->> xf-steps# (cons cartesian-joins#) reverse vec (apply concat)))
                                         (mark-last)
-                                        (add-predicates variable-index# locators predicate-clauses#))]
+                                        (add-predicates variable-index# locators# predicate-clauses#))
+                    fr# (find-reduction find-vars# aggregate-vars# variable-index# locators#)]
+
                 `(fn [~state]
-                  (comp
-                   (xf/mapcat-zset-transaction-xf)
-                   (map (fn [zset#]
-                          (xf/disj-irrelevant-items zset# ~@preds#)))
-                   ~@xf-steps-flat#
-                   (xforms/reduce (zs/zset-xf+ (map
-                                                (xf/same-meta-f
-                                                  (juxt ~@(map (fn [find-var#]
-                                                                 (let [[[clause-to-select# position#] & _] (find-var# variable-index#)]
-                                                                   `(comp ~(position# pos->getter) ~@(clause-to-select# locators))))
-                                                               find-vars#)))))))))
+                   (comp
+                    (xf/mapcat-zset-transaction-xf)
+                    (map (fn [zset#]
+                           (xf/disj-irrelevant-items zset# ~@preds#)))
+                    ~@xf-steps-flat#
+                    ~@fr#)))
 
               ;; Stack overflow
               (> n# 100)

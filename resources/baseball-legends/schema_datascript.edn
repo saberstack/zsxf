@@ -1,0 +1,19 @@
+;; schema.edn - Datascript schema for baseball player statistics
+
+{
+ ;; Player attributes
+ :player/name {:db/cardinality :db.cardinality/one
+               :db/unique :db.unique/identity}
+
+ ;; Season statistics attributes
+ :season/player {:db/valueType :db.type/ref
+                 :db/cardinality :db.cardinality/one}
+
+ :season/year {:db/cardinality :db.cardinality/one}
+
+ :season/hits {:db/cardinality :db.cardinality/one}
+
+ :season/home-runs {:db/cardinality :db.cardinality/one}
+
+ :season/at-bats {:db/cardinality :db.cardinality/one}
+}

@@ -270,6 +270,14 @@
   [f]
   (:source (meta f)))
 
+(defn group-and-map
+  "Like group-by, but also applies mapper to the elements before appending."
+  [grouper mapper coll]
+  (reduce
+   (fn [acc el]
+     (update acc (grouper el) (fnil conj []) (mapper el)))
+   {}
+   coll))
 
 (comment
 

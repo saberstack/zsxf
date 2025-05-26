@@ -63,15 +63,20 @@
   (::q/result @(get query ::q/state)))
 
 (defn get-aggregate-result
-  "WIP fn"
   [query]
   (update-vals
     (get-result query)
     (fn [s]
       (into #{}
         (comp
-          (map (fn [x] (if (= x const/zset-sum) [:sum (zs/zset-weight x)] x)))
-          (map (fn [x] (if (= x const/zset-count) [:count (zs/zset-weight x)] x))))
+          (map (fn [[tag item :as v]]
+                 (if (= item const/zset-sum)
+                   [tag (zs/zset-weight v)]
+                   v)))
+          (map (fn [[tag item :as v]]
+                 (if (= item const/zset-count)
+                   [tag (zs/zset-weight v)]
+                   v))))
         s))))
 
 (defn get-state [query]

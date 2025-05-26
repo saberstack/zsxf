@@ -81,14 +81,18 @@
        (assoc-zset-item-weight x weight)))))
 
 (defn zset-count-item
-  "zset representing a count"
-  [n]
-  (zset-item const/zset-count n))
+  "zset singleton item representing a count"
+  ([n]
+   (zset-item const/zset-count n))
+  ([n tag]
+   (zset-item [tag const/zset-count] n)))
 
 (defn zset-sum-item
-  "zset representing a sum"
-  [n]
-  (zset-item const/zset-sum n))
+  "zset singleton item representing a sum"
+  ([n]
+   (zset-item const/zset-sum n))
+  ([n tag]
+   (zset-item [tag const/zset-sum] n)))
 
 (defn eligible-coll?
   "Check if a collection is eligible to be a zset item.

@@ -436,18 +436,30 @@
                (into #{} xform indexed-zset-item)))))))
 
 (defn group-by-aggregate-config
+  "config-m is a map of
+  {[variable aggregate-kwd] config-path-f}
+  where
+    - variable is a variable name, e.g. ?x or :?x (symbol or keyword)
+    - aggregate-kwd is one of :cnt or :sum
+    - config-path-f is a function that takes a zset item and returns the value to aggregate
+
+  Returns a transducer that takes a zset and returns a zset of aggregated items."
   [config-m]
   (comp
     (xforms/transjuxt
-      (-> config-m
-        (medley/update-existing :cnt (fn [_] (xforms/reduce zs/zset-count+)))
-        (medley/update-existing :sum (fn [sum-path-f] (xforms/reduce (zs/zset-sum+ sum-path-f))))))
-    (mapcat (fn [{:keys [cnt sum]}]
+      (into {}
+        (map (fn [[[_variable aggregate-kwd :as config-map-k] config-path-f]]
+               (condp = aggregate-kwd
+                 :cnt [config-map-k (xforms/reduce zs/zset-count+)]
+                 :sum [config-map-k (xforms/reduce (zs/zset-sum+ config-path-f))])))
+        config-m))
+    (mapcat (fn [m]
               (into []
-                (remove nil?)
-                [(when sum (zs/zset-sum-item sum))
-                 (when cnt (zs/zset-count-item cnt))])))))
-
+                (map (fn [[[variable aggregate-kwd] aggregate-result-n]]
+                       (condp = aggregate-kwd
+                         :cnt (zs/zset-count-item aggregate-result-n variable)
+                         :sum (zs/zset-sum-item aggregate-result-n variable))))
+                m)))))
 
 
 (defn mapcat-zset-transaction-xf

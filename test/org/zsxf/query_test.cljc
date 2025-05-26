@@ -62,8 +62,8 @@
     (xf/group-by-xf
       #(-> % (util/nth2 0) (util/nth2 1) d2/datom->val)
       (xf/group-by-aggregate-config
-        {:sum #(-> % (util/nth2 1) d2/datom->val)
-         :cnt true}))
+        {[:?sum-1 :sum] #(-> % (util/nth2 1) d2/datom->val)
+         [:?cnt-1 :cnt] true}))
     (map (fn [final-xf-delta] (timbre/spy final-xf-delta)))))
 
 (deftest simple-aggregate-1
@@ -91,10 +91,12 @@
         result-2 (q/get-aggregate-result query-1)]
     (is
       (= result-1
-        {"Japan" #{[:sum 43] [:count 2]}, "Australia" #{[:sum 29] [:count 2]}}))
+        {"Japan"     #{[:?sum-1 43] [:?cnt-1 2]},
+         "Australia" #{[:?sum-1 29] [:?cnt-1 2]}}))
     (is
       (= result-2
-        {"Japan" #{}, "Australia" #{[:sum 4] [:count 1]}}))))
+        {"Japan"     #{},
+         "Australia" #{[:?sum-1 4] [:?cnt-1 1]}}))))
 
 (defn person-city-country-example-xf-join-3 [query-state]
   (comment
@@ -274,7 +276,7 @@
       (xf/group-by-xf
         #(-> % (nth2 0) d2/datom->val)
         (xf/group-by-aggregate-config
-          {:cnt true})))))
+          {[:?cnt-1 :cnt] true})))))
 
 (defonce *artist-datoms (atom nil))
 
@@ -332,7 +334,8 @@
            ;check that impl changes haven't increased the query size
            (is (<= query-size-in-mb expected-query-size-in-mb)))
          ;check query result
-         (is (= result result-from-file)))
+         (is (= result result-from-file))
+         result)
        (do
          (timbre/info "Test will skip, no artist datoms found.")
          true))))

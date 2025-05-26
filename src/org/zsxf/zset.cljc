@@ -94,14 +94,6 @@
   ([n tag]
    (zset-item [tag const/zset-sum] n)))
 
-(defn eligible-coll?
-  "Check if a collection is eligible to be a zset item.
-  All collections are eligible except map entries."
-  [coll]
-  (if (map-entry? coll)
-    false
-    (coll? coll)))
-
 (defn zset?
   "Check if x conforms to the zset spec"
   [x]

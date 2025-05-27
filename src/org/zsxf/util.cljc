@@ -279,7 +279,19 @@
    {}
    coll))
 
+(defn inheritance-tree [klass]
+  (let [f (fn f [c]
+            (reduce (fn [m p] (assoc m p (f p))) {}
+                    (sort-by #(.getName %) (parents c))))]
+    {klass (f klass)}))
+
 (comment
+
+  (inheritance-tree (class []))
+
+  (inheritance-tree (class #{}))
+
+  (inheritance-tree (class {}))
 
   (let [f (fn+ [a b c] (+ a b c 42))]
     (source f))

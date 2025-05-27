@@ -10,4 +10,5 @@ movielens/
 mbrainz/
 classes/
 baseball.sqlite
-/datomic/
+/datomic/datomic-pro
+/datomic/storage

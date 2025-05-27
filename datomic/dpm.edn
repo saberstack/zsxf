@@ -1,0 +1,1 @@
+{:datomic-transactor-properties-path "./transactor.properties"}

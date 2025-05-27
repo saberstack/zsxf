@@ -39,7 +39,6 @@
 (def datomic-schema
   [{:db/valueType   :db.type/string,
     :db/cardinality :db.cardinality/one,
-    :db/unique      :db.unique/identity,
     :db/ident       :artist/name}
    {:db/valueType   :db.type/string,
     :db/cardinality :db.cardinality/one,
@@ -62,14 +61,6 @@
     :db/cardinality :db.cardinality/one,
     :db/unique      :db.unique/identity,
     :db/ident       :country/name-alpha-2}])
-
-(defn datascript-schema->datomic-schema
-  "Convert a Datascript schema to a Datomic schema."
-  [schema]
-  (into []
-    (map (fn [[k v]]
-           (assoc v :db/ident k)))
-    schema))
 
 (defonce *conn (atom (d/create-conn schema)))
 (defonce *query-1 (atom nil))
@@ -149,8 +140,11 @@
                       (partitionv-all partition-n)
                       (remove
                         (fn [artists]
-                          (timbre/spy (count artists))
-                          (dd/transact conn artists)
+                          (let [tx (time @(dd/transact conn artists))]
+                            (timbre/info "artists count:"
+                              (count artists))
+                            (timbre/info "tx-data count:"
+                              (count (:tx-data tx))))
                           ; return true to "drop" the data in this transducer
                           ; before it reaches the channel
                           true))))
@@ -164,7 +158,9 @@
         (fn [accum-cnt item]
           (a/>!! input-ch item)
           (inc accum-cnt))
-        (fn [accum-cnt-final] accum-cnt-final))
+        (fn [accum-cnt-final]
+          (a/close! input-ch)
+          accum-cnt-final))
       0
       artists)))
 
@@ -196,7 +192,7 @@
         (map (fn [s] (charred/read-json s :key-fn keyword)))
         (map artist->datascript-artist)))))
 
-(defn load-artists-from-json->dd [n file-path conn & {:keys [partition-n]}]
+(defn artists-json->datomic [n file-path conn & {:keys [partition-n]}]
   (with-open [rdr (io/reader file-path)]
     (json-artists->datomic
       n
@@ -204,7 +200,7 @@
       conn
       :artist-xf (comp
                    (map (fn [s] (charred/read-json s :key-fn keyword)))
-                   (map artist->datascript-artist))
+                   (map artist->datomic-artist))
       :partition-n partition-n)))
 
 (comment
@@ -284,21 +280,30 @@
   (d/conn-from-db
     (d/init-db (thaw-artist-datoms!) schema)))
 
-(defn init-datomic-artist-conn []
+(defn datomic-conn [db-name]
+  (dd/connect (dc/db-uri db-name)))
+
+(defn conn->db [conn]
+  (if (instance? datascript.conn.Conn conn)
+    (deref conn)
+    (dd/db conn)))
+
+(defn delete-and-init-datomic! []
   (let [^String db-uri (dc/db-uri "mbrainz")
         _              (dd/delete-database db-uri)
         _              (dd/create-database db-uri)
         conn           (dd/connect db-uri)
-        tx             (dd/transact conn datomic-schema)]
+        _              (dd/transact conn datomic-schema)]
     conn))
 
+;Usage
 (comment
-  (time (let [conn (init-datomic-artist-conn)]
-          (load-artists-from-json->dd
-            1000000
-            "/Users/raspasov/Downloads/artist/mbdump/artist"
-            conn
-            :partition-n 3000))))
+  (let [conn (delete-and-init-datomic!)]
+    (artists-json->datomic
+      10000000
+      "/Users/raspasov/Downloads/artist/mbdump/artist"
+      conn
+      :partition-n 10000)))
 
 (defn init-load-all
   "Main loading fn"
@@ -339,24 +344,25 @@
 (defn query-count-artists-by-country []
   (time
     (d/q
-      '[:find ?country-name (count ?a)
+      '[:find ?a
+        ;(count ?a)
         :where
         [?a :artist/country ?c]
-        [?c :country/name-alpha-2 ?country-name]
-        [(= ?country-name "US")]
+        ;[?c :country/name-alpha-2 ?country-name]
+        ;[(= ?country-name "US")]
         ]
       @@*conn)))
 
-(defn query-count-artists-by-country-2 [conn]
+(defn query-count-artists-by-country-2 [q conn]
   (time
-    (d/q
-      '[:find ?country-name (count ?a)
+    (q
+      '[:find (count ?a)
         :where
-        [?a :artist/country ?c]
         [?c :country/name-alpha-2 ?country-name]
+        [?a :artist/name ?name]
         [(= ?country-name "US")]
-        ]
-      @conn)))
+        [?a :artist/country ?c]]
+      (conn->db conn))))
 
 (defn query-all-countries []
   (d/q
@@ -390,7 +396,12 @@
 ;end queries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(comment
 
+
+
+  (let [conn (datomic-conn "mbrainz")]
+    (query-count-artists-by-country-2 dd/q conn)))
 
 
 (comment

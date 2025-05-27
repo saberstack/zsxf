@@ -86,6 +86,14 @@
              [:genre/name genre])))
     genres))
 
+(defn artist-genres->datomic-refs [genres]
+  (into []
+    (comp
+      (map :name)
+      (filter string?)
+      (map (fn [genre] {:genre/name genre})))
+    genres))
+
 (defonce artists-full-set (atom #{}))
 
 (defn artist->datascript-artist
@@ -97,6 +105,15 @@
     (string? type) (assoc :artist/type type)
     (< 0 (count genres)) (assoc :artist/genres (artist-genres->datascript-refs genres))))
 
+(defn artist->datomic-artist
+  [{:keys [name id genres country type]}]
+  (cond->
+    {:artist/id id}
+    (string? name) (assoc :artist/name name)
+    (string? country) (assoc :artist/country {:country/name-alpha-2 country})
+    (string? type) (assoc :artist/type type)
+    (< 0 (count genres)) (assoc :artist/genres (artist-genres->datomic-refs genres))))
+
 
 (defn json-artists->datascript
   [n artists & {:keys [artist-xf] :or {artist-xf (map identity)}}]
@@ -106,6 +123,34 @@
                       (remove
                         (fn [artist]
                           (d/transact! @*conn (vector artist))
+                          ; return true to "drop" the data in this transducer
+                          ; before it reaches the channel
+                          true))))
+        _         (a/pipeline 7
+                    output-ch
+                    artist-xf
+                    input-ch)]
+    (transduce
+      (comp (take n))
+      (completing
+        (fn [accum-cnt item]
+          (a/>!! input-ch item)
+          (inc accum-cnt))
+        (fn [accum-cnt-final] accum-cnt-final))
+      0
+      artists)))
+
+(defn json-artists->datomic
+  [n artists conn & {:keys [artist-xf partition-n]
+                     :or   {artist-xf (map identity) partition-n 500}}]
+  (let [input-ch  (a/chan 1000)
+        output-ch (a/chan 1
+                    (comp
+                      (partitionv-all partition-n)
+                      (remove
+                        (fn [artists]
+                          (timbre/spy (count artists))
+                          (dd/transact conn artists)
                           ; return true to "drop" the data in this transducer
                           ; before it reaches the channel
                           true))))
@@ -141,7 +186,8 @@
 (defn load-artists-from-nippy [file-path n]
   (nippy-artists->datascript n (nippy/thaw-from-file file-path)))
 
-(defn load-artists-from-json [file-path n]
+
+(defn load-artists-from-json->ds [file-path n]
   (with-open [rdr (io/reader file-path)]
     (json-artists->datascript
       n (line-seq rdr)
@@ -149,6 +195,17 @@
       (comp
         (map (fn [s] (charred/read-json s :key-fn keyword)))
         (map artist->datascript-artist)))))
+
+(defn load-artists-from-json->dd [n file-path conn & {:keys [partition-n]}]
+  (with-open [rdr (io/reader file-path)]
+    (json-artists->datomic
+      n
+      (line-seq rdr)
+      conn
+      :artist-xf (comp
+                   (map (fn [s] (charred/read-json s :key-fn keyword)))
+                   (map artist->datascript-artist))
+      :partition-n partition-n)))
 
 (comment
   (nippy/freeze-to-file "resources/mbrainz/artists_mini_set.nippy"
@@ -227,7 +284,7 @@
   (d/conn-from-db
     (d/init-db (thaw-artist-datoms!) schema)))
 
-(defn datomic-artist-db-conn []
+(defn init-datomic-artist-conn []
   (let [^String db-uri (dc/db-uri "mbrainz")
         _              (dd/delete-database db-uri)
         _              (dd/create-database db-uri)
@@ -235,32 +292,13 @@
         tx             (dd/transact conn datomic-schema)]
     conn))
 
-(defn datomic-init [conn]
-  (let [datoms-from-thaw (thaw-artist-datoms!)
-        v                (into []
-                           (comp
-                             (partition-by first)
-                             (map datoms->attr-value-map)
-                             (medley.core/partition-before :artist/id)
-                             (take 1)
-                             #_(map (fn [tx]
-                                    (try
-                                      @(dd/transact conn tx)
-                                      (catch Throwable e (do (timbre/spy tx) (throw e)))))))
-                           datoms-from-thaw)
-        #_#_v (into []
-                (comp
-                  (partition-by first)
-                  (map datoms->attr-value-map)
-                  (remove :country/name-alpha-2)
-                  (remove :genre/name)
-                  (take 100)
-                  #_(map (fn [tx]
-                           (try
-                             @(dd/transact conn tx)
-                             (catch Throwable e (do (timbre/spy tx) (throw e)))))))
-                datoms-from-thaw)]
-    v))
+(comment
+  (time (let [conn (init-datomic-artist-conn)]
+          (load-artists-from-json->dd
+            1000000
+            "/Users/raspasov/Downloads/artist/mbdump/artist"
+            conn
+            :partition-n 3000))))
 
 (defn init-load-all
   "Main loading fn"

@@ -356,12 +356,11 @@
 (defn query-count-artists-by-country-2 [q conn]
   (time
     (q
-      '[:find (count ?a)
+      '[:find ?country-name (count ?a)
         :where
+        [?a :artist/country ?c]
         [?c :country/name-alpha-2 ?country-name]
-        [?a :artist/name ?name]
-        [(= ?country-name "US")]
-        [?a :artist/country ?c]]
+        [?a :artist/name ?name]]
       (conn->db conn))))
 
 (defn query-all-countries []
@@ -397,8 +396,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
-
-
 
   (let [conn (datomic-conn "mbrainz")]
     (query-count-artists-by-country-2 dd/q conn)))

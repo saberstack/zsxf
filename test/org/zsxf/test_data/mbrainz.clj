@@ -398,7 +398,17 @@
 (comment
 
   (let [conn (datomic-conn "mbrainz")]
-    (query-count-artists-by-country-2 dd/q conn)))
+    (query-count-artists-by-country-2 dd/q conn))
+
+
+  (dd/transact (datomic-conn "mbrainz")
+    [{:artist/name    "Eric Jordan"
+      :artist/id      "eric-jordan"
+      :artist/country [:country/name-alpha-2 "US"]
+      :artist/genres  [[:genre/name "electronic"]
+                       [:genre/name "trance"]]}])
+
+  )
 
 
 (comment

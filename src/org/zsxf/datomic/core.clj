@@ -1,6 +1,7 @@
 (ns org.zsxf.datomic.core
   (:require
    [datascript.core :as d]
+   [datascript.db :as ddb]
    [datomic.api :as dd]
    [clojure.core.async :as a]
    [org.zsxf.datom :as d2]
@@ -34,12 +35,15 @@
 (defonce run-datomic-cdc? (atom true))
 
 
-(defn tx-data->datom-vs [idents-m data]
-  (mapv
-    (fn [[e a v t tf :as datom]]
-      (let [a' (get idents-m a)]
-        ;datom
-        [e a' v t tf]))
+(defn tx-data->datoms
+  [idents-m data]
+  (into []
+    (map (fn [[e a v t tf :as datom]]
+           (let [a' (get idents-m a)]
+             ;datom
+             ;(ddb/datom e a' v t tf)
+             [e a' v t tf]
+             datom)))
     data))
 
 ;Incremental CDC:
@@ -49,16 +53,18 @@
 
 (defn get-log-transactions
   "- `conn`: The Datomic connection."
-  [conn]
-  (let [log          (dd/log conn)
-        idents-m     (into {} (get-all-idents conn))
-        transactions (dd/tx-range log 2553037 nil)]
-    ;TODO WIP
-    (sequence
-      (mapcat
-        (fn [{:keys [data t]}]
-          (tx-data->datom-vs idents-m data)))
-      transactions)))
+  ([conn]
+   (get-log-transactions conn nil nil))
+  ([conn start end]
+   (let [log          (dd/log conn)
+         idents-m     (into {} (get-all-idents conn))
+         transactions (dd/tx-range log start end)]
+     ;TODO WIP
+     (sequence
+       (mapcat
+         (fn [{:keys [data t]}]
+           (tx-data->datoms idents-m data)))
+       transactions))))
 
 (defn react-on-transaction! [conn on-transaction]
   (let [tx-queue (dd/tx-report-queue conn)]

@@ -13,6 +13,7 @@
   ([init-xf custom-init]
    (let [state (atom nil)]
      {::q/xf          (init-xf state)
+      ::q/query-map   (:query-map (meta init-xf))
       ::q/state       state
       ::q/id          (random-uuid)
       ::q/custom-init custom-init})))
@@ -67,17 +68,24 @@
   (update-vals
     (get-result query)
     (fn [s]
-      (into {}
-        (comp
-          (map (fn [[tag item :as v]]
-                 (if (= item const/zset-sum)
-                   [tag (zs/zset-weight v)]
-                   v)))
-          (map (fn [[tag item :as v]]
-                 (if (= item const/zset-count)
-                   [tag (zs/zset-weight v)]
-                   v))))
-        s))))
+      (let [{{find-vars :find} ::query-map} query
+            result-set (into {}
+                             (comp
+                              (map (fn [[tag item :as v]]
+                                     (if (= item const/zset-sum)
+                                       [tag (zs/zset-weight v)]
+                                       v)))
+                              (map (fn [[tag item :as v]]
+                                     (if (= item const/zset-count)
+                                       [tag (zs/zset-weight v)]
+                                       v))))
+                             s)]
+        (if (seq find-vars)
+          (into []
+                (comp (remove symbol?)
+                      (map #(get result-set (second %))))
+                find-vars)
+          (into #{} result-set))))))
 
 (defn get-state [query]
   @(get query ::q/state))

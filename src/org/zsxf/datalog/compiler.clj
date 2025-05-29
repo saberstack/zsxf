@@ -197,7 +197,7 @@
     ::s/invalid
     `(ex-info "Invalid or unsupported query"
               {:explain-data ~(s/explain-data ::parser-spec/query query)})
-    (let [{where-clauses# :where find-rel# :find} (parser/query->map query)
+    (let [{where-clauses# :where find-rel# :find :as query-map#} (parser/query->map query)
           {predicate-clauses# true pattern-clauses# false} (group-by (partial s/valid? ::parser-spec/predicate) where-clauses#)
            {aggregate-vars# :aggregate find-vars# :variable} (->> find-rel#
                                                                   (s/conform ::parser-spec/find-rel)
@@ -229,15 +229,15 @@
                                           (->> xf-steps# (cons cartesian-joins#) reverse vec (apply concat)))
                                         (mark-last)
                                         (add-predicates variable-index# locators# predicate-clauses#))
-                    fr# (find-reduction find-vars# aggregate-vars# variable-index# locators#)]
-
-                `(fn [~state]
-                   (comp
-                    (xf/mapcat-zset-transaction-xf)
-                    (map (fn [zset#]
-                           (xf/disj-irrelevant-items zset# ~@preds#)))
-                    ~@xf-steps-flat#
-                    ~@fr#)))
+                    fr# (find-reduction find-vars# aggregate-vars# variable-index# locators#)
+                    xf `(fn [~state]
+                          (comp
+                           (xf/mapcat-zset-transaction-xf)
+                           (map (fn [zset#]
+                                  (xf/disj-irrelevant-items zset# ~@preds#)))
+                           ~@xf-steps-flat#
+                           ~@fr#))]
+                `(with-meta ~xf {:query-map (quote ~query-map#)}))
 
               ;; Stack overflow
               (> n# 100)

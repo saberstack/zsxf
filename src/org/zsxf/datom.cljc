@@ -7,14 +7,14 @@
 
 (defn datom2
   "Takes a datom, i.e. (datascript.core/datom 1 :a 'v) and returns a Datom2"
-  ([datascript-datom]
-   (datom2 datascript-datom nil))
-  ([datascript-datom metadata]
+  ([datom]
+   (datom2 datom nil))
+  ([datom metadata]
    #?(:clj
-      (td/->Datom2 datascript-datom metadata)
+      (td/->Datom2 datom metadata)
       :cljs
       ;TODO implement Datom2 for CLJS
-      (let [[e a v _t add-or-retract :as datom] datascript-datom]
+      (let [[e a v _t add-or-retract :as datom] datom]
         [e a v]))))
 
 (defn datom2? [x]
@@ -62,15 +62,6 @@
 
 (defn datom-attr-val= [datom attr value]
   (and (datom-attr= datom attr) (datom-val= datom value)))
-
-(defn tx-datoms->datoms2->zset
-  "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
-  [datoms]
-  (transduce
-    (map datom->datom2->zset-item)
-    conj
-    #{}
-    datoms))
 
 (defn tx-datoms->datoms2->zsets
   "Transforms datoms into datoms2, and then into a vector of zsets.

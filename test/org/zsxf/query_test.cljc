@@ -19,6 +19,16 @@
    #?(:clj [taoensso.nippy :as nippy])
    [taoensso.timbre :as timbre]))
 
+
+(defn tx-datoms->datoms2->zset
+  "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
+  [datoms]
+  (transduce
+    (map d2/datom->datom2->zset-item)
+    conj
+    #{}
+    datoms))
+
 ; Aggregates current limitation: retractions (deletes) have to be precise!
 ; An _over-retraction_ by trying to retract a datom that doesn't exist will result in
 ; an incorrect index state.
@@ -80,7 +90,7 @@
 (deftest simple-aggregate-1
   (let [query-1  (q/create-query aggregate-example-xf)
         _        (q/input query-1
-                   [(d2/tx-datoms->datoms2->zset
+                   [(tx-datoms->datoms2->zset
                       [(ddb/datom 1 :team/name "A" 536870913 true)
                        (ddb/datom 1 :event/country "Japan" 536870913 true)
                        (ddb/datom 1 :team/points-scored 25 536870913 true)
@@ -99,7 +109,7 @@
                        (ddb/datom 4 :team/points-scored-2 5 536870913 true)])])
         result-1 (q/get-aggregate-result query-1)
         _        (q/input query-1
-                   [(d2/tx-datoms->datoms2->zset
+                   [(tx-datoms->datoms2->zset
                       [(ddb/datom 1 :team/name "A" 536870913 false)
                        (ddb/datom 2 :team/name "A" 536870913 false)
                        (ddb/datom 3 :team/name "A" 536870913 false)])])
@@ -172,7 +182,7 @@
 
 
   (q/input query-1
-    [(d2/tx-datoms->datoms2->zset
+    [(tx-datoms->datoms2->zset
        [(ddb/datom 1 :country/continent "Europe" 536870913 true)
         (ddb/datom 2 :person/name "Alice" 536870913 true)
         (ddb/datom 2 :likes "pizza" 536870913 true)
@@ -185,7 +195,7 @@
     '[?p :person/name "Alice"])
 
   (q/input query-1
-    [(d2/tx-datoms->datoms2->zset
+    [(tx-datoms->datoms2->zset
        [(ddb/datom 1 :team/name "A" 536870913 false)
         (ddb/datom 2 :team/name "A" 536870913 false)
         (ddb/datom 3 :team/name "A" 536870913 false)])])

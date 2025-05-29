@@ -116,12 +116,12 @@
         result-2 (q/get-aggregate-result query-1)]
     (is
       (= result-1
-        {"Japan"     #{[:?sum-1 43] [:?sum-2 14] [:?cnt-1 2]},
-         "Australia" #{[:?sum-1 29] [:?sum-2 8] [:?cnt-1 2]}}))
+         {"Japan"     {:?cnt-1 2 :?sum-2 14 :?sum-1 43},
+          "Australia"  {:?cnt-1 2 :?sum-2 8 :?sum-1 29}}))
     (is
       (= result-2
-        {"Japan"     #{},
-         "Australia" #{[:?sum-1 4] [:?cnt-1 1] [:?sum-2 5]}}))))
+        {"Japan"     {},
+         "Australia" {:?cnt-1 1 :?sum-2 5 :?sum-1 4}}))))
 
 (defn person-city-country-example-xf-join-3 [query-state]
   (comment

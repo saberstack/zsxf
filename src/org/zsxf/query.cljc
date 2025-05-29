@@ -67,7 +67,7 @@
   (update-vals
     (get-result query)
     (fn [s]
-      (into #{}
+      (into {}
         (comp
           (map (fn [[tag item :as v]]
                  (if (= item const/zset-sum)

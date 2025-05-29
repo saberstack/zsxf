@@ -143,18 +143,17 @@
       (ds/init-query-with-conn query conn)
       (is (= [["Babe Ruth" 22 3035 714] ["Ted Williams" 19 2654 521] ["Mickey Mantle" 18 2491 536]]
              (d/q q @conn)))
-      (is  (= {["Babe Ruth"] #{['?year 22] ['?home-runs 714] ['?hits 3035]}
-               ["Ted Williams"] #{['?year 19] ['?hits 2654] ['?home-runs 521]}
-               ["Mickey Mantle"]#{['?year 18] ['?hits 2491] ['?home-runs 536]}}
+      (is  (= {["Babe Ruth"] {'?year 22 '?home-runs 714 '?hits 3035}
+               ["Mickey Mantle"] {'?year 18 '?home-runs 536 '?hits 2491}
+               ["Ted Williams"] {'?year 19, '?home-runs 521, '?hits 2654}}
               (q/get-aggregate-result query))))
     (testing "an additional transaction doesn't break the query"
       (d/transact! conn [{:season/player 1 :season/year 1975 :season/hits 150 :season/home-runs 62 :season/at-bats 500}])
-      (is  (= {["Babe Ruth"] #{['?year 23] ['?home-runs 776] ['?hits 3185]}
-               ["Ted Williams"] #{['?year 19] ['?hits 2654] ['?home-runs 521]}
-               ["Mickey Mantle"]#{['?year 18] ['?hits 2491] ['?home-runs 536]}}
+      (is  (= {["Babe Ruth"] {'?year 23 '?home-runs 776 '?hits 3185}
+               ["Mickey Mantle"] {'?year 18 '?home-runs 536 '?hits 2491}
+               ["Ted Williams"] {'?year 19 '?home-runs 521 '?hits 2654}}
               (q/get-aggregate-result query))))))
 
 (comment
   (set! *print-meta* false)
-
   )

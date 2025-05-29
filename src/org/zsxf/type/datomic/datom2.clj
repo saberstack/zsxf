@@ -1,5 +1,5 @@
 (ns org.zsxf.type.datomic.datom2
-  (:import (clojure.lang Counted ILookup IObj Indexed)
+  (:import (clojure.lang Counted IHashEq ILookup IObj IPersistentCollection Indexed)
            (datomic.db Datum)
            (java.io Writer)))
 
@@ -23,6 +23,13 @@
 
   Counted
   (count [this] 5)
+
+  IPersistentCollection
+  (equiv [self x]
+    (cond
+      (instance? DatomicDatom2 x)
+      (= datom (.-datom ^DatomicDatom2 x)) ;unwrap
+      :else (= datom x)))
 
   )
 

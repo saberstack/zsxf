@@ -2,6 +2,7 @@
   (:require
    [datascript.core :as d]
    [datomic.api :as dd]
+   [clojure.core.async :as a]
    [org.zsxf.datom :as d2]
    [taoensso.timbre :as timbre]))
 
@@ -41,17 +42,33 @@
         [e a' v t tf]))
     data))
 
+;Incremental CDC:
+; 1. Record last :t value
+; 2. Call get-log-transactions with (inc t)
+; 3. Repeat
+
 (defn get-log-transactions
   "- `conn`: The Datomic connection."
   [conn]
   (let [log          (dd/log conn)
         idents-m     (into {} (get-all-idents conn))
-        transactions (dd/tx-range log nil nil)]
+        transactions (dd/tx-range log 2553037 nil)]
     ;TODO WIP
-    (eduction
-      (map (fn [{:keys [data t]}]
-             (tx-data->datom-vs idents-m data)))
+    (sequence
+      (mapcat
+        (fn [{:keys [data t]}]
+          (tx-data->datom-vs idents-m data)))
       transactions)))
+
+(defn react-on-transaction! [conn on-transaction]
+  (let [tx-queue (dd/tx-report-queue conn)]
+    (a/thread
+      (while true
+        (let [txn (.take tx-queue)]
+          (try
+            (when (:tx-data txn)
+              (on-transaction txn))
+            (catch Exception e (timbre/error e "on-transaction error"))))))))
 
 (defn init-query-with-conn
   "Initial naive implementation. No listeners or change data capture.
@@ -60,6 +77,13 @@
   (get-log-transactions conn))
 
 (comment
+
+  (let [conn (dd/connect (db-uri "mbrainz"))]
+    (take 2 (get-log-transactions conn)))
+
+  (let [conn (dd/connect (db-uri "mbrainz"))]
+    (react-on-transaction! conn (fn [txn] (timbre/info "txn:" txn))))
+
 
   (dd/create-database (db-uri "zsxf"))
 

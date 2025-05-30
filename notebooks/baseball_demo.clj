@@ -1,10 +1,15 @@
 ^{:nextjournal.clerk/visibility {:code :hide}}
-(ns datascript-demo
+(ns baseball-demo
   (:require [nextjournal.clerk :as clerk]
             [datascript.core :as d]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [nextjournal.clerk.experimental :as cx]))
 
 ;; # Datascript Query Engine Comparison Demo
+
+#_(cx/slider {:min 1870 :max 2023 :step 1} @state )
+^{::clerk/sync true ::clerk/viewer (partial cx/slider {:min 1870 :max 2023 :step 1})}
+(def state (atom 2000))
 
 ^{:nextjournal.clerk/visibility {:code :hide}}
 (do
@@ -81,166 +86,58 @@
 
 ;; ## Interactive Controls
 
+^{:nextjournal.clerk/visibility {:code :hide}}
+(defonce !start-year (atom 1900))
+
+^{:nextjournal.clerk/visibility {:code :hide}}
+(defonce !end-year (atom 2000))
+
 ^{:nextjournal.clerk/visibility {:code :hide :result :show}}
-(clerk/html
- [:div {:style {:padding "20px" :border "1px solid #ccc" :margin "10px 0"}}
-  [:h3 "Time Range Selection"]
-  
-  ;; Include noUiSlider CSS and JS from CDN
-  [:link {:rel "stylesheet" 
-          :href "https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css"}]
-  [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"}]
-  
-  ;; Slider container
-  [:div {:id "time-range-slider" 
-         :style {:margin "30px 0" :height "30px"}}]
-  
-  ;; Display current values
-  [:div {:style {:display "flex" :justify-content "space-between" :margin "20px 0" :font-size "16px"}}
-   [:span [:strong "Start Year: "] [:span {:id "start-display"} "1900"]]
-   [:span [:strong "End Year: "] [:span {:id "end-display"} "2000"]]]
-  
-  [:button {:onclick "runDemo()" 
-            :style {:padding "12px 24px" 
-                    :margin "10px 0" 
-                    :background "#007acc" 
-                    :color "white" 
-                    :border "none" 
-                    :border-radius "4px"
-                    :cursor "pointer"
-                    :font-size "16px"}}
-   "Run Query"]
-  
-  ;; Custom styling for the slider
-  [:style "
-   #time-range-slider {
-     background: #ddd;
-     border-radius: 5px;
-     height: 10px !important;
-   }
-   
-   #time-range-slider .noUi-connect {
-     background: #007acc;
-   }
-   
-   #time-range-slider .noUi-handle {
-     background: #007acc;
-     border: 2px solid white;
-     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-     border-radius: 50%;
-     cursor: pointer;
-     width: 20px;
-     height: 20px;
-   }
-   
-   #time-range-slider .noUi-handle:before,
-   #time-range-slider .noUi-handle:after {
-     display: none;
-   }
-   
-   #time-range-slider .noUi-tooltip {
-     background: #333;
-     color: white;
-     border: none;
-     border-radius: 3px;
-     padding: 4px 8px;
-     font-size: 12px;
-   }
-   
-   button:hover {
-     background: #005a99 !important;
-   }"]
-  
-  [:script "
-   // Global variables to store current range
-   window.currentStartYear = 1900;
-   window.currentEndYear = 2000;
-   
-   function initializeSlider() {
-     const slider = document.getElementById('time-range-slider');
-     
-     // Check if noUiSlider is loaded and slider exists
-     if (typeof noUiSlider === 'undefined' || !slider) {
-       console.log('Waiting for noUiSlider...');
-       setTimeout(initializeSlider, 200);
-       return;
-     }
-     
-     // Destroy existing slider if it exists
-     if (slider.noUiSlider) {
-       slider.noUiSlider.destroy();
-     }
-     
-     try {
-       // Create the slider
-       noUiSlider.create(slider, {
-         start: [1900, 2000],
-         connect: true,
-         range: {
-           'min': 1871,
-           'max': 2023
-         },
-         step: 1,
-         format: {
-           to: function(value) {
-             return Math.round(value);
-           },
-           from: function(value) {
-             return Number(value);
-           }
-         },
-         tooltips: [
-           {to: function(value) { return Math.round(value); }},
-           {to: function(value) { return Math.round(value); }}
-         ]
-       });
-       
-       // Update displays when slider changes
-       slider.noUiSlider.on('update', function(values, handle) {
-         const startYear = Math.round(values[0]);
-         const endYear = Math.round(values[1]);
-         
-         window.currentStartYear = startYear;
-         window.currentEndYear = endYear;
-         
-         const startEl = document.getElementById('start-display');
-         const endEl = document.getElementById('end-display');
-         
-         if (startEl) startEl.textContent = startYear;
-         if (endEl) endEl.textContent = endYear;
-       });
-       
-       console.log('noUiSlider initialized successfully');
-       
-     } catch (error) {
-       console.error('Error initializing noUiSlider:', error);
-     }
-   }
-   
-   function runDemo() {
-     // Call back to Clojure function with current values
-     const startYear = window.currentStartYear || 1900;
-     const endYear = window.currentEndYear || 2000;
-     
-     console.log('Running demo with range:', startYear, 'to', endYear);
-     
-     // This calls back to your Clojure function
-     if (typeof window.clerk_eval === 'function') {
-       window.clerk_eval('(run-comparison-with-display ' + startYear + ' ' + endYear + ')');
-     } else {
-       console.log('clerk_eval not available, would call: (run-comparison-with-display ' + startYear + ' ' + endYear + ')');
-     }
-   }
-   
-   // Initialize when the script loads
-   setTimeout(initializeSlider, 500);
-   
-   // Also try to initialize on load events
-   if (document.readyState === 'loading') {
-     document.addEventListener('DOMContentLoaded', initializeSlider);
-   }
-   window.addEventListener('load', initializeSlider);
-   "]])
+(clerk/with-viewer
+  {:transform-fn (comp clerk/mark-presented (clerk/update-val (fn [_] [@!start-year @!end-year])))
+   :render-fn 
+   '(fn [[start-year end-year] _]
+      [:div {:style {:padding "20px" :border "1px solid #ccc" :margin "10px 0"}}
+       [:h3 "Time Range Selection"]
+       [:div {:style {:display "flex" :gap "15px" :align-items "center" :margin "20px 0"}}
+        [:label "Start Year:"]
+        [:input {:type "number" 
+                 :value start-year
+                 :min 1871 
+                 :max 2023
+                 :style {:width "80px" :padding "8px" :border "1px solid #ccc"}
+                 :on-change (fn [e] 
+                             (let [val (js/parseInt (.. e -target -value))]
+                               (nextjournal.clerk.render/clerk-eval 
+                                 `(reset! ~'!start-year ~val))))}]
+        [:span "to"]
+        [:input {:type "number" 
+                 :value end-year
+                 :min 1871 
+                 :max 2023
+                 :style {:width "80px" :padding "8px" :border "1px solid #ccc"}
+                 :on-change (fn [e] 
+                             (let [val (js/parseInt (.. e -target -value))]
+                               (nextjournal.clerk.render/clerk-eval 
+                                 `(reset! ~'!end-year ~val))))}]]
+       [:button {:style {:padding "12px 24px" 
+                         :margin "10px 0" 
+                         :background "#007acc" 
+                         :color "white" 
+                         :border "none" 
+                         :border-radius "4px"
+                         :cursor "pointer"}
+                 :on-click (fn [_]
+                            (nextjournal.clerk.render/clerk-eval 
+                              `(run-comparison-with-display @~'!start-year @~'!end-year)))}
+        "Run Query"]])}
+  {})
+
+^{:nextjournal.clerk/visibility {:code :hide}}
+(defn run-query-manually 
+  "Helper function to run the query with current atom values"
+  []
+  (run-comparison-with-display @!start-year @!end-year))
 
 ;; ## Current Results
 

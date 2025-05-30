@@ -12,3 +12,4 @@ classes/
 baseball.sqlite
 /datomic/datomic-pro
 /datomic/storage
+.clerk/

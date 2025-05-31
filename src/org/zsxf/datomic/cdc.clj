@@ -21,9 +21,6 @@
   (into []
     (map (fn [[e a v t tf :as datom]]
            (let [a' (get idents-m a)]
-             ;datom
-             ;(ddb/datom e a' v t tf)
-             ;datom
              [e a' v t tf])))
     data))
 
@@ -34,13 +31,6 @@
 
 (defonce cdc-ch (atom (a/chan 42)))
 (defonce cdc-last-t (atom nil))
-
-(defn ->zsxf-xf
-  "Transformation specific to ZSXF"
-  [idents-m]
-  (comp
-    (mapcat (fn [{:keys [data t id]}]
-              (tx-data->datoms idents-m data)))))
 
 (defn ->reduce-to-chan [ch]
   (fn
@@ -99,17 +89,6 @@
       (recur (inc i))))
 
 (comment
-
-  (let [conn (dd/connect (db-uri "mbrainz"))]
-    (datomic-tx-log->output conn conj ->zsxf-xf))
-
-  (let [conn (dd/connect (db-uri "mbrainz"))]
-    (reset! cdc-ch (a/chan 10000))
-    (datomic-tx-log->output conn (->reduce-to-chan @cdc-ch) ->zsxf-xf))
-
-  (time (let [conn (dd/connect (db-uri "mbrainz"))]
-          (reset! cdc-ch (a/chan 10000))
-          (datomic-tx-log->output conn (xforms/count conj) ->zsxf-xf)))
 
   (let [conn (dd/connect (db-uri "mbrainz"))]
     (react-on-transaction! conn (fn [txn] (timbre/info "txn:" txn))))

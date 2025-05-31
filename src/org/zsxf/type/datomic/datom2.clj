@@ -1,25 +1,29 @@
 (ns org.zsxf.type.datomic.datom2
-  (:import (clojure.lang Counted IHashEq ILookup IObj IPersistentCollection Indexed)
+  (:import (clojure.lang Counted IHashEq ILookup IObj IPersistentCollection IPersistentMap Indexed Keyword)
            (datomic.db Datum)
            (java.io Writer)))
 
 
-(deftype DatomicDatom2 [^Datum datom meta]
+(deftype DatomicDatom2 [^Datum datom ^Keyword attr ^IPersistentMap metadata]
   IObj
-  (meta [this] meta)
-  (withMeta [this m] (DatomicDatom2. datom m))
+  (meta [this] metadata)
+  (withMeta [this m] (DatomicDatom2. datom attr m))
 
   Object
   (hashCode [self] (.hashCode datom))
   (toString [self] (.toString datom))
 
   Indexed
-  (nth [this i] (.nth datom i))
-  (nth [this i not-found] (.nth datom i not-found))
+  (nth [this i]
+    (if (= i 1) attr (.nth datom i)))
+  (nth [this i not-found]
+    (if (= i 1) attr (.nth datom i not-found)))
 
   ILookup
-  (valAt [this k] (.valAt datom k))
-  (valAt [this k nf] (.valAt datom k nf))
+  (valAt [this k]
+    (if (= k 1) attr (.valAt datom k)))
+  (valAt [this k nf]
+    (if (= k 1) attr (.valAt datom k nf)))
 
   Counted
   (count [this] 5)
@@ -28,13 +32,11 @@
   (equiv [self x]
     (cond
       (instance? DatomicDatom2 x)
-      (= datom (.-datom ^DatomicDatom2 x)) ;unwrap
-      :else (= datom x)))
+      (= datom (.-datom ^DatomicDatom2 x))                  ;unwrap
+      :else (= datom x))))
 
-  )
-
-(defn ddatom2 [datomic-datom]
-  (->DatomicDatom2 datomic-datom nil))
+(defn ddatom2 [datomic-datom datom-attr]
+  (->DatomicDatom2 datomic-datom datom-attr nil))
 
 
 ;; Custom printing
@@ -57,9 +59,9 @@
         (pr-on m w))
       (.write w " "))))
 
-(defmethod print-method DatomicDatom2 [^DatomicDatom2 ddatom2, ^Writer w]
+(defmethod print-method DatomicDatom2 [^DatomicDatom2 datomic-datom2, ^Writer w]
   (binding [*out* w]
-    (let [^Datum d (.-datom ddatom2)]
-      (print-meta ddatom2 w)
+    (let [^Datum d (.-datom datomic-datom2)]
+      (print-meta datomic-datom2 w)
       (.write w "#dd2")
-      (pr [(.-e d) (.-a d) (.-v d)]))))
+      (pr [(.-e d) (.-attr datomic-datom2) (.-v d)]))))

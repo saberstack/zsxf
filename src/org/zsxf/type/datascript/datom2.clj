@@ -1,11 +1,14 @@
 (ns org.zsxf.type.datascript.datom2
   (:require [datascript.core :as d]
-            [datascript.db :as ddb])
+            [datascript.db :as ddb]
+            [org.zsxf.type.datom-like :as dl])
   (:import (clojure.lang Associative IHashEq ILookup IObj IPersistentCollection Indexed Seqable)
            (datascript.db Datom)
            (java.io Writer)))
 
 (deftype Datom2 [^Datom datom meta]
+  ;marker protocol
+  dl/DatomLike
 
   ;Extends Datascript datoms to support metadata, and potentially more features in the future.
   ; (!) Clojure-only at the moment, ClojureScript requires a slightly different set of methods.

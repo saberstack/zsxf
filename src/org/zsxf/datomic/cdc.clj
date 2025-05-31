@@ -1,7 +1,6 @@
 (ns org.zsxf.datomic.cdc
   (:require
    [datomic.api :as dd]
-   [net.cgrand.xforms :as xforms]
    [ss.loop]
    [clojure.core.async :as a]
    [taoensso.timbre :as timbre]))

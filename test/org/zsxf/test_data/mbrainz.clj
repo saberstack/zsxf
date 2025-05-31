@@ -363,12 +363,12 @@
         [?a :artist/name ?name]]
       (conn->db conn))))
 
-(defn query-all-countries []
-  (d/q
+(defn query-all-countries [q conn]
+  (q
     '[:find ?c ?name
       :where
       [?c :country/name-alpha-2 ?name]]
-    @@*conn))
+    (conn->db conn)))
 
 (defn query-country []
   (d/q
@@ -399,6 +399,9 @@
 
   (let [conn (datomic-conn "mbrainz")]
     (query-count-artists-by-country-2 dd/q conn))
+
+  (let [conn (datomic-conn "mbrainz")]
+    (query-all-countries dd/q conn))
 
 
   (dd/transact (datomic-conn "mbrainz")

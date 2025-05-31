@@ -60,8 +60,9 @@
 (defn ->zsxf-xf
   "Transformation specific to ZSXF"
   [idents-m]
-  (mapcat (fn [{:keys [data t id]}]
-            (tx-data->datoms idents-m data))))
+  (comp
+    (mapcat (fn [{:keys [data t id]}]
+              (tx-data->datoms idents-m data)))))
 
 (defn ->reduce-to-chan [ch]
   (fn
@@ -130,12 +131,12 @@
     (take 100 (get-log-transactions conn conj ->zsxf-xf)))
 
   (let [conn (dd/connect (db-uri "mbrainz"))]
-    (reset! cdc-ch (a/chan 1000))
-    (take 1 (get-log-transactions conn (->reduce-to-chan @cdc-ch) ->zsxf-xf)))
+    (reset! cdc-ch (a/chan 10000))
+    (get-log-transactions conn (->reduce-to-chan @cdc-ch) ->zsxf-xf))
 
-  (let [conn (dd/connect (db-uri "mbrainz"))]
-    (reset! cdc-ch (a/chan 1000))
-    (take 1 (get-log-transactions conn (xforms/count conj) ->zsxf-xf)))
+  (time (let [conn (dd/connect (db-uri "mbrainz"))]
+          (reset! cdc-ch (a/chan 10000))
+          (get-log-transactions conn (xforms/count conj) ->zsxf-xf)))
 
   (let [conn (dd/connect (db-uri "mbrainz"))]
     (react-on-transaction! conn (fn [txn] (timbre/info "txn:" txn))))

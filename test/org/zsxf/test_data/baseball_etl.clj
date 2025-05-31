@@ -52,8 +52,7 @@
 (def schema
   {:player/id {:db/cardinality :db.cardinality/one
                :db/unique :db.unique/identity}
-   :player/first-name {}
-   :player/last-name {}
+   :player/name {}
 
    :team/id {:db/cardinality :db.cardinality/one
              :db/unique :db.unique/identity}
@@ -102,7 +101,6 @@
          (map (fn [{player-id :playerID team-id :teamID years :years :as row}]
                 (let [{player-eid :db/id}  (d/entity @conn [:player/id player-id])
                       {team-eid :db/id}  (d/entity @conn [:team/id team-id])]
-                      (def years years)
                   (when (and player-eid team-eid)
                     {:tenure/player player-eid
                      :tenure/team team-eid

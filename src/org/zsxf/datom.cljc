@@ -1,10 +1,7 @@
 (ns org.zsxf.datom
-  (:require
-   [org.zsxf.type.datom-like :as dl]
-   [org.zsxf.util :as util]
-   #?(:clj [org.zsxf.type.datascript.datom2 :as td])
-   #?(:clj [org.zsxf.type.datomic.datom2 :as dd2])
-   [org.zsxf.zset :as zs])
+  (:require [org.zsxf.util :as util]
+            #?(:clj [org.zsxf.type.datascript.datom2 :as td])
+            [org.zsxf.zset :as zs])
   #?(:clj
      (:import (org.zsxf.type.datascript.datom2 Datom2))))
 
@@ -22,7 +19,7 @@
 
 (defn datom2? [x]
   #?(:clj
-     (satisfies? dl/DatomLike x)
+     (instance? Datom2 x)
      :cljs
      ;TODO implement Datom2 for CLJS
      (util/datom-like? x)))
@@ -35,8 +32,12 @@
    ([e a v]
     (datom2 (datascript.core/datom e a v)))))
 
-(defn ds-datom->datom2->zset-item [datom]
-  (zs/zset-item (datom2 datom) (zs/bool->weight (nth datom 4))))
+(defn datom->weight [datom]
+  (let [weight (condp = (nth datom 4) true 1 false -1)]
+    weight))
+
+(defn datom->datom2->zset-item [datom]
+  (zs/zset-item (datom2 datom) (datom->weight datom)))
 
 (defn datom->eid [datom]
   (when (datom2? datom)
@@ -62,13 +63,13 @@
 (defn datom-attr-val= [datom attr value]
   (and (datom-attr= datom attr) (datom-val= datom value)))
 
-(defn ds-tx-datoms->datoms2->zsets
+(defn tx-datoms->datoms2->zsets
   "Transforms datoms into datoms2, and then into a vector of zsets.
   Useful to maintain inter-transaction order of datoms."
   [datoms]
   (into
     []
     (comp
-      (map ds-datom->datom2->zset-item)
+      (map datom->datom2->zset-item)
       (map hash-set))
     datoms))

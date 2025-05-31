@@ -13,7 +13,7 @@
   (d/listen! conn (q/get-id query)
     (fn [tx-report]
       (util/time-f
-        (q/input query (d2/ds-tx-datoms->datoms2->zsets (:tx-data tx-report)))
+        (q/input query (d2/tx-datoms->datoms2->zsets (:tx-data tx-report)))
         tx-time-f)))
   ;return
   true)
@@ -35,7 +35,7 @@
   (let [db      @conn
         ;load all existing data from a stable db state
         _result (q/input query
-                  (d2/ds-tx-datoms->datoms2->zsets
+                  (d2/tx-datoms->datoms2->zsets
                     (d/seek-datoms db :eavt)))]
     ;setup listener
     (when listen?

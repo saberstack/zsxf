@@ -1,14 +1,10 @@
 (ns org.zsxf.type.datomic.datom2
-  (:require [org.zsxf.type.datom-like :as dl])
   (:import (clojure.lang Counted IHashEq ILookup IObj IPersistentCollection IPersistentMap Indexed Keyword)
            (datomic.db Datum)
            (java.io Writer)))
 
 
 (deftype DatomicDatom2 [^Datum datom ^Keyword attr ^IPersistentMap metadata]
-  ;marker protocol
-  dl/DatomLike
-
   IObj
   (meta [this] metadata)
   (withMeta [this m] (DatomicDatom2. datom attr m))

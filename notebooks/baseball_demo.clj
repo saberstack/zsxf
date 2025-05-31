@@ -3,45 +3,72 @@
                                         ;^{:nextjournal.clerk/visibility {:code :hide }}
   (:require [nextjournal.clerk :as clerk]
             [datascript.core :as d]
-            [clojure.string :as str]
-            [nextjournal.clerk.experimental :as cx]))
+            [org.zsxf.test-data.baseball-etl :as etl]
+
+            [nextjournal.clerk.viewer :as viewer]))
 
 ;; # Datascript Query Engine Comparison Demo
 
-#_(cx/slider {:min 1870 :max 2023 :step 1} @state )
-^{::clerk/sync true ::clerk/viewer (partial cx/slider {:min 1870 :max 2023 :step 1}) ::clerk/visibility {:result :show}}
-(def state (atom 2000))
+(defn render-input-pair
+  ([] (render-input-pair {}))
+  ([opts] (list 'partial
+                '(fn [{:as opts :keys [placeholder-1 placeholder-2] :or {placeholder-1 "min" placeholder-2 "max"}} !state]
+                   [:div
+                    [:input {:type :text
+                              :id "first-ipt"
+                              :placeholder placeholder-1
+                              :value (:first @!state)
+                              :class "mx-[40px] py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-[25%]"
+                              :on-change #(swap! !state assoc :first (js/parseInt (.. % -target -value)))}]
+                    [:input {:type :text
+                              :id "second-ipt"
+                              :placeholder placeholder-2
+                              :value (:second @!state)
+                              :class "mx-[40px] py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-[25%]"
+                              :on-change #(swap! !state assoc :second (js/parseInt (.. % -target -value )))}]])
+                opts)))
 
-(defonce db-atom (atom nil))
+(defn input-pair
+  ([!state] (input-pair {} !state))
+  ([opts !state] (viewer/with-viewer (assoc viewer/viewer-eval-viewer :render-fn (render-input-pair opts)) !state)))
+
+;; ### Year slice
+
+^{::clerk/sync true ::clerk/viewer input-pair ::clerk/visibility {:result :show}}
+(defonce year-ipt (atom {:first 1980 :second 1985}))
+
+(defonce db-atom (atom (etl/fresh-conn)))
 
 (defonce performance-data (atom []))
 
 (defonce latest-result (atom nil))
 
-(defn init-database! []
-  (reset! db-atom (d/create-conn {}))) ; placeholder schema
-
 (defn update-db-for-timeframe! [start-year end-year]
-  (println "Updating DB for range:" start-year "to" end-year))
+  (etl/populate-datascript-db @db-atom {:min-year start-year :max-year end-year}))
+
+(def demo-query
+  '[:find  ?player-name ?team-name
+    :where
+    [?p :player/name ?player-name]
+    [?season :tenure/player ?p]
+    [?season :tenure/team ?t]
+    [?t :team/name ?team-name]])
 
 (defn query-engine-1 [db query]
   ;; Returns [result execution-time-ms]
-  [[] (+ 10 (rand-int 50))]) ; placeholder
+  [(d/q query db) (+ 10 (rand-int 50))]) ; placeholder
 
 (defn query-engine-2 [db query]
   ;; Returns [result execution-time-ms]
   [[] (+ 20 (rand-int 80))]) ; placeholder
 
-(def demo-query
-  '[:find ?entity ?attribute ?value
-    :where [?entity ?attribute ?value]])
 
 (defn run-comparison-with-display [start-year end-year]
   (let [start-time (System/currentTimeMillis)]
 
     (update-db-for-timeframe! start-year end-year)
 
-    (let [db @db-atom
+    (let [db @@db-atom
           db-size (if db (count (d/datoms db :eavt)) 0)]
 
       (let [[result1 time1] (query-engine-1 db demo-query)
@@ -66,21 +93,9 @@
           (reset! latest-result result)
           result)))))
 
-;; ## Interactive Controls
-
-(defonce !start-year (atom 1900))
-
-(defonce !end-year (atom 2000))
-
-
-
-(defn run-query-manually
-  "Helper function to run the query with current atom values"
-  []
-  (run-comparison-with-display @!start-year @!end-year))
 
 ;; ## Current Results
-
+^{::clerk/visibility {:result :show}}
 (when @latest-result
   (let [{:keys [query-result database-size engine1-time engine2-time timeframe]} @latest-result]
     (clerk/html
@@ -105,7 +120,7 @@
            [:td {:style {:border "1px solid #ccc" :padding "8px"}} (str value)]])]]])))
 
 ;; ## Performance Comparison
-
+^{::clerk/visibility {:result :show}}
 (when (seq @performance-data)
   (clerk/vl
    {:$schema "https://vega.github.io/schema/vega-lite/v5.json"
@@ -130,7 +145,7 @@
 
     :resolve {:scale {:color "independent"}}
     :config {:legend {:orient "bottom"}}}))
-
 (comment
-  ;; Initialize the database when the notebook loads
-  (init-database!))
+  (reset! db-atom (etl/fresh-conn))
+  (apply run-comparison-with-display ((juxt :first :second ) @year-ipt))
+  )

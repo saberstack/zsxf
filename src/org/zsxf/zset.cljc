@@ -65,6 +65,15 @@
 (defn has-zset-weight? [x]
   (:zset/w (meta x)))
 
+(defn bool->weight
+  "Convert a boolean to a zset weight."
+  [bool]
+  (case bool
+    true 1
+    false 0
+    ;default, should not happen
+    (throw (ex-info "Invalid boolean value" {:value bool}))))
+
 (defn zset-item
   ([x]
    (if (has-zset-weight? x)

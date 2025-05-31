@@ -20,6 +20,7 @@
      ... etc."
   (:require [medley.core :as medley]
             [net.cgrand.xforms :as xforms]
+            [org.zsxf.type.datom-like :as dl]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
@@ -106,11 +107,11 @@
 (defn detect-join-type [zsi path-f clause]
   (cond
     (and
-      #?(:clj  (instance? Datom2 zsi)
+      #?(:clj  (satisfies? dl/DatomLike zsi)
          :cljs (util/datom-like? zsi))
       (nil? (:xf.clause (meta zsi)))) :datom
     (and
-      #?(:clj  (instance? Datom2 zsi)
+      #?(:clj  (satisfies? dl/DatomLike zsi)
          :cljs (util/datom-like? zsi))
       (not (nil? (:xf.clause (meta zsi))))) :datom-as-relation
     (rel/relation? zsi) :relation

@@ -7,7 +7,7 @@
    [datascript.db :as ddb]
    [medley.core :as medley]
    [net.cgrand.xforms :as xforms]
-   [org.zsxf.datascript :as ds]
+   [org.zsxf.input.datascript :as ds]
    [clojure.set :as set]
    [org.zsxf.datom :as d2]
    [org.zsxf.query :as q]

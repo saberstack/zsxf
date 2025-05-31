@@ -1,9 +1,9 @@
-(ns org.zsxf.datascript-test
+(ns org.zsxf.input.datascript-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [datascript.core :as d]
    [net.cgrand.xforms :as xforms]
-   [org.zsxf.datascript :as ds]
+   [org.zsxf.input.datascript :as ds]
    [org.zsxf.datalog.compiler :refer [static-compile]]
    [org.zsxf.query :as q]
    [org.zsxf.util :as util]

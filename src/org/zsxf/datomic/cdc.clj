@@ -1,14 +1,10 @@
-(ns org.zsxf.datomic.core
+(ns org.zsxf.datomic.cdc
   (:require
-   [datascript.core :as d]
-   [datascript.db :as ddb]
    [datomic.api :as dd]
    [net.cgrand.xforms :as xforms]
    [ss.loop]
    [clojure.core.async :as a]
-   [org.zsxf.datom :as d2]
-   [taoensso.timbre :as timbre])
-  (:import (clojure.lang IFn)))
+   [taoensso.timbre :as timbre]))
 
 (defn db-uri [db-name]
   (str "datomic:sql://" db-name "?jdbc:sqlite:./datomic/storage/sqlite.db"))
@@ -19,24 +15,6 @@
       :where
       [?e :db/ident ?attr]]
     (dd/db conn)))
-
-(defn test-tx []
-  (let [conn (dd/connect (db-uri "zsxf"))]
-    (dd/transact conn
-      [{:movie/title "The Matrix"}])))
-
-(defn test-q []
-  (let [conn (dd/connect (db-uri "zsxf"))]
-    (dd/q
-      '[:find ?e ?v
-        :where [?e :movie/title ?v]]
-      (dd/db conn))))
-
-;TODO Datomic datom attributes are not inline (different from Datascript)
-;  - potentially get keyword from schema
-
-(defonce run-datomic-cdc? (atom true))
-
 
 (defn tx-data->datoms
   [idents-m data]
@@ -73,7 +51,7 @@
      (a/>!! accum-ch item)
      accum-ch)))
 
-(defn get-log-transactions
+(defn datomic-tx-log->output
   "Retrieves transactions from the Datomic log and processes them via a transducer.
    Args:
      conn - Datomic connection
@@ -82,9 +60,9 @@
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([conn reducing-f] (get-log-transactions conn reducing-f (fn [_idents-m] (map identity)) nil nil))
-  ([conn reducing-f ->xf] (get-log-transactions conn reducing-f ->xf nil nil))
-  ([conn reducing-f ->xf start end]
+  ([conn output-reducing-f] (datomic-tx-log->output conn output-reducing-f (fn [_idents-m] (map identity)) nil nil))
+  ([conn output-reducing-f ->xf] (datomic-tx-log->output conn output-reducing-f ->xf nil nil))
+  ([conn output-reducing-f ->xf start end]
    (let [log          (dd/log conn)
          idents-m     (into {} (get-all-idents conn))
          transactions (dd/tx-range log start end)]
@@ -96,19 +74,12 @@
                 ;return tx-m unchanged
                 tx-m))
          (->xf idents-m))
-       reducing-f
+       output-reducing-f
        transactions))))
 
-(defn start-datomic-cdc!
-  []
-  (reset! cdc-ch (a/chan 10))
-  #_(ss.loop/go-loop ^{:id :datomic-cdc-loop}
-      [i 0]
-      (timbre/info "looping..." i)
-      (a/<! (a/timeout 1000))
-      (recur (inc i))))
-
-(defn react-on-transaction! [conn on-transaction]
+(defn react-on-transaction!
+  [conn on-transaction]
+  ;TODO WIP
   (let [tx-queue (dd/tx-report-queue conn)]
     (a/thread
       (while true
@@ -118,25 +89,27 @@
               (on-transaction txn))
             (catch Exception e (timbre/error e "on-transaction error"))))))))
 
-(defn init-query-with-conn
-  "Initial naive implementation. No listeners or change data capture.
-  Read all transactions datoms."
-  [query conn]
-  ;TODO WIP
-  )
+(defn start-cdc!
+  []
+  (reset! cdc-ch (a/chan 10))
+  #_(ss.loop/go-loop ^{:id :datomic-cdc-loop}
+      [i 0]
+      (timbre/info "looping..." i)
+      (a/<! (a/timeout 1000))
+      (recur (inc i))))
 
 (comment
 
   (let [conn (dd/connect (db-uri "mbrainz"))]
-    (take 100 (get-log-transactions conn conj ->zsxf-xf)))
+    (datomic-tx-log->output conn conj ->zsxf-xf))
 
   (let [conn (dd/connect (db-uri "mbrainz"))]
     (reset! cdc-ch (a/chan 10000))
-    (get-log-transactions conn (->reduce-to-chan @cdc-ch) ->zsxf-xf))
+    (datomic-tx-log->output conn (->reduce-to-chan @cdc-ch) ->zsxf-xf))
 
   (time (let [conn (dd/connect (db-uri "mbrainz"))]
           (reset! cdc-ch (a/chan 10000))
-          (get-log-transactions conn (xforms/count conj) ->zsxf-xf)))
+          (datomic-tx-log->output conn (xforms/count conj) ->zsxf-xf)))
 
   (let [conn (dd/connect (db-uri "mbrainz"))]
     (react-on-transaction! conn (fn [txn] (timbre/info "txn:" txn))))

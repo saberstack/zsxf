@@ -5,7 +5,7 @@
             [charred.api :as charred]
             [clj-memory-meter.core :as mm]
             [net.cgrand.xforms :as xforms]
-            [org.zsxf.datascript :as ds]
+            [org.zsxf.input.datascript :as ds]
             [org.zsxf.datom :as d2]
             [taoensso.nippy :as nippy]
             [org.zsxf.query :as q]
@@ -17,7 +17,7 @@
             [criterium.core :as criterium]
             [datascript.core :as d]
             [datomic.api :as dd]
-            [org.zsxf.datomic.core :as dc]
+            [org.zsxf.datomic.cdc :as datomic-cdc]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang IAtom)))
 
@@ -281,7 +281,7 @@
     (d/init-db (thaw-artist-datoms!) schema)))
 
 (defn datomic-conn [db-name]
-  (dd/connect (dc/db-uri db-name)))
+  (dd/connect (datomic-cdc/db-uri db-name)))
 
 (defn conn->db [conn]
   (if (instance? datascript.conn.Conn conn)
@@ -289,7 +289,7 @@
     (dd/db conn)))
 
 (defn delete-and-init-datomic! []
-  (let [^String db-uri (dc/db-uri "mbrainz")
+  (let [^String db-uri (datomic-cdc/db-uri "mbrainz")
         _              (dd/delete-database db-uri)
         _              (dd/create-database db-uri)
         conn           (dd/connect db-uri)

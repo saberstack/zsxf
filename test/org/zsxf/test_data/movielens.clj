@@ -3,7 +3,7 @@
             [medley.core :as medley]
             [org.zsxf.test-data.movielens-etl :as etl]
             [org.zsxf.datalog.compiler :refer [static-compile]]
-            [org.zsxf.datascript :as ds]
+            [org.zsxf.input.datascript :as ds]
             [org.zsxf.query :as q]
             [datascript.core :as d]
             [org.zsxf.util :as util]

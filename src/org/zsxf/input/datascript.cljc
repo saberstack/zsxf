@@ -1,4 +1,4 @@
-(ns org.zsxf.datascript
+(ns org.zsxf.input.datascript
   (:require [org.zsxf.query :as q]
             [org.zsxf.datom :as d2]
             [datascript.core :as d]

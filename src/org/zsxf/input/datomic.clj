@@ -4,7 +4,8 @@
             [org.zsxf.datomic.cdc :as dcdc]
             [datomic.api :as dd]
             [org.zsxf.type.datomic.datom2 :as dd2]
-            [org.zsxf.query :as q]))
+            [org.zsxf.query :as q]
+            [taoensso.timbre :as timbre]))
 
 (defn tx-data->datomic-datoms2
   [idents-m data]
@@ -19,22 +20,29 @@
   "Transformation specific to ZSXF"
   [idents-m]
   (comp
-    (mapcat (fn [{:keys [data t id]}]
+    (map (fn [{:keys [data t id]}]
               (tx-data->datomic-datoms2 idents-m data)))))
 
 (defn init-query-with-conn
   "Initial naive implementation. No listeners or change data capture.
   Read all transactions datoms."
   [query conn]
-  ;TODO WIP
-
-  (dcdc/datomic-tx-log->output conn conj
-    ->zsxf-xf)
-  )
+  (dcdc/datomic-tx-log->output conn
+    (completing
+      (fn
+        ([] :todo)
+        ([_accum datoms2]
+         ;TODO WIP
+         (timbre/info "Processing datoms2" (count datoms2))
+         (q/input query datoms2))))
+    ->zsxf-xf))
 
 (defn sample-conn []
   (dd/connect (dcdc/db-uri "mbrainz")))
+
 (comment
+
+  (init-query-with-conn nil (sample-conn))
 
   (let [conn (sample-conn)]
     (def tmp

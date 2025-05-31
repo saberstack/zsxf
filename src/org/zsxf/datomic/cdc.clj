@@ -59,7 +59,7 @@
      (transduce
        (comp
          (map (fn [tx-m]
-                ; Store the last seen transaction ID :t in a volatile
+                ; Store the last seen transaction ID :t
                 (reset! cdc-last-t (:t tx-m))
                 ;return tx-m unchanged
                 tx-m))

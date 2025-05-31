@@ -8,14 +8,15 @@
 (deftype DatomicDatom2 [^Datum datom ^Keyword attr ^IPersistentMap metadata]
   ;marker protocol
   dl/DatomLike
+  (datom-like? [this] true)
 
   IObj
   (meta [this] metadata)
   (withMeta [this m] (DatomicDatom2. datom attr m))
 
   Object
-  (hashCode [self] (.hashCode datom))
-  (toString [self] (.toString datom))
+  (hashCode [this] (.hashCode datom))
+  (toString [this] (.toString datom))
 
   Indexed
   (nth [this i]
@@ -33,7 +34,7 @@
   (count [this] 5)
 
   IPersistentCollection
-  (equiv [self x]
+  (equiv [this x]
     (cond
       (instance? DatomicDatom2 x)
       (= datom (.-datom ^DatomicDatom2 x))                  ;unwrap

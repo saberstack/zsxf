@@ -1,6 +1,7 @@
 (ns org.zsxf.input.datomic
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
+            [org.zsxf.datom :as d2]
             [org.zsxf.datomic.cdc :as dcdc]
             [datomic.api :as dd]
             [org.zsxf.type.datomic.datom2 :as dd2]
@@ -19,6 +20,10 @@
       (map (fn [[_e a _v _t _tf :as datom]]
              (let [a' (get idents-m a)]
                (dd2/ddatom2 datom a'))))
+      (map (fn [ddatom2]
+             (if (d2/datom-attr= ddatom2 :country/name-alpha-2)
+               (timbre/info "datom:" ddatom2))
+             ddatom2))
       (map ddatom2->zset-item)
       (map hash-set))
     data))
@@ -53,12 +58,12 @@
 (defn poc-query []
   (let [query (q/create-query
                 (dcc/static-compile
-                  '[:find ?name
+                  '[:find ?c ?name
                     :where
                     [?c :country/name-alpha-2 ?name]]))]
     ;init
     (init-query-with-conn query (sample-conn))
-    (q/get-result query)))1
+    (q/get-result query)))
 
 (comment
 

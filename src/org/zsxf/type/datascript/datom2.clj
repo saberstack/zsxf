@@ -9,6 +9,7 @@
 (deftype Datom2 [^Datom datom meta]
   ;marker protocol
   dl/DatomLike
+  (datom-like? [this] true)
 
   ;Extends Datascript datoms to support metadata, and potentially more features in the future.
   ; (!) Clojure-only at the moment, ClojureScript requires a slightly different set of methods.
@@ -19,28 +20,28 @@
 
   ;New!
   IObj
-  (meta [self] meta)
-  (withMeta [self m] (Datom2. datom m))
+  (meta [this] meta)
+  (withMeta [this m] (Datom2. datom m))
 
   ;All below almost directly pass through call execution to datascript.db.Datom
   ddb/IDatom
-  (datom-tx [self] (ddb/datom-tx datom))
-  (datom-added [self] (ddb/datom-added datom))
-  (datom-get-idx [self] (ddb/datom-get-idx datom))
-  (datom-set-idx [self value] (ddb/datom-set-idx datom value))
+  (datom-tx [this] (ddb/datom-tx datom))
+  (datom-added [this] (ddb/datom-added datom))
+  (datom-get-idx [this] (ddb/datom-get-idx datom))
+  (datom-set-idx [this value] (ddb/datom-set-idx datom value))
 
   Object
-  (hashCode [self] (.hashCode datom))
-  (toString [self] (.toString datom))
+  (hashCode [this] (.hashCode datom))
+  (toString [this] (.toString datom))
 
   IHashEq
-  (hasheq [self] (.hasheq datom))
+  (hasheq [this] (.hasheq datom))
 
   Seqable
-  (seq [self] (.seq datom))
+  (seq [this] (.seq datom))
 
   IPersistentCollection
-  (equiv [self x]
+  (equiv [this x]
     ;WARNING about (= ...)
     ; Mixing Datom and Datom2 (unlikely) can output the wrong result:
     ;
@@ -65,22 +66,22 @@
     (cond
       (instance? Datom2 x) (.equiv datom (.-datom ^Datom2 x)) ;unwrap
       :else (.equiv datom x)))
-  (empty [self] (throw (UnsupportedOperationException. "empty is not supported on Datom")))
-  (count [self] 5)
-  (cons [self v] (.cons datom v))
+  (empty [this] (throw (UnsupportedOperationException. "empty is not supported on Datom")))
+  (count [this] 5)
+  (cons [this v] (.cons datom v))
 
   Indexed
-  (nth [self i] (.nth datom i))
-  (nth [self i not-found] (.nth datom i not-found))
+  (nth [this i] (.nth datom i))
+  (nth [this i not-found] (.nth datom i not-found))
 
   ILookup
-  (valAt [self k] (.valAt datom k))
-  (valAt [self k nf] (.valAt datom k nf))
+  (valAt [this k] (.valAt datom k))
+  (valAt [this k nf] (.valAt datom k nf))
 
   Associative
-  (entryAt [self k] (.entryAt datom k))
-  (containsKey [self k] (.containsKey datom k))
-  (assoc [self k v] (.assoc datom k v)))
+  (entryAt [this k] (.entryAt datom k))
+  (containsKey [this k] (.containsKey datom k))
+  (assoc [this k v] (.assoc datom k v)))
 
 (comment
   ;BEWARE of deftype with the REPL...

@@ -283,7 +283,9 @@
 (defn datomic-conn [db-name]
   (dd/connect (datomic-cdc/db-uri db-name)))
 
-(defn conn->db [conn]
+(defn conn->db
+  "Returns the db from a connection. Works for both Datascript and Datomic connections."
+  [conn]
   (if (instance? datascript.conn.Conn conn)
     (deref conn)
     (dd/db conn)))
@@ -392,6 +394,15 @@
       [?a :artist/country ?c]]
     @@*conn))
 
+(defn query-artists-by-country-constant [q conn]
+  (q
+    '[:find ?artist-name
+      :where
+      [?c :country/name-alpha-2 "BG"]
+      [?a :artist/country ?c]
+      [?a :artist/name ?artist-name]]
+    (conn->db conn)))
+
 ;end queries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -402,6 +413,10 @@
 
   (let [conn (datomic-conn "mbrainz")]
     (query-all-countries dd/q conn))
+
+  (time
+    (let [conn (datomic-conn "mbrainz")]
+      (query-artists-by-country-constant dd/q conn)))
 
 
   (dd/transact (datomic-conn "mbrainz")

@@ -58,9 +58,11 @@
 (defn poc-query []
   (let [query (q/create-query
                 (dcc/static-compile
-                  '[:find ?c ?name
+                  '[:find ?artist-name
                     :where
-                    [?c :country/name-alpha-2 ?name]]))]
+                    [?c :country/name-alpha-2 "BG"]
+                    [?a :artist/country ?c]
+                    [?a :artist/name ?artist-name]]))]
     ;init
     (init-query-with-conn query (sample-conn))
     (q/get-result query)))

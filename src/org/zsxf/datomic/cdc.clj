@@ -30,6 +30,7 @@
 
 (defonce cdc-ch (atom (a/chan 42)))
 (defonce cdc-last-t (atom nil))
+(defonce last-t-on-report-queue (atom nil))
 
 (defn ->reduce-to-chan [ch]
   (fn
@@ -44,7 +45,7 @@
   "Retrieves transactions from the Datomic log and processes them via a transducer.
    Args:
      conn - Datomic connection
-     reducing-f - A reducing function that processes the transformed transactions
+     output-reducing-f - A reducing function that processes the transformed transactions
      ->xf - Function that takes an idents map and returns a transducer for transforming transactions
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
@@ -66,17 +67,19 @@
        output-reducing-f
        transactions))))
 
-(defn react-on-transaction!
-  [conn on-transaction]
-  ;TODO WIP
-  (let [tx-queue (dd/tx-report-queue conn)]
-    (a/thread
-      (while true
-        (let [txn (.take tx-queue)]
-          (try
-            (when (:tx-data txn)
-              (on-transaction txn))
-            (catch Exception e (timbre/error e "on-transaction error"))))))))
+(defn start-react-on-transaction-loop! [conn]
+  (ss.loop/go-loop
+    ^{:id :react-on-transaction-loop}
+    [tx-queue (dd/tx-report-queue conn)]
+    (let [t (a/<! (a/thread (let [tx (.take tx-queue)]
+                              (try
+                                (when (:tx-data tx) (dd/basis-t (:db-after tx)))
+                                (catch Exception e (timbre/error e "on-transaction error"))))))]
+      (swap! last-t-on-report-queue (fn [prev-t]
+                                      (timbre/info "prev-t" prev-t)
+                                      ((fnil max 0) prev-t t)))
+      (timbre/info "reacting on new t:" t))
+    (recur tx-queue)))
 
 (defn start-cdc!
   []
@@ -90,7 +93,7 @@
 (comment
 
   (let [conn (dd/connect (db-uri "mbrainz"))]
-    (react-on-transaction! conn (fn [txn] (timbre/info "txn:" txn))))
+    (start-react-on-transaction-loop! conn))
 
 
   (dd/create-database (db-uri "zsxf"))

@@ -15,44 +15,27 @@
       [?e :db/ident ?attr]]
     (dd/db conn)))
 
-(defn tx-data->datoms
-  [idents-m data]
-  (into []
-    (map (fn [[e a v t tf :as datom]]
-           (let [a' (get idents-m a)]
-             [e a' v t tf])))
-    data))
-
-;Incremental CDC:
-; 1. Record last :t value
-; 2. Call get-log-transactions with (inc t)
-; 3. Repeat
-
-(defonce cdc-ch (atom (a/chan 42)))
-(defonce cdc-last-t (atom nil))
-(defonce last-t-on-report-queue (atom nil))
-
 (defn ->reduce-to-chan [ch]
   (fn
     ([] ch)
     ([accum-ch] accum-ch)
     ([accum-ch item]
-     (timbre/info "reducing" item)
      (a/>!! accum-ch item)
      accum-ch)))
 
-(defn datomic-tx-log->output
+(defn log->output
   "Retrieves transactions from the Datomic log and processes them via a transducer.
    Args:
+     cdc-state - atom that holds CDC state
      conn - Datomic connection
      output-reducing-f - A reducing function that processes the transformed transactions
      ->xf - Function that takes an idents map and returns a transducer for transforming transactions
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([conn output-reducing-f] (datomic-tx-log->output conn output-reducing-f (fn [_idents-m] (map identity)) nil nil))
-  ([conn output-reducing-f ->xf] (datomic-tx-log->output conn output-reducing-f ->xf nil nil))
-  ([conn output-reducing-f ->xf start end]
+  ([cdc-state conn output-reducing-f] (log->output cdc-state conn output-reducing-f (fn [_idents-m] (map identity)) nil nil))
+  ([cdc-state conn output-reducing-f ->xf] (log->output cdc-state conn output-reducing-f ->xf nil nil))
+  ([cdc-state conn output-reducing-f ->xf start end]
    (let [log          (dd/log conn)
          idents-m     (into {} (get-all-idents conn))
          transactions (dd/tx-range log start end)]
@@ -60,14 +43,14 @@
        (comp
          (map (fn [tx-m]
                 ; Store the last seen transaction ID :t
-                (reset! cdc-last-t (:t tx-m))
+                (swap! cdc-state assoc :last-t-processed (:t tx-m))
                 ;return tx-m unchanged
                 tx-m))
          (->xf idents-m))
        output-reducing-f
        transactions))))
 
-(defn start-react-on-transaction-loop! [conn]
+(defn start-react-on-transaction-loop! [conn tx-report-queue-ch]
   (ss.loop/go-loop
     ^{:id :react-on-transaction-loop}
     [tx-queue (dd/tx-report-queue conn)]
@@ -75,20 +58,28 @@
                               (try
                                 (when (:tx-data tx) (dd/basis-t (:db-after tx)))
                                 (catch Exception e (timbre/error e "on-transaction error"))))))]
-      (swap! last-t-on-report-queue (fn [prev-t]
-                                      (timbre/info "prev-t" prev-t)
-                                      ((fnil max 0) prev-t t)))
+      (a/put! tx-report-queue-ch t)
       (timbre/info "reacting on new t:" t))
     (recur tx-queue)))
 
-(defn start-cdc!
-  []
-  (reset! cdc-ch (a/chan 10))
-  #_(ss.loop/go-loop ^{:id :datomic-cdc-loop}
-      [i 0]
-      (timbre/info "looping..." i)
-      (a/<! (a/timeout 1000))
-      (recur (inc i))))
+(defn log->output-loop!
+  [conn output-reducing-f ->xf]
+  (let [cdc-state (atom {:last-t-processed nil})
+        tx-report-queue-ch (a/chan (a/sliding-buffer 1))]
+
+    (start-react-on-transaction-loop! conn tx-report-queue-ch)
+    (ss.loop/go-loop
+      ^{:id :log->output-loop}
+      [start nil
+       end   nil]
+      (log->output cdc-state conn output-reducing-f ->xf start end)
+      (let [timeout-ch       (a/timeout 2000)
+            [last-t-on-report-queue _ch] (a/alts! [timeout-ch tx-report-queue-ch])
+            last-t-processed (get @cdc-state :last-t-processed)
+            next-start       (when (int? last-t-processed) (inc last-t-processed))
+            next-end         (when (int? last-t-on-report-queue) (inc last-t-on-report-queue))]
+        (timbre/info "log->output-loop! [next-start next-end]" [next-start next-end])
+        (recur next-start next-end)))))
 
 (comment
 

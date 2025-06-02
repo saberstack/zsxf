@@ -35,19 +35,17 @@
     (map (fn [{:keys [data t id]}]
            (tx-data->datomic-datoms2->zsets idents-m data)))))
 
-(defonce tmp (atom nil))
-
 (defn init-query-with-conn
   "Initial naive implementation. No listeners or change data capture.
   Read all transactions datoms."
   [query conn]
-  (dcdc/datomic-tx-log->output conn
+  (dcdc/log->output-loop!
+    conn
     (completing
       (fn
         ([] :todo)
         ([_accum datoms2]
          ;TODO WIP
-         (reset! tmp datoms2)
          (timbre/info "Processing datoms2" (count datoms2))
          (q/input query datoms2))))
     ->zsxf-xf))
@@ -63,26 +61,13 @@
                     [?c :country/name-alpha-2 "BG"]
                     [?a :artist/country ?c]
                     [?a :artist/name ?artist-name]]))]
+    (def query query)
     ;init
     (init-query-with-conn query (sample-conn))
     (q/get-result query)))
 
 (comment
 
-  (init-query-with-conn nil (sample-conn))
-
-  (let [conn (sample-conn)]
-    (def tmp
-      (last
-        (take
-          50
-          (dcdc/datomic-tx-log->output conn conj ->zsxf-xf)))))
-
-  (let [conn (sample-conn)]
-    (reset! dcdc/cdc-ch (a/chan 10000))
-    (dcdc/datomic-tx-log->output conn (dcdc/->reduce-to-chan @dcdc/cdc-ch) ->zsxf-xf))
-
   (time
     (let [conn (sample-conn)]
-      (reset! dcdc/cdc-ch (a/chan 10000))
-      (dcdc/datomic-tx-log->output conn (xforms/count conj) ->zsxf-xf))))
+      (dcdc/log->output (atom {}) conn (xforms/count conj) ->zsxf-xf))))

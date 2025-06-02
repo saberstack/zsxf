@@ -20,10 +20,7 @@
       (map (fn [[_e a _v _t _tf :as datom]]
              (let [a' (get idents-m a)]
                (dd2/ddatom2 datom a'))))
-      (map (fn [ddatom2]
-             (if (d2/datom-attr= ddatom2 :country/name-alpha-2)
-               (timbre/info "datom:" ddatom2))
-             ddatom2))
+      (map (fn [ddatom2] ddatom2))
       (map ddatom2->zset-item)
       (map hash-set))
     data))
@@ -40,13 +37,14 @@
   Read all transactions datoms."
   [query conn]
   (dcdc/log->output-loop!
+    (q/get-id query)
     conn
     (completing
       (fn
         ([] :todo)
         ([_accum datoms2]
          ;TODO WIP
-         (timbre/info "Processing datoms2" (count datoms2))
+         (timbre/info "New datoms count ::: " (count datoms2))
          (q/input query datoms2))))
     ->zsxf-xf))
 
@@ -63,10 +61,11 @@
                     [?a :artist/name ?artist-name]]))]
     (def query query)
     ;init
-    (init-query-with-conn query (sample-conn))
-    (q/get-result query)))
+    (init-query-with-conn query (sample-conn))))
 
 (comment
+
+  (q/get-result query)
 
   (time
     (let [conn (sample-conn)]

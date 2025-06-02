@@ -406,6 +406,14 @@
 ;end queries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn add-new-artist-datomic [n]
+  (dd/transact (datomic-conn "mbrainz")
+    [{:artist/name    (str "Eric Jordan" n)
+      :artist/id      (str "eric-jordan-" n)
+      :artist/country [:country/name-alpha-2 "BG"]
+      :artist/genres  [[:genre/name "electronic"]
+                       [:genre/name "trance"]]}]))
+
 (comment
 
   (let [conn (datomic-conn "mbrainz")]
@@ -419,12 +427,7 @@
       (query-artists-by-country-constant dd/q conn)))
 
 
-  (dd/transact (datomic-conn "mbrainz")
-    [{:artist/name    "Eric Jordan"
-      :artist/id      "eric-jordan"
-      :artist/country [:country/name-alpha-2 "US"]
-      :artist/genres  [[:genre/name "electronic"]
-                       [:genre/name "trance"]]}])
+  (add-new-artist-datomic 29)
 
   )
 

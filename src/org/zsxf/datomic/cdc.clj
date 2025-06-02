@@ -50,36 +50,47 @@
        output-reducing-f
        transactions))))
 
-(defn start-react-on-transaction-loop! [conn tx-report-queue-ch]
-  (ss.loop/go-loop
-    ^{:id :react-on-transaction-loop}
-    [tx-queue (dd/tx-report-queue conn)]
-    (let [t (a/<! (a/thread (let [tx (.take tx-queue)]
-                              (try
-                                (when (:tx-data tx) (dd/basis-t (:db-after tx)))
-                                (catch Exception e (timbre/error e "on-transaction error"))))))]
-      (a/put! tx-report-queue-ch t)
-      (timbre/info "reacting on new t:" t))
-    (recur tx-queue)))
+(defn start-react-on-transaction-loop!
+  [id conn tx-report-queue-ch]
+  ;TODO WIP restarting loops
+  (let [tx-queue (dd/tx-report-queue conn)]
+    (ss.loop/go-loop
+      ^{:id [id :react-on-transaction]}
+      []
+      (let [t          (a/<! (a/thread (let [tx (.take tx-queue)]
+                                         (try
+                                           (when (:tx-data tx) (dd/basis-t (:db-after tx)))
+                                           (catch Exception e (timbre/error e "on-transaction error"))))))
+            put-return (a/put! tx-report-queue-ch t)]
+        (timbre/info "put-return" put-return)
+        (timbre/info "reacting on new t:" t)
+        (recur)))))
 
 (defn log->output-loop!
-  [conn output-reducing-f ->xf]
-  (let [cdc-state (atom {:last-t-processed nil})
+  [id conn output-reducing-f ->xf]
+  (let [cdc-state          (atom {:last-t-processed nil})
         tx-report-queue-ch (a/chan (a/sliding-buffer 1))]
 
-    (start-react-on-transaction-loop! conn tx-report-queue-ch)
+    ;WIP
+    ;(start-react-on-transaction-loop! id conn tx-report-queue-ch)
+
     (ss.loop/go-loop
-      ^{:id :log->output-loop}
+      ^{:id [id :log->output]}
       [start nil
        end   nil]
       (log->output cdc-state conn output-reducing-f ->xf start end)
-      (let [timeout-ch       (a/timeout 2000)
+      (let [timeout-ch       (a/timeout 5000)
             [last-t-on-report-queue _ch] (a/alts! [timeout-ch tx-report-queue-ch])
+            _                (timbre/info "last-t-on-report-queue" last-t-on-report-queue)
             last-t-processed (get @cdc-state :last-t-processed)
             next-start       (when (int? last-t-processed) (inc last-t-processed))
             next-end         (when (int? last-t-on-report-queue) (inc last-t-on-report-queue))]
         (timbre/info "log->output-loop! [next-start next-end]" [next-start next-end])
         (recur next-start next-end)))))
+
+(defn stop-all-loops! [id]
+  (ss.loop/stop [id :log->output])
+  (ss.loop/stop [id :react-on-transaction]))
 
 (comment
 

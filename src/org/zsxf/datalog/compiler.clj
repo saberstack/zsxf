@@ -197,8 +197,8 @@
  (let [query (pre-parse-query query)]
   (condp = (s/conform ::parser-spec/query query)
     ::s/invalid
-    `(ex-info "Invalid or unsupported query"
-              {:explain-data ~(s/explain-data ::parser-spec/query query)})
+    `(throw (ex-info "Invalid or unsupported query"
+                     {:explain-data (quote ~(s/explain-data ::parser-spec/query query))}))
     (let [{where-clauses# :where find-rel# :find} (parser/query->map query)
           {predicate-clauses# true pattern-clauses# false} (group-by (partial s/valid? ::parser-spec/predicate) where-clauses#)
            {aggregate-vars# :aggregate find-vars# :variable} (->> find-rel#

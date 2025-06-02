@@ -99,13 +99,18 @@
 
 (deftest test-danny-cartesian "query with cartesian product"
   (test-query-matches-db "learndatalogtoday"
-                         [:find ?danny-born ?actor-born
+                          [:find ?danny-born ?actor-born
+                           :where
+                           [?danny :person/name "Danny Glover"]
+                           [?danny :person/born ?danny-born]
+                           [?a :person/name ?actor]
+                           [?a :person/born ?actor-born]
+                           [_ :movie/cast ?a]])
+  (test-query-matches-db "learndatalogtoday"
+                         [:find ?person-name
                           :where
-                          [?danny :person/name "Danny Glover"]
-                          [?danny :person/born ?danny-born]
-                          [?a :person/name ?actor]
-                          [?a :person/born ?actor-born]
-                          [_ :movie/cast ?a]]))
+                          [?p :person/name ?person-name]
+                          [?m :movie/title "RoboCop"]]))
 
 (deftest test-danny-pred "query with predicate"
   (test-query-gives-result "learndatalogtoday"

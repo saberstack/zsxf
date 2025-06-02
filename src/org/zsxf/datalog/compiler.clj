@@ -45,13 +45,14 @@
 
     `(comp ~@locator-vec)))
 
-(defn join-isolated-components [named-clauses locators state connected-components ]
+(defn join-isolated-components [named-clauses preds locators state connected-components ]
   (loop
       [[component-1 component-2 & _] connected-components
        new-joins []
+       new-preds []
        locators locators]
     (if (nil? component-2)
-      [new-joins locators]
+      [new-joins (concat preds new-preds) locators]
 
       (let [[c1-name#  c2-name# :as clause-names] (map first connected-components)
             [c1# c2#] (map named-clauses clause-names)
@@ -65,6 +66,7 @@
                              ~state)]
         (recur (next connected-components)
                (conj new-joins cartesian-join)
+               (conj new-preds (apply clause-pred c1#) (apply clause-pred c2#))
                (merge locators
                       (update-vals (select-keys locators component-1) #(conj % `mu/safe-first))
                       (update-vals (select-keys locators component-2) #(conj % `mu/safe-second))))))))
@@ -223,7 +225,7 @@
 
         (cond (and (empty? remaining-nodes#) (empty? remaining-components#))
               (let [[xf-steps# preds# locators#] (handle-single-clause xf-steps# preds# locators# state variable-index# named-clauses#)
-                    [cartesian-joins# locators#] (join-isolated-components named-clauses# locators# state connected-components#)
+                    [cartesian-joins# preds# locators#] (join-isolated-components named-clauses# preds# locators# state connected-components#)
                     xf-steps-flat# (-> (if (empty? cartesian-joins#)
                                           (first xf-steps#)
                                           (->> xf-steps# (cons cartesian-joins#) reverse vec (apply concat)))

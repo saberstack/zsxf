@@ -1,7 +1,6 @@
 (ns org.zsxf.input.datomic
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
-            [org.zsxf.datom :as d2]
             [org.zsxf.datomic.cdc :as dcdc]
             [datomic.api :as dd]
             [org.zsxf.type.datomic.datom2 :as dd2]

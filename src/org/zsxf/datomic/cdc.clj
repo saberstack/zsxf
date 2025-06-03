@@ -28,14 +28,14 @@
    Args:
      cdc-state - atom that holds CDC state
      conn - Datomic connection
-     output-reducing-f - A reducing function that processes the transformed transactions
+     output-rf - A reducing function that processes the transformed transactions
      ->xf - Function that takes an idents map and returns a transducer for transforming transactions
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([cdc-state conn output-reducing-f] (log->output cdc-state conn output-reducing-f (fn [_idents-m] (map identity)) nil nil))
-  ([cdc-state conn output-reducing-f ->xf] (log->output cdc-state conn output-reducing-f ->xf nil nil))
-  ([cdc-state conn output-reducing-f ->xf start end]
+  ([cdc-state conn output-rf] (log->output cdc-state conn output-rf (fn [_idents-m] (map identity)) nil nil))
+  ([cdc-state conn output-rf ->xf] (log->output cdc-state conn output-rf ->xf nil nil))
+  ([cdc-state conn output-rf ->xf start end]
    (let [log          (dd/log conn)
          idents-m     (into {} (get-all-idents conn))
          transactions (dd/tx-range log start end)]
@@ -47,7 +47,7 @@
                 ;return tx-m unchanged
                 tx-m))
          (->xf idents-m))
-       output-reducing-f
+       output-rf
        transactions))))
 
 (defn start-react-on-transaction-loop!
@@ -67,7 +67,7 @@
         (recur)))))
 
 (defn log->output-loop!
-  [id conn output-reducing-f ->xf]
+  [id conn output-rf ->xf]
   (let [cdc-state          (atom {:last-t-processed nil})
         tx-report-queue-ch (a/chan (a/sliding-buffer 1))]
 
@@ -78,7 +78,7 @@
       ^{:id [id :log->output]}
       [start nil
        end   nil]
-      (log->output cdc-state conn output-reducing-f ->xf start end)
+      (log->output cdc-state conn output-rf ->xf start end)
       (let [timeout-ch       (a/timeout 5000)
             [last-t-on-report-queue _ch] (a/alts! [timeout-ch tx-report-queue-ch])
             _                (timbre/info "last-t-on-report-queue" last-t-on-report-queue)

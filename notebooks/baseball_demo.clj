@@ -7,6 +7,10 @@
 
             [nextjournal.clerk.viewer :as viewer]))
 
+(def max-year 2022)
+(def min-year 1871)
+(def init-range {:first 1980 :second 1985})
+
 ;; # Datascript Query Engine Comparison Demo
 
 (defn render-input-pair
@@ -35,7 +39,7 @@
 ;; ### Year slice
 
 ^{::clerk/sync true ::clerk/viewer input-pair ::clerk/visibility {:result :show}}
-(defonce year-ipt (atom {:first 1980 :second 1985}))
+(defonce year-ipt (atom init-range))
 
 (defonce db-atom (atom (etl/fresh-conn)))
 
@@ -64,38 +68,42 @@
 
 
 (defn run-comparison-with-display [start-year end-year]
-  (let [start-time (System/currentTimeMillis)]
+  (when (and (>= start-year min-year)
+             (<= end-year max-year)
+             (> end-year start-year))
+    (let [start-time (System/currentTimeMillis)]
 
-    (update-db-for-timeframe! start-year end-year)
+      (update-db-for-timeframe! start-year end-year)
 
-    (let [db @@db-atom
-          db-size (if db (count (d/datoms db :eavt)) 0)]
+      (let [db @@db-atom
+            db-size (if db (count (d/datoms db :eavt)) 0)]
 
-      (let [[result1 time1] (query-engine-1 db demo-query)
-            [result2 time2] (query-engine-2 db demo-query)]
+        (let [[result1 time1] (query-engine-1 db demo-query)
+              [result2 time2] (query-engine-2 db demo-query)]
 
-        ;; Store performance data for plotting
-        (swap! performance-data conj
-               {:timeframe (str start-year "-" end-year)
-                :start-year start-year
-                :end-year end-year
-                :db-size db-size
-                :engine1-time time1
-                :engine2-time time2
-                :timestamp (System/currentTimeMillis)})
+          ;; Store performance data for plotting
+          (swap! performance-data conj
+                 {:timeframe (str start-year "-" end-year)
+                  :start-year start-year
+                  :end-year end-year
+                  :db-size db-size
+                  :engine1-time time1
+                  :engine2-time time2
+                  :timestamp (System/currentTimeMillis)})
 
-        ;; Store result for display
-        (let [result {:query-result result1
-                      :database-size db-size
-                      :engine1-time time1
-                      :engine2-time time2
-                      :timeframe (str start-year "-" end-year)}]
-          (reset! latest-result result)
-          result)))))
+          ;; Store result for display
+          (let [result {:query-result result1
+                        :database-size db-size
+                        :engine1-time time1
+                        :engine2-time time2
+                        :timeframe (str start-year "-" end-year)}]
+            (reset! latest-result result)
+            result))))))
 
+(apply run-comparison-with-display ((juxt :first :second ) @year-ipt))
 
 ;; ## Current Results
-^{::clerk/visibility {:result :show}}
+^{::clerk/visibility {:result :show} ::clerk/no-cache true}
 (when @latest-result
   (let [{:keys [query-result database-size engine1-time engine2-time timeframe]} @latest-result]
     (clerk/html
@@ -113,14 +121,14 @@
          [:th {:style {:border "1px solid #ccc" :padding "8px"}} "Attribute"] 
          [:th {:style {:border "1px solid #ccc" :padding "8px"}} "Value"]]]
        [:tbody
-        (for [[entity attr value] (take 20 query-result)] ; Show first 20 rows
+        (for [[entity attr value] (take 5 query-result)] ; Show first 20 rows
           [:tr
            [:td {:style {:border "1px solid #ccc" :padding "8px"}} (str entity)]
            [:td {:style {:border "1px solid #ccc" :padding "8px"}} (str attr)]
            [:td {:style {:border "1px solid #ccc" :padding "8px"}} (str value)]])]]])))
 
 ;; ## Performance Comparison
-^{::clerk/visibility {:result :show}}
+^{::clerk/visibility {:result :show } ::clerk/no-cache true}
 (when (seq @performance-data)
   (clerk/vl
    {:$schema "https://vega.github.io/schema/vega-lite/v5.json"
@@ -145,7 +153,14 @@
 
     :resolve {:scale {:color "independent"}}
     :config {:legend {:orient "bottom"}}}))
-(comment
+
+
+(defn reset-to-initial []
   (reset! db-atom (etl/fresh-conn))
-  (apply run-comparison-with-display ((juxt :first :second ) @year-ipt))
+  (reset! year-ipt init-range))
+
+(comment
+  (reset-to-initial)
+  (reset! db-atom (etl/fresh-conn))
+
   )

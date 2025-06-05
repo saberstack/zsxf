@@ -1,11 +1,15 @@
 (ns org.zsxf.test-data.baseball-etl
-  (:require [next.jdbc :as jdbc]
+  (:require [clojure.test :refer [deftest is testing]]
+            [next.jdbc :as jdbc]
             [next.jdbc.result-set :as rs]
             [honey.sql :as sql]
             [honey.sql.helpers :as h]
             [clojure.set :as set]
             [datascript.core :as d]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [org.zsxf.input.datascript :as ds]
+            [org.zsxf.datalog.compiler :refer [static-compile]]
+            [org.zsxf.query :as q]))
 ;; SQLite database connection
 (def db-spec {:dbtype "sqlite"
               :dbname "resources/baseball.sqlite"})
@@ -139,11 +143,57 @@
 (def conn-registry (atom {}))
 
 (defn conn-for-range [low high]
-  (or (get @conn-registry [low high])
+  (or #_(get @conn-registry [low high])
       (let [conn (fresh-conn)]
         (populate-datascript-db conn {:min-year low :max-year high})
         (swap! conn-registry assoc [low high] conn)
         conn)))
+
+(deftest datascript-aggregates "datascript aggregate behavior"
+  (let [conn (conn-for-range 1950 2000)
+        agg-by-name '[:find ?player-name (sum ?home-runs)
+                      :where
+                      [?p :player/id "aaronha01"]
+                      [?p :player/name ?player-name]
+                      [?s :season/player ?p]
+                      [?s :season/home-runs ?home-runs]
+                      [?s :season/year ?year]]
+        no-agg-no-year '[:find ?player-name ?home-runs
+                         :where
+                         [?p :player/id "aaronha01"]
+                         [?p :player/name ?player-name]
+                         [?s :season/player ?p]
+                         [?s :season/home-runs ?home-runs]
+                         [?s :season/year ?year]]
+        no-agg-with-year '[:find ?player-name ?year ?home-runs
+                           :where
+                           [?p :player/id "aaronha01"]
+                           [?p :player/name ?player-name]
+                           [?s :season/player ?p]
+                           [?s :season/home-runs ?home-runs]
+                           [?s :season/year ?year]]]
+    (testing "The aggregate underreports Aaron's true home run total."
+        (is (= [["Hank Aaron" 510]] (d/q agg-by-name @conn))))
+    (testing "The un-aggregated version reflects the same total."
+      (is (= 510 (->> (d/q no-agg-no-year @conn)
+                      (map second)
+                      (reduce +)))))
+    (testing "Including year in the result allows all home runs to be counted."
+      (is (= 755 (->> (d/q no-agg-with-year @conn)
+                      (map #(nth % 2))
+                      (reduce +)))))
+    (testing "ZSXF gives the \"expected\" behavior."
+      (let [zquery (q/create-query
+                    (static-compile '[:find ?player-name (sum ?home-runs)
+                                      :where
+                                      [?p :player/id "aaronha01"]
+                                      [?p :player/name ?player-name]
+                                      [?s :season/player ?p]
+                                      [?s :season/home-runs ?home-runs]
+                                      [?s :season/year ?year]]))]
+        (ds/init-query-with-conn zquery conn)
+        (is (= {["Hank Aaron"] #{['?home-runs 755]}}
+               (q/get-aggregate-result zquery)))))))
 
 (comment
   (time (do

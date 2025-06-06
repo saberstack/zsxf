@@ -32,8 +32,7 @@
            (tx-data->datomic-datoms2->zsets idents-m data)))))
 
 (defn init-query-with-conn
-  "Initial naive implementation. No listeners or change data capture.
-  Read all transactions datoms."
+  "Initial naive implementation. Read all transactions datoms."
   [query conn]
   (dcdc/log->output-loop!
     (q/get-id query)
@@ -42,8 +41,6 @@
       (fn
         ([] :todo)
         ([_accum datoms2]
-         ;TODO WIP
-         (timbre/info "New datoms count ::: " (count datoms2))
          (q/input query datoms2))))
     ->zsxf-xf))
 

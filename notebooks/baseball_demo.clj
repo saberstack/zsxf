@@ -4,7 +4,7 @@
   (:require [nextjournal.clerk :as clerk]
             [datascript.core :as d]
             [org.zsxf.test-data.baseball-etl :as etl]
-
+            [org.zsxf.util :as util]
             [nextjournal.clerk.viewer :as viewer]))
 
 (def max-year 2022)
@@ -51,16 +51,22 @@
   (etl/populate-datascript-db @db-atom {:min-year start-year :max-year end-year}))
 
 (def demo-query
-  '[:find  ?player-name ?team-name
+  '[:find  ?p ?player-name (sum ?home-runs)
+    :with ?year
     :where
     [?p :player/name ?player-name]
-    [?season :tenure/player ?p]
-    [?season :tenure/team ?t]
-    [?t :team/name ?team-name]])
+    [?season :season/player ?p]
+    [?season :season/year ?year]
+    [?season :season/home-runs ?home-runs]])
 
-(defn query-engine-1 [db query]
-  ;; Returns [result execution-time-ms]
-  [(d/q query db) (+ 10 (rand-int 50))]) ; placeholder
+(defn query-datascript [db query]
+  (let [timer (volatile! nil)
+        result (util/time-f (d/q query db) #(vreset! timer %))]
+    [(->> result
+          (map rest)
+          (sort-by second)
+          reverse)
+     @timer])) ; placeholder
 
 (defn query-engine-2 [db query]
   ;; Returns [result execution-time-ms]
@@ -78,7 +84,7 @@
       (let [db @@db-atom
             db-size (if db (count (d/datoms db :eavt)) 0)]
 
-        (let [[result1 time1] (query-engine-1 db demo-query)
+        (let [[result1 time1] (query-datascript db demo-query)
               [result2 time2] (query-engine-2 db demo-query)]
 
           ;; Store performance data for plotting
@@ -113,19 +119,8 @@
       [:p (str "Engine 1 time: " engine1-time "ms")]
       [:p (str "Engine 2 time: " engine2-time "ms")]
       
-      ;; Simple table rendering - you can enhance this
-      [:table {:style {:border-collapse "collapse" :width "100%"}}
-       [:thead
-        [:tr {:style {:background "#f0f0f0"}}
-         [:th {:style {:border "1px solid #ccc" :padding "8px"}} "Entity"]
-         [:th {:style {:border "1px solid #ccc" :padding "8px"}} "Attribute"] 
-         [:th {:style {:border "1px solid #ccc" :padding "8px"}} "Value"]]]
-       [:tbody
-        (for [[entity attr value] (take 5 query-result)] ; Show first 20 rows
-          [:tr
-           [:td {:style {:border "1px solid #ccc" :padding "8px"}} (str entity)]
-           [:td {:style {:border "1px solid #ccc" :padding "8px"}} (str attr)]
-           [:td {:style {:border "1px solid #ccc" :padding "8px"}} (str value)]])]]])))
+      (clerk/table {::clerk/page-size 8}
+                   (clerk/use-headers (cons ["Player" "Home Runs"] query-result)))])))
 
 ;; ## Performance Comparison
 ^{::clerk/visibility {:result :show } ::clerk/no-cache true}

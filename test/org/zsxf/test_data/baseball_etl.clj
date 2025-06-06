@@ -82,6 +82,8 @@
              :db/unique :db.unique/identity}
    :team/name {}
 
+   :season/id {:db/cardinality :db.cardinality/one
+               :db/unique :db.unique/identity}
    :season/player {:db/type :db.type/ref}
    :season/team {:db/type :db.type/ref}
    :season/year {}
@@ -123,9 +125,10 @@
   (transduce
    (comp (map (fn [{player-id :playerID team-id :teamID year :yearID home-runs :HR :as row}]
                 (let [{player-eid :db/id}  (d/entity @conn [:player/id player-id])
-                         {team-eid :db/id}  (d/entity @conn [:team/id team-id])]
+                      {team-eid :db/id}  (d/entity @conn [:team/id team-id])]
                      (when (and player-eid team-eid)
-                       {:season/player player-eid
+                       {:season/id (format "%s-%s-%s" player-id team-id year)
+                        :season/player player-eid
                         :season/team team-eid
                         :season/year year
                         :season/home-runs home-runs}))))

@@ -17,6 +17,9 @@ jobs:
       - name: Install JDK 24
         run: sudo apt install ./jdk-24_linux-x64_bin.deb
 
+      - name: sudo update-alternatives --auto java
+        run: sudo update-alternatives --auto java
+
       - name: Check which java
         run: which java
 

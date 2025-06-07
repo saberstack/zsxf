@@ -43,9 +43,6 @@ jobs:
             ~/.gitlibs
           key: ${{ runner.os }}-deps-edn-${{ hashFiles('**/deps.edn') }}
 
-      - name: Start Datomic
-        run: screen -dm bash -c "cd datomic; clojure -M:dpm up"
-
       - name: Run 'clojure -X:dev:add-opens:test-runner'
         run: clojure -X:dev:add-opens:test-runner
 

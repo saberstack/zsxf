@@ -6,7 +6,7 @@
 
 (defn conn! [db-name]
   (try
-    (let [^String db-uri (dcdc/db-uri-sqlite db-name "/tmp/storage/sqlite.db")
+    (let [^String db-uri (dcdc/db-uri-sqlite db-name "/tmp/storage/sqlitee.db")
           _              (timbre/info db-uri)
           ;_              (dd/delete-database db-uri)
           ;ret            (timbre/spy (dd/create-database db-uri))

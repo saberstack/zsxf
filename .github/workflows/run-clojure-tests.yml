@@ -20,8 +20,8 @@ jobs:
       - name: sudo update-alternatives --auto java
         run: sudo update-alternatives --auto java
 
-      - name: Check which java
-        run: which java
+      - name: Check java version
+        run: java --version
 
       - name: Clojure install, download
         run: curl -L -O https://github.com/clojure/brew-install/releases/latest/download/posix-install.sh

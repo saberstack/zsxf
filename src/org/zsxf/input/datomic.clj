@@ -45,7 +45,7 @@
     ->zsxf-xf))
 
 (defn sample-conn []
-  (dd/connect (dcdc/db-uri "mbrainz")))
+  (dd/connect (dcdc/db-uri-sqlite "mbrainz")))
 
 (defn poc-query []
   (let [query (q/create-query

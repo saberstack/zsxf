@@ -43,6 +43,9 @@ jobs:
             ~/.gitlibs
           key: ${{ runner.os }}-deps-edn-${{ hashFiles('**/deps.edn') }}
 
+      - name: Datomic background
+        run: bash -c "cd datomic; clojure -M:dpm up" &
+
       - name: Run 'clojure -X:dev:add-opens:test-runner'
         run: clojure -X:dev:add-opens:test-runner
 

@@ -3,9 +3,13 @@
    [datomic.api :as dd]
    [ss.loop]
    [clojure.core.async :as a]
-   [taoensso.timbre :as timbre]))
+   [taoensso.timbre :as timbre])
+  (:import (datomic Connection)))
 
-(defn db-uri [db-name]
+(defn conn? [x]
+  (instance? Connection x))
+
+(defn db-uri-sqlite [db-name]
   (str "datomic:sql://" db-name "?jdbc:sqlite:./datomic/storage/sqlite.db"))
 
 (defn get-all-idents [conn]
@@ -94,38 +98,38 @@
 
 (comment
 
-  (let [conn (dd/connect (db-uri "mbrainz"))]
+  (let [conn (dd/connect (db-uri-sqlite "mbrainz"))]
     (start-react-on-transaction-loop! conn))
 
 
-  (dd/create-database (db-uri "zsxf"))
+  (dd/create-database (db-uri-sqlite "zsxf"))
 
-  (dd/get-database-names (db-uri "*"))
+  (dd/get-database-names (db-uri-sqlite "*"))
 
-  (dd/connect (db-uri "zsxf"))
+  (dd/connect (db-uri-sqlite "zsxf"))
 
-  (def conn (dd/connect (db-uri "zsxf")))
+  (def conn (dd/connect (db-uri-sqlite "zsxf")))
 
 
-  (get-all-idents (dd/connect (db-uri "mbrainz")))
+  (get-all-idents (dd/connect (db-uri-sqlite "mbrainz")))
 
   ;return all datoms in the db (including internal setup datoms)
   (into []
-    (dd/seek-datoms (dd/db (dd/connect (db-uri "zsxf"))) :eavt))
+    (dd/seek-datoms (dd/db (dd/connect (db-uri-sqlite "zsxf"))) :eavt))
 
-  (let [conn (dd/connect (db-uri "zsxf"))]
+  (let [conn (dd/connect (db-uri-sqlite "zsxf"))]
     (dd/transact conn [{:db/ident       :movie/title
                         :db/valueType   :db.type/string
                         :db/cardinality :db.cardinality/one
                         :db/doc         "The title of the movie"}]))
 
-  (let [conn (dd/connect (db-uri "zsxf"))]
+  (let [conn (dd/connect (db-uri-sqlite "zsxf"))]
     (dd/t))
 
-  (let [conn (dd/connect (db-uri "zsxf"))]
+  (let [conn (dd/connect (db-uri-sqlite "zsxf"))]
     (dd/q
       '[:find ?e ?v
         :where [?e :movie/title ?v]]
       (dd/db conn)))
 
-  (dd/delete-database (db-uri "zsxf")))
+  (dd/delete-database (db-uri-sqlite "zsxf")))

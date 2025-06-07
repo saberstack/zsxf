@@ -106,8 +106,8 @@
     (< 0 (count genres)) (assoc :artist/genres (artist-genres->datomic-refs genres))))
 
 
-(defn json-artists->datascript
-  [n artists & {:keys [artist-xf] :or {artist-xf (map identity)}}]
+(defn datascript-transact-all!
+  [n artists & {:keys [json-xf]}]
   (let [input-ch  (a/chan 1000)
         output-ch (a/chan 1
                     (comp
@@ -117,10 +117,8 @@
                           ; return true to "drop" the data in this transducer
                           ; before it reaches the channel
                           true))))
-        _         (a/pipeline 7
-                    output-ch
-                    artist-xf
-                    input-ch)]
+        ;transform and transact! pipeline
+        _         (a/pipeline 7 output-ch json-xf input-ch)]
     (transduce
       (comp (take n))
       (completing
@@ -131,9 +129,8 @@
       0
       artists)))
 
-(defn json-artists->datomic
-  [n artists conn & {:keys [artist-xf partition-n]
-                     :or   {artist-xf (map identity) partition-n 500}}]
+(defn datomic-transact-all!
+  [n artists conn & {:keys [json-xf partition-n] :or {partition-n 500}}]
   (let [input-ch  (a/chan 1000)
         output-ch (a/chan 1
                     (comp
@@ -148,10 +145,8 @@
                           ; return true to "drop" the data in this transducer
                           ; before it reaches the channel
                           true))))
-        _         (a/pipeline 7
-                    output-ch
-                    artist-xf
-                    input-ch)]
+        ;transform and transact! pipeline
+        _         (a/pipeline 7 output-ch json-xf input-ch)]
     (transduce
       (comp (take n))
       (completing
@@ -185,22 +180,23 @@
 
 (defn load-artists-from-json->ds [file-path n]
   (with-open [rdr (io/reader file-path)]
-    (json-artists->datascript
-      n (line-seq rdr)
-      :artist-xf
+    (datascript-transact-all!
+      n
+      (line-seq rdr)
+      :json-xf
       (comp
         (map (fn [s] (charred/read-json s :key-fn keyword)))
         (map artist->datascript-artist)))))
 
-(defn artists-json->datomic [n file-path conn & {:keys [partition-n]}]
+(defn mbrainz-json->datomic [n file-path conn & {:keys [partition-n]}]
   (with-open [rdr (io/reader file-path)]
-    (json-artists->datomic
+    (datomic-transact-all!
       n
       (line-seq rdr)
       conn
-      :artist-xf (comp
-                   (map (fn [s] (charred/read-json s :key-fn keyword)))
-                   (map artist->datomic-artist))
+      :json-xf (comp
+                 (map (fn [s] (charred/read-json s :key-fn keyword)))
+                 (map artist->datomic-artist))
       :partition-n partition-n)))
 
 (comment
@@ -281,7 +277,7 @@
     (d/init-db (thaw-artist-datoms!) schema)))
 
 (defn datomic-conn [db-name]
-  (dd/connect (datomic-cdc/db-uri db-name)))
+  (dd/connect (datomic-cdc/db-uri-sqlite db-name)))
 
 (defn conn->db
   "Returns the db from a connection. Works for both Datascript and Datomic connections."
@@ -291,7 +287,7 @@
     (dd/db conn)))
 
 (defn delete-and-init-datomic! []
-  (let [^String db-uri (datomic-cdc/db-uri "mbrainz")
+  (let [^String db-uri (datomic-cdc/db-uri-sqlite "mbrainz")
         _              (dd/delete-database db-uri)
         _              (dd/create-database db-uri)
         conn           (dd/connect db-uri)
@@ -301,7 +297,7 @@
 ;Usage
 (comment
   (let [conn (delete-and-init-datomic!)]
-    (artists-json->datomic
+    (mbrainz-json->datomic
       10000000
       "/Users/raspasov/Downloads/artist/mbdump/artist"
       conn
@@ -427,7 +423,7 @@
       (query-artists-by-country-constant dd/q conn)))
 
 
-  (add-new-artist-datomic 29)
+  (add-new-artist-datomic 30)
 
   )
 

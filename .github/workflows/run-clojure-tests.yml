@@ -46,12 +46,8 @@ jobs:
       - name: Start Datomic
         run: screen -dm bash -c "cd datomic; clojure -M:dpm up"
 
-      - name: Attach to Datomic screen
-        run: screen -r
-#      - name: Run 'clojure -X:dev:add-opens:test-runner'
-#        run: clojure -X:dev:add-opens:test-runner
-#        env:
-#          VAR1: foo
+      - name: Run 'clojure -X:dev:add-opens:test-runner'
+        run: clojure -X:dev:add-opens:test-runner
 
       - name: Cache local ~/.m2/repository and ~/.gitlibs
         uses: actions/cache@v3

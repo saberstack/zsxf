@@ -17,8 +17,8 @@ jobs:
       - name: Install JDK 24
         run: sudo apt install ./jdk-24_linux-x64_bin.deb
 
-      - name: Check java version
-        run: java --version
+      - name: Check which java
+        run: which java
 
       - name: Clojure install, download
         run: curl -L -O https://github.com/clojure/brew-install/releases/latest/download/posix-install.sh

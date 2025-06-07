@@ -14,7 +14,7 @@
 ;How to turn a zset into a proper Clojure collection
 ; Follow the example from https://github.com/clj-commons/ordered/blob/master/src/flatland/ordered/set.clj
 
-(set! *print-meta* true)
+;(set! *print-meta* true)
 
 (defn zset-weight
   "Get the weight of a zset item.

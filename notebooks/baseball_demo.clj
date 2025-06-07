@@ -13,8 +13,7 @@
 (def max-year 2022)
 (def min-year 1871)
 (def init-range {:first 1980 :second 1981})
-
-;; # Datascript Query Engine Comparison Demo
+;; # ZSXF vs Datascript
 
 (defn render-input-pair
   ([] (render-input-pair {}))
@@ -127,47 +126,39 @@
 
 (apply run-comparison-with-display ((juxt :first :second ) @year-ipt))
 
-;; ## Current Results
-^{::clerk/visibility {:result :show} ::clerk/no-cache true}
-(when @latest-result
-  (let [{:keys [query-result database-size engine1-time engine2-time timeframe]} @latest-result]
-    (clerk/html
-     [:div {:style {:margin "20px 0"}}
-      [:h3 (str "Query Results for " timeframe)]
-      [:p (str "Database size: " database-size " datoms")]
-      [:p (str "Engine 1 time: " engine1-time "ms")]
-      [:p (str "Engine 2 time: " engine2-time "ms")]
-      
+
+^{::clerk/visibility {:result :show} ::clerk/no-cache true ::clerk/width :full}
+(let [{:keys [query-result database-size engine1-time engine2-time timeframe]} @latest-result]
+  (clerk/html
+   [:div {:class "flex justify-center"}
+     [:div {:class "pr-[50px]"}
       (clerk/table {::clerk/page-size 8}
-                   (clerk/use-headers (cons ["Player" "Home Runs"] query-result)))])))
+                   (clerk/use-headers (cons ["Player" "Home Runs"] query-result)))]
 
-;; ## Performance Comparison
-^{::clerk/visibility {:result :show } ::clerk/no-cache true}
-(when (seq @performance-data)
-  (clerk/vl
-   {:$schema "https://vega.github.io/schema/vega-lite/v5.json"
-    :title "Query Engine Performance Comparison"
-    :width 600
-    :height 400
-    :data {:values @performance-data}
-    :layer
-    [{:mark {:type "point" :filled true :size 100 :color "#1f77b4"}
-      :encoding {:x {:field "db-size" :type "quantitative" :title "Database Size (datoms)"}
-                 :y {:field "engine1-time" :type "quantitative" :title "Execution Time (ms)"}
-                 :tooltip [{:field "timeframe" :title "Time Range"}
-                           {:field "db-size" :title "DB Size"}
-                           {:field "engine1-time" :title "Datascript Query Time (ms)"}]}}
+     [:div {:class "overflow-visible"}
+      (clerk/vl
+       {:$schema "https://vega.github.io/schema/vega-lite/v5.json"
+        :title "Query Engine Performance Comparison"
+        :width 600
+        :height 400
+        :data {:values @performance-data}
+        :layer
+        [{:mark {:type "point" :filled true :size 100 :color "#1f77b4"}
+          :encoding {:x {:field "db-size" :type "quantitative" :title "Database Size (datoms)"}
+                     :y {:field "engine1-time" :type "quantitative" :title "Execution Time (ms)"}
+                     :tooltip [{:field "timeframe" :title "Time Range"}
+                               {:field "db-size" :title "DB Size"}
+                               {:field "engine1-time" :title "Datascript Query Time (ms)"}]}}
 
-     {:mark {:type "point" :filled true :size 100 :color "#ff7f0e"}
-      :encoding {:x {:field "db-size" :type "quantitative"}
-                 :y {:field "engine2-time" :type "quantitative"}
-                 :tooltip [{:field "timeframe" :title "Time Range"}
-                           {:field "db-size" :title "DB Size"}
-                           {:field "engine2-time" :title "ZSXF Query Time (ms)"}]}}]
+         {:mark {:type "point" :filled true :size 100 :color "#ff7f0e"}
+          :encoding {:x {:field "db-size" :type "quantitative"}
+                     :y {:field "engine2-time" :type "quantitative"}
+                     :tooltip [{:field "timeframe" :title "Time Range"}
+                               {:field "db-size" :title "DB Size"}
+                               {:field "engine2-time" :title "ZSXF Query Time (ms)"}]}}]
 
-    :resolve {:scale {:color "independent"}}
-    :config {:legend {:orient "bottom"}}}))
-
+        :resolve {:scale {:color "independent"}}
+        :config {:legend {:orient "bottom"}}})]]))
 
 (defn reset-to-initial []
   (reset! db-atom (new-db))

@@ -6,10 +6,12 @@
 
 (defn conn! [db-name]
   (try
-    (let [^String db-uri (dcdc/db-uri-sqlite db-name)
-          _              (dd/delete-database db-uri)
-          _              (dd/create-database db-uri)
-          conn           (dd/connect db-uri)]
+    (let [^String db-uri (dcdc/db-uri-sqlite db-name "/tmp/storage/sqlite.db")
+          _              (timbre/info db-uri)
+          ;_              (dd/delete-database db-uri)
+          ;ret            (timbre/spy (dd/create-database db-uri))
+          conn           (dd/connect db-uri)
+          ]
       conn)
     (catch Throwable e e)))
 
@@ -19,7 +21,7 @@
       (dcdc/conn?
         (transduce
           (comp
-            (map (fn [_conn-attempt] (conn! "check42")))
+            (map (fn [_conn-attempt] (conn! "app")))
             (map (fn [conn-or-throwable]
                    (timbre/info conn-or-throwable)
                    conn-or-throwable))

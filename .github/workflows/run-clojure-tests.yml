@@ -8,6 +8,14 @@ jobs:
 
     runs-on: ubuntu-24.04
 
+    services:
+      datomic:
+        image: filipesilva/datomic-pro-sqlite:latest
+        volumes:
+          - /tmp/storage:/usr/storage
+        ports:
+          - 4334:4334
+
     steps:
       - uses: actions/checkout@v3
 

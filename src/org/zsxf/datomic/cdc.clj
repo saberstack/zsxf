@@ -9,8 +9,10 @@
 (defn conn? [x]
   (instance? Connection x))
 
-(defn db-uri-sqlite [db-name]
-  (str "datomic:sql://" db-name "?jdbc:sqlite:./datomic/storage/sqlite.db"))
+(defn db-uri-sqlite
+  ([db-name] (db-uri-sqlite db-name "./datomic/storage/sqlite.db"))
+  ([db-name path]
+   (str "datomic:sql://" db-name "?jdbc:sqlite:" path)))
 
 (defn get-all-idents [conn]
   (dd/q

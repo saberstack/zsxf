@@ -12,7 +12,7 @@
 
 (def max-year 2022)
 (def min-year 1871)
-(def init-range {:first 1980 :second 1985})
+(def init-range {:first 1980 :second 1981})
 
 ;; # Datascript Query Engine Comparison Demo
 

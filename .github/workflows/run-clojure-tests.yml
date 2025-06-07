@@ -11,6 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: sudo apt-get update && sudo apt-get install screen -y
+        run: sudo apt-get update && sudo apt-get install screen -y
+
       - name: Download JDK 24
         run: curl -L -O https://download.oracle.com/java/24/latest/jdk-24_linux-x64_bin.deb
 
@@ -39,6 +42,9 @@ jobs:
             ~/.m2/repository
             ~/.gitlibs
           key: ${{ runner.os }}-deps-edn-${{ hashFiles('**/deps.edn') }}
+
+      - name: Start Datomic
+        run: screen -dm bash -c "cd datomic; clojure -M:dpm up"
 
       - name: Run 'clojure -X:dev:add-opens:test-runner'
         run: clojure -X:dev:add-opens:test-runner

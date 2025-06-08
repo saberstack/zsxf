@@ -6,8 +6,7 @@
             [org.zsxf.type.datomic.datom2 :as dd2]
             [org.zsxf.query :as q]
             [org.zsxf.datalog.compiler :as dcc]
-            [org.zsxf.zset :as zs]
-            [taoensso.timbre :as timbre]))
+            [org.zsxf.zset :as zs]))
 
 (defn ddatom2->zset-item [ddatom2]
   (zs/zset-item ddatom2 (zs/bool->weight (nth ddatom2 4))))

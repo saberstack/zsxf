@@ -34,24 +34,6 @@
   ([coll index not-found]
    ((fpred nth (comp not indexed?) nil) coll index not-found)))
 
-(defn peekv [coll]
-  ((fpred peek (comp not vector?) nil) coll))
-
-(defn key-intersection
-  "Taken from clojure.set/intersection but adapted to work for maps.
-  Takes maps m1 and m2.
-  Returns a set of common keys."
-  [m1 m2]
-  (if (< (count m2) (count m1))
-    (recur m2 m1)
-    (reduce
-      (fn [result item]
-        (if (contains? m2 item)
-          (conj result item)
-          result))
-      #{}
-      (keys m1))))
-
 (defn take-lastv
   "Similar to take-last but uses subvec, which is O(1).
   Might return less than n items if n is greater than the count of v.
@@ -59,7 +41,6 @@
   [n v]
   (let [cnt (count v)]
     (subvec v (max 0 (- cnt n)) cnt)))
-
 
 (defn system-time2 []
   #?(:clj (. System (nanoTime))
@@ -101,13 +82,6 @@
   ;=> [0 10 20 30 40 50 60 70 80 90]
   )
 
-
-(defn >inst [inst-1 inst-2]
-  (condp = (compare inst-1 inst-2)
-    0 false
-    -1 false
-    1 true))
-
 (defn path-f
   "Create a path function.
   Takes a vector of indices.
@@ -133,9 +107,6 @@
 (comment
   (macroexpand-1 '(path-f []))
   (macroexpand-1 '(path-f [1 2 3])))
-
-(defn sfirst [x]
-  (second (first x)))
 
 #?(:clj
    (defn read-edn-file [file-path]

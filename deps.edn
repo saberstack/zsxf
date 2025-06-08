@@ -10,7 +10,6 @@
            techascent/tech.ml.dataset {:mvn/version "7.056"}
            com.taoensso/nippy         {:mvn/version "3.5.0"}
            ;TODO potentially remove
-           com.aphyr/bifurcan-clj     {:mvn/version "0.1.3"}
            org.clojure/tools.logging  {:mvn/version "1.3.0"}
            ;TODO keep yes/no?
            org.slf4j/slf4j-simple     {:mvn/version "2.0.7"}

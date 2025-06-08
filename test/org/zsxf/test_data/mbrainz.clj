@@ -10,7 +10,6 @@
             [taoensso.nippy :as nippy]
             [org.zsxf.query :as q]
             [org.zsxf.util :as util]
-            [org.zsxf.experimental.bifurcan :as clj-bf]
             [org.zsxf.xf :as xf]
             [org.zsxf.zset :as zs]
             [medley.core :as medley]
@@ -516,99 +515,5 @@
   ;
   ;Tldr; re-using datoms via Datom2 seems to be worth it
   ;
-
-  )
-
-(defonce *bifurcan-map (atom nil))
-(defonce *clojure-map (atom nil))
-(defonce *clojure-vector (atom nil))
-
-(comment
-  ;bifurcan map
-  (time
-    (do
-      (reset!
-        *bifurcan-map
-        (transduce
-          (map (fn [datom]
-                 [datom datom]))
-          conj
-          (clj-bf/clj-bf-map)
-          (take 10000000
-            (d/seek-datoms @@*conn :eavt))))
-      :done))
-
-  ;clojure map
-  (time
-    (do
-      (reset!
-        *clojure-map
-        (transduce
-          (map (fn [datom]
-                 [datom datom]))
-          conj
-          {}
-          (take 10000000
-            (d/seek-datoms @@*conn :eavt))))
-      :done))
-
-  ;clojure vector
-  (time
-    (do
-      (reset!
-        *clojure-vector
-        (transduce
-          (map (fn [datom]
-                 datom))
-          conj
-          []
-          (take 10000000
-            (d/seek-datoms @@*conn :eavt))))
-      :done))
-
-  ;Clojure vector (separate from maps)
-  (mm/measure *clojure-vector)
-
-  (time
-    (transduce
-      (map (fn [e]))
-      (completing
-        (fn [accum item]
-          accum))
-      :done
-      @*clojure-vector))
-  ;vectors are fast to iterate
-  ; "Elapsed time: 144.049291 msecs"
-
-  ;Maps...
-
-  ;bf memory usage seems a bit higher...
-  (mm/measure *bifurcan-map)
-  ;=> "1.1 GiB
-  ;vs clojure map
-  (mm/measure *clojure-map)
-  ;=> "1013.4 MiB"
-  ;
-
-  ;... but faster iteration!
-  (time
-    (transduce
-      (map (fn [e]))
-      (completing
-        (fn [accum item]
-          accum))
-      :done
-      @*bifurcan-map))
-  ;Approx "Elapsed time: 215 msecs"
-
-  (time
-    (transduce
-      (map (fn [e]))
-      (completing
-        (fn [accum item]
-          accum))
-      :done
-      @*clojure-map))
-  ;Approx "Elapsed time: 500 msecs"
 
   )

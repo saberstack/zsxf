@@ -9,6 +9,8 @@
             [org.zsxf.datom :as d2]
             [taoensso.nippy :as nippy]
             [org.zsxf.query :as q]
+            [org.zsxf.datalog.compiler :as dcc]
+            [org.zsxf.input.datomic :as idd]
             [org.zsxf.util :as util]
             [org.zsxf.xf :as xf]
             [org.zsxf.zset :as zs]
@@ -83,8 +85,6 @@
       (filter string?)
       (map (fn [genre] {:genre/name genre})))
     genres))
-
-(defonce artists-full-set (atom #{}))
 
 (defn artist->datascript-artist
   [{:keys [name id genres country type]}]
@@ -197,12 +197,6 @@
                  (map (fn [s] (charred/read-json s :key-fn keyword)))
                  (map artist->datomic-artist))
       :partition-n partition-n)))
-
-(comment
-  (nippy/freeze-to-file "resources/mbrainz/artists_mini_set.nippy"
-    (into #{}
-      (util/keep-every-nth 100)
-      @artists-full-set)))
 
 (defn data->country-set [data]
   (into #{}
@@ -355,10 +349,23 @@
     (q
       '[:find ?country-name (count ?a)
         :where
-        [?a :artist/country ?c]
         [?c :country/name-alpha-2 ?country-name]
+        [?a :artist/country ?c]
         [?a :artist/name ?name]]
       (conn->db conn))))
+
+
+(defn query-count-artists-by-country-2-zsxf [q conn]
+  (let [query (q/create-query
+                (dcc/static-compile
+                  '[:find ?country-name (count ?a)
+                    :where
+                    [?c :country/name-alpha-2 ?country-name]
+                    [?a :artist/country ?c]
+                    [?a :artist/name ?name]]))
+        _ (idd/init-query-with-conn query conn)]
+    (def query query)
+    (q/get-result query)))
 
 (defn query-all-countries [q conn]
   (q
@@ -413,6 +420,9 @@
 
   (let [conn (datomic-conn "mbrainz")]
     (query-count-artists-by-country-2 dd/q conn))
+
+  (let [conn (datomic-conn "mbrainz")]
+    (query-count-artists-by-country-2-zsxf dd/q conn))
 
   (let [conn (datomic-conn "mbrainz")]
     (query-all-countries dd/q conn))

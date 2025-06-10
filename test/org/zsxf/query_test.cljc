@@ -1076,3 +1076,78 @@
         result-ds (d/q union-movies-people-ds @conn)]
     result-ds)
   )
+
+;; :with
+(defn year-only []
+  (let [[conn _] (util/load-learn-db)
+        result-ds (d/q '[:find ?year
+                         :where
+                         [?m :movie/year ?year]
+                         [?m :movie/title ?title]]
+                    @conn)]
+    (=
+      #{[1995] [1986] [1990] [1987] [1985] [1991] [1984] [1981] [1992] [1979] [1989] [1982] [2003] [1988]}
+      result-ds)))
+
+
+(defn year-title-only []
+  (let [[conn _] (util/load-learn-db)
+        result-ds (d/q '[:find ?year ?title
+                         :where
+                         [?m :movie/year ?year]
+                         [?m :movie/title ?title]]
+                    @conn)]
+    (=
+      #{[1988 "Die Hard"]
+        [1982 "First Blood"]
+        [1992 "Lethal Weapon 3"]
+        [1987 "Predator"]
+        [1984 "The Terminator"]
+        [1981 "Mad Max 2"]
+        [1986 "Aliens"]
+        [1979 "Alien"]
+        [1985 "Commando"]
+        [1995 "Braveheart"]
+        [1985 "Mad Max Beyond Thunderdome"]
+        [1989 "Lethal Weapon 2"]
+        [1987 "RoboCop"]
+        [1988 "Rambo III"]
+        [1985 "Rambo: First Blood Part II"]
+        [1987 "Lethal Weapon"]
+        [1979 "Mad Max"]
+        [1990 "Predator 2"]
+        [1991 "Terminator 2: Judgment Day"]
+        [2003 "Terminator 3: Rise of the Machines"]}
+      result-ds)))
+
+
+(defn year-with-title []
+  (let [[conn _] (util/load-learn-db)
+        result-ds (d/q '[:find ?year
+                         :with ?title
+                         :where
+                         [?m :movie/year ?year]
+                         [?m :movie/title ?title]]
+                    @conn)]
+    (=
+      [[1988]
+       [1982]
+       [1992]
+       [1987]
+       [1984]
+       [1981]
+       [1986]
+       [1979]
+       [1985]
+       [1995]
+       [1985]
+       [1989]
+       [1987]
+       [1988]
+       [1985]
+       [1987]
+       [1979]
+       [1990]
+       [1991]
+       [2003]]
+      result-ds)))

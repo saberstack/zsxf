@@ -250,6 +250,28 @@
    {}
    coll))
 
+(defn map-filter-vals
+  "Same as clojure.core/update-vals, but with a predicate.
+
+  Returns a new map with transformed values that satisfy a predicate.
+  Given a map m, a predicate pred, and a function f, applies f to each value in m
+  and includes only those key-value pairs where (pred (f v)) is truthy in the resulting map.
+  The metadata of m is preserved."
+  [m pred f]
+  (with-meta
+    (persistent!
+      (reduce-kv (fn [acc k v]
+                   (let [v' (f v)]
+                     (if (pred v')
+                       (assoc! acc k v')
+                       (dissoc! acc k))))
+        (if #?(:clj  (instance? clojure.lang.IEditableCollection m)
+               :cljs (implements? cljs.core/IEditableCollection m))
+          (transient m)
+          (transient {}))
+        m))
+    (meta m)))
+
 (defn inheritance-tree [klass]
   (let [f (fn f [c]
             (reduce (fn [m p] (assoc m p (f p))) {}

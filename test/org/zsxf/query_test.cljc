@@ -7,6 +7,7 @@
    [datascript.db :as ddb]
    [medley.core :as medley]
    [net.cgrand.xforms :as xforms]
+   [org.zsxf.datalog.compiler :as dcc]
    [org.zsxf.input.datascript :as ds]
    [org.zsxf.datom :as d2]
    [org.zsxf.query :as q]
@@ -1150,3 +1151,44 @@
        [1991]
        [2003]]
       result-ds)))
+
+(defn zsxf-aggregate->datomic-format
+  "Convert a zsxf aggregate result to a datomic format.
+   The zsxf aggregate result is a map of keys to sets of values.
+   This function converts it to a vector of vectors"
+  ;TODO assumes the zsxf aggregate result's sets are single-element sets
+  ; how to maintain the order of :find aggregates?
+  [m]
+  (into []
+    (map (fn [[k v]]
+           (if (vector? k)
+             (conj k (second (first v)))
+             [k (second (first v))])))
+    m))
+
+(deftest movies-by-year-aggregate
+  (let [[conn _] (util/load-learn-db)
+        result-ds-f               (fn [conn] (d/q '[:find ?title ?year (count ?m)
+                                                    :where
+                                                    [?m :movie/year ?year]
+                                                    [?m :movie/title ?title]]
+                                               @conn))
+        result-ds                 (result-ds-f conn)
+        query                     (q/create-query
+                                    (dcc/static-compile
+                                      '[:find ?title ?year (count ?m)
+                                        :where
+                                        [?m :movie/year ?year]
+                                        [?m :movie/title ?title]]))
+        _                         (ds/init-query-with-conn query conn)
+        result-zsxf               (q/get-aggregate-result query)
+        _                         (d/transact! conn [[:db/retract 52 :movie/title]])
+        result-zsxf-after-retract (q/get-aggregate-result query)
+        result-ds-after-retract   (result-ds-f conn)]
+
+    (is (= result-ds
+          (zsxf-aggregate->datomic-format result-zsxf)))
+
+    (is (=
+          result-ds-after-retract
+          (zsxf-aggregate->datomic-format result-zsxf-after-retract)))))

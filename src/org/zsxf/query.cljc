@@ -1,5 +1,6 @@
 (ns org.zsxf.query
   (:require [org.zsxf.constant :as const]
+            [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
             [org.zsxf.query :as-alias q]))
 
@@ -64,8 +65,9 @@
 
 (defn get-aggregate-result
   [query]
-  (update-vals
+  (util/map-filter-vals
     (get-result query)
+    (fn [new-map-value] (not= #{} new-map-value))
     (fn [s]
       (into #{}
         (comp

@@ -1,10 +1,14 @@
 (ns org.zsxf.test-data.baseball-etl
-  (:require [next.jdbc :as jdbc]
+  (:require [clojure.test :refer [deftest testing is are]]
+            [next.jdbc :as jdbc]
             [next.jdbc.result-set :as rs]
             [honey.sql :as sql]
             [honey.sql.helpers :as h]
             [clojure.set :as set]
             [datascript.core :as d]
+            [org.zsxf.query :as q]
+            [org.zsxf.datalog.compiler :refer [static-compile]]
+            [org.zsxf.input.datascript :as ds]
             [taoensso.timbre :as timbre]))
 ;; SQLite database connection
 (def db-spec {:dbtype "sqlite"
@@ -93,51 +97,53 @@
   (d/create-conn schema))
 
 (defn populate-datascript-db [conn opts]
-  (do
+  (let [exclude-attrs (or (:exclude-attrs opts) #{})]
+        (transduce
+           (comp (map #(set/rename-keys % {:teamID :team/id
+                                           :name :team/name
+                                           :yearID :team/year
+                                           :lgID :league/id
+                                           :franchID :franchise/id
+                                           :divID :division/id
+                                           :W :team/wins
+                                           :L :team/losses}))
+                 (map #(select-keys % (set/difference #{:team/id :team/name} exclude-attrs))))
+           (fn ([acc el] (conj acc el))
+             ([team-set] (d/transact! conn (vec team-set))))
+           #{}
+           (get-teams opts))
+
     (transduce
-     (comp (map #(set/rename-keys % {:teamID :team/id
-                                     :name :team/name
-                                     :yearID :team/year
-                                     :lgID :league/id
-                                     :franchID :franchise/id
-                                     :divID :division/id
-                                     :W :team/wins
-                                     :L :team/losses}))
-           (map #(select-keys % [:team/id :team/name])))
-
-     (fn ([acc el] (conj acc el))
-       ([team-set] (d/transact! conn (vec team-set))))
-     #{}
-     (get-teams opts))
+       (comp (map (fn [{:keys [playerID nameFirst nameLast]}]
+                    {:player/id playerID
+                     :player/name (if nameFirst
+                                    (format "%s %s" nameFirst nameLast)
+                                    nameLast)}))
+             (map #(select-keys % (set/difference #{:player/id :player/name} exclude-attrs)))
+             (partition-all 100))
+       (completing  (fn [_ batch]
+                      (d/transact! conn batch)) )
+       nil
+       (get-players opts))
 
     (transduce
-     (comp (map (fn [{:keys [playerID nameFirst nameLast]}]
-                  {:player/id playerID
-                   :player/name (if nameFirst
-                                  (format "%s %s" nameFirst nameLast)
-                                  nameLast)}))
-           (partition-all 100))
-     (completing  (fn [_ batch]
-                    (d/transact! conn batch)) )
-     nil
-     (get-players opts)))
-
-  (transduce
-   (comp (map (fn [{player-id :playerID team-id :teamID year :yearID home-runs :HR :as row}]
-                (let [{player-eid :db/id}  (d/entity @conn [:player/id player-id])
-                      {team-eid :db/id}  (d/entity @conn [:team/id team-id])]
+      (comp (map (fn [{player-id :playerID team-id :teamID year :yearID home-runs :HR :as row}]
+                   (let [{player-eid :db/id}  (d/entity @conn [:player/id player-id])
+                         {team-eid :db/id}  (d/entity @conn [:team/id team-id])]
                      (when (and player-eid team-eid)
                        {:season/id (format "%s-%s-%s" player-id team-id year)
                         :season/player player-eid
                         :season/team team-eid
                         :season/year year
                         :season/home-runs home-runs}))))
-         (remove nil?)
-         (partition-all 100))
-   (completing (fn [_ batch]
-                 (d/transact! conn batch)))
-   nil
-   (get-batting opts)))
+            (remove nil?)
+            (partition-all 100))
+      (completing (fn [_ batch]
+                    (d/transact! conn batch)))
+      nil
+      (get-batting opts))
+
+    conn))
 
 (def conn-registry (atom {}))
 
@@ -147,6 +153,92 @@
         (populate-datascript-db conn {:min-year low :max-year high})
         (swap! conn-registry assoc [low high] conn)
         conn)))
+
+
+(deftest test-late-identifier
+  (testing "When aggregate keys come in late"
+    (let [conn (-> (fresh-conn)
+                   (populate-datascript-db {:min-year 1980 :max-year 1985
+                                            :exclude-attrs #{:team/name}}))
+          zquery (q/create-query
+                  (static-compile '[:find ?team (sum ?home-runs)
+                                    :where
+                                    [?t :team/name ?team]
+                                    [?s :season/team ?t]
+                                    [?s :season/player ?p]
+                                    [?s :season/year ?year]
+                                    [?s :season/home-runs ?home-runs]]))
+          _ (ds/init-query-with-conn zquery conn)
+          init-result (q/get-result zquery)
+          _ (populate-datascript-db conn {:min-year 1980 :max-year 1985})
+          ]
+      (is (= (d/q '[:find ?team  (sum ?home-runs)
+                    :with ?year ?p
+                    :where
+                    [?t :team/name ?team]
+                    [?s :season/team ?t]
+                    [?s :season/player ?p]
+                    [?s :season/year ?year]
+                    [?s :season/home-runs ?home-runs]]
+                  @conn)
+             (for [[[team] hrs]  (-> (q/get-aggregate-result zquery)
+                                     (update-vals (comp second first)))]
+               [team hrs]))))))
+
+(deftest compound-aggregate
+  (testing "When compound aggregate keys come in late"
+    (let [conn (-> (fresh-conn)
+                   (populate-datascript-db {:min-year 1980 :max-year 1985
+                                            :exclude-attrs #{:team/name :player/name}}))
+          init-attrs (->> conn deref :aevt (map second) (into #{}))
+          q '[:find ?team ?player (sum ?home-runs)
+              :with ?year
+              :where
+              [?t :team/name ?team]
+              [?p :player/name ?player]
+              [?s :season/team ?t]
+              [?s :season/player ?p]
+              [?s :season/year ?year]
+              [?s :season/home-runs ?home-runs]]
+          ;; The queries differ only by :with semantics,
+          ;; because we haven't implemented them yet.
+          zquery (q/create-query
+                  (static-compile '[:find ?team ?player (sum ?home-runs)
+                                    :where
+                                    [?t :team/name ?team]
+                                    [?p :player/name ?player]
+                                    [?s :season/team ?t]
+                                    [?s :season/player ?p]
+                                    [?s :season/year ?year]
+                                    [?s :season/home-runs ?home-runs]]))]
+      (ds/init-query-with-conn zquery conn)
+      (testing "There are no initial query results"
+        (is (= {} (q/get-result zquery)))
+        (is (= [] (d/q q @conn))))
+
+      (populate-datascript-db conn {:min-year 1980 :max-year 1985
+                                    :exclude-attrs #{:player/name}})
+
+      (testing "The database now has :team/name attrs"
+        (let [attrs-2 (->> conn deref :aevt (map second) (into #{}))]
+          (is (= #{:team/name} (set/difference attrs-2 init-attrs)))))
+      (testing "But still, the query results are empty."
+        (is (= {} (q/get-result zquery)))
+        (is (= [] (d/q q @conn))))
+
+
+      (populate-datascript-db conn {:min-year 1980 :max-year 1985})
+
+      (testing "The database now has :team/name attrs"
+        (let [attrs-3 (->> conn deref :aevt (map second) (into #{}))]
+          (is (= #{:team/name :player/name} (set/difference attrs-3 init-attrs)))))
+
+      (testing "Now the ZSXF and datascript results match exactly."
+        (is (= (for [[[team player] hrs] (-> (q/get-aggregate-result zquery)
+                                             (update-vals (comp second first)))]
+                 [team player hrs])
+               (d/q q
+                    @conn)))))))
 
 (comment
   (time (do

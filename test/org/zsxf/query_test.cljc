@@ -119,8 +119,7 @@
          "Australia" #{[:?sum-1 29] [:?sum-2 8] [:?cnt-1 2]}}))
     (is
       (= result-2
-        {"Japan"     #{},
-         "Australia" #{[:?sum-1 4] [:?cnt-1 1] [:?sum-2 5]}}))))
+        {"Australia" #{[:?sum-1 4] [:?cnt-1 1] [:?sum-2 5]}}))))
 
 (defn person-city-country-example-xf-join-3 [query-state]
   (comment

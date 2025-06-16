@@ -168,10 +168,6 @@
       ;ΔA ⋈ ΔB
       (zs/intersect-indexed* delta-1 delta-2 f1 f2 rel/index-clauses))))
 
-(defn initial-map [index-kfn]
-  ;WIP
-  {})
-
 (defn join-xf
   "Receives:
 

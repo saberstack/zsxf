@@ -51,6 +51,23 @@
     (d/transact! conn [[:db/retractEntity [:zsxf.input/id param]]])
     return))
 
+(comment
+  ;WIP parameterized query example
+  (let [query-all (q/create-query
+                    (static-compile
+                      '[:find ?d
+                        :where
+                        [?e :cell/data ?d]
+                        [?e :cell/id ?cell-id]
+                        [?p :zsxf.input/id ?cell-id]]))]
+    (def query-all query-all)
+    (init-query-with-conn query-all @*conn))
+
+  (q/get-result query-all)
+
+  (time
+    (get-result @*conn query-all (rand-int 1000))))
+
 (defn take-last-datoms
   "Helper to see recently added datoms"
   [conn n]

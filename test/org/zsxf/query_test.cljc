@@ -11,7 +11,6 @@
    [org.zsxf.input.datascript :as ds]
    [org.zsxf.datom :as d2]
    [org.zsxf.query :as q]
-   [org.zsxf.datalog.compiler]
    [org.zsxf.relation :as rel]
    [org.zsxf.util :as util :refer [nth2 path-f]]
    [org.zsxf.xf :as xf]
@@ -1192,3 +1191,28 @@
     (is (=
           result-ds-after-retract
           (zsxf-aggregate->datomic-format result-zsxf-after-retract)))))
+
+(deftest simple-window-test
+  (let [query-1 (dcc/static-compile
+                  '[:find ?e
+                    :where
+                    [?e :tx/amount ?tx-amount]
+                    [?e :tx/time ?tx-time]
+                    [(< 70 ?tx-time)]])
+        _       (q/input query-1
+                  [(tx-datoms->datoms2->zset
+                     [(ddb/datom 1 :tx/amount 10 536870913 true)
+                      (ddb/datom 1 :tx/time 0 536870913 true)
+
+                      (ddb/datom 2 :tx/amount 30 536870913 true)
+                      (ddb/datom 2 :tx/time 100 536870913 true)
+
+                      (ddb/datom 3 :tx/amount 50 536870913 true)
+                      (ddb/datom 3 :tx/time 200 536870913 true)
+
+                      (ddb/datom 4 :tx/amount 70 536870913 true)
+                      (ddb/datom 4 :tx/time 100 536870913 true)
+
+                      (ddb/datom 5 :tx/amount 90 536870913 true)
+                      (ddb/datom 5 :tx/time 100 536870913 true)])])]
+    ))

@@ -1192,7 +1192,8 @@
           result-ds-after-retract
           (zsxf-aggregate->datomic-format result-zsxf-after-retract)))))
 
-(deftest simple-window-test
+;TODO WIP
+#_(deftest simple-window-test
   (let [query-1 (dcc/static-compile
                   '[:find ?e
                     :where

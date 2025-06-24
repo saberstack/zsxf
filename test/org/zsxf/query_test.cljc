@@ -1217,3 +1217,15 @@
                       (ddb/datom 5 :tx/amount 90 536870913 true)
                       (ddb/datom 5 :tx/time 100 536870913 true)])])]
     ))
+
+(defn window-by-time-test []
+  (into []
+    (xforms/window-by-time :ts 4
+      (fn
+        ([] clojure.lang.PersistentQueue/EMPTY)
+        ([q] (vec q))
+        ([q x] (conj q x)))
+      (fn [q _] (pop q)))
+    (mapv (fn [x] {:ts x})
+      (concat (range 0 2 0.5) (range 3 5 0.25))))
+  )

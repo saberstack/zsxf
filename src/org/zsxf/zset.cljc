@@ -1,4 +1,11 @@
 (ns org.zsxf.zset
+  "Zsets are like bags but also allow negative weights.
+
+   Example:
+   Imagine a table representing employee data.
+   A Z-set could represent a change to this table.
+   If you add a new employee, that employee's row would be in the Z-set with a weight of +1.
+   If you delete an employee, their row would be in the Z-set with a weight of -1."
   ;clojurescript does not have +' and *' yet (arbitrary precision + and *)
   ;rename to match Clojure
   #?(:cljs (:refer-clojure :rename {+ +' * *'}))
@@ -11,10 +18,8 @@
             [net.cgrand.xforms :as xforms]
             [taoensso.timbre :as timbre]))
 
-;How to turn a zset into a proper Clojure collection
+;How to turn a zset into a proper Clojure collection (maybe in the future, if beneficial)
 ; Follow the example from https://github.com/clj-commons/ordered/blob/master/src/flatland/ordered/set.clj
-
-;(set! *print-meta* true)
 
 (defn zset-weight
   "Get the weight of a zset item.

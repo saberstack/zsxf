@@ -49,6 +49,7 @@ it takes to synchronize each batch of data is accounted for.
 - [x] Datascript
 - [x] Implicit joins via `:find` and `:where` clauses, i.e. `[?e :attr1 v] [?e :attr2 v2]`
 - [x] Aggregates: sum, count
+- [ ] Parameterized queries
 - [ ] Pull API, i.e. `(pull ?e [...])`
 - [ ] Efficient rolling window queries
 - [ ] Rules

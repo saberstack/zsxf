@@ -3,7 +3,7 @@ An incremental query engine
 
 ### What problem is ZSXF solving?
 
-As the amount of data in a database grows, the time to answer queries (especially JOINS) is guaranteed to increase.
+As the amount of data in a database grows, the time required to answer queries (especially those involving joins) is guaranteed to increase.
 Many databases will stop working.
 
 Our solution is called ZSXF:
@@ -11,9 +11,9 @@ an incremental view maintenance query engine based on [DBSP](https://www.vldb.or
 written in Clojure.
 Once a query is declared, ZSXF incrementally and efficiently re-computes a correct query result on every write.
 The query result is always accessible, typically within microseconds.
-### Are we there yet (database edition)?
+### Are We There Yet (Database Edition)?
 
-*[Are we there yet? -- Rich Hickey](https://github.com/matthiasn/talk-transcripts/blob/master/Hickey_Rich/AreWeThereYet.md)*
+*[Are We There Yet? -- Rich Hickey](https://github.com/matthiasn/talk-transcripts/blob/master/Hickey_Rich/AreWeThereYet.md)*
 
 Most databases since the beginning of time have tried to answer queries in the same fashion: by starting from scratch every time we ask a question! Some of them come with a number of creative solutions to make that problem [less bad](https://duckdb.org). And yet, the fact remains: more data means slower queries, especially JOIN queries.
 
@@ -24,8 +24,7 @@ Widely-used databases ([Postgres](http://postgresql.org), [MySQL](https://www.my
 Arguably,
 the need
 to answer queries in at least *some fashion* without crashing the entire database gave rise to batch-oriented [warehouses](http://snowflake.com) .
-Unfortunately,
-most warehouse setups have latencies of minutes or even hour once the time
+Unfortunately, most warehouse setups have latencies of minutes or even hours once the time
 it takes to synchronize each batch of data is accounted for.
 
 ### Goals

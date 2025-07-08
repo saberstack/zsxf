@@ -1,7 +1,7 @@
 ## Next
 
 (notes on WIP features)
-##### parameterized queries
+###### parameterized queries
 
 Parameterized queries can be viewed as a pre-compilation step where we transform a query's `:in` variables into values that `zsxf` manages. For example:
 

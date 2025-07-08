@@ -29,3 +29,9 @@ Parameterized queries can be viewed as a pre-compilation step where we transform
 - random as-of after the fact?
     - more tricky
     - not sure if possible in a more efficient way than the above
+
+###### window queries
+
+- window queries are a often special case of parameterized queries, for example:
+    - find all events in the last 1h
+- explore xforms/window

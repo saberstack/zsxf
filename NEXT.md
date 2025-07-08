@@ -32,6 +32,6 @@ Parameterized queries can be viewed as a pre-compilation step where we transform
 
 ###### window queries
 
-- window queries are a often special case of parameterized queries, for example:
+- window queries are often a special case of parameterized queries, for example:
     - find all events in the last 1h
 - explore xforms/window

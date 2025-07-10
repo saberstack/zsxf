@@ -12,6 +12,10 @@
   ([init-xf]
    (create-query init-xf []))
   ([init-xf custom-init]
+
+   ;TODO as-of
+   ; Add parms to create query to enable as-of history tracking
+
    (let [state (atom nil)]
      {::q/xf          (init-xf state)
       ::q/state       state
@@ -41,6 +45,10 @@
   Returns the full post-transaction query result.
   The result can be a set or a map (in the case of aggregations)."
   [{::q/keys [state xf custom-init] :as _query} zsets]
+
+  ;TODO as-of
+  ; For queries keeping as-of state save the query root in a vector
+
   (transduce
     xf
     (fn

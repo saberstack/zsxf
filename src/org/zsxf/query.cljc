@@ -10,12 +10,13 @@
   and must return a ZSXF-compatible transducer which takes and returns zsets
   Returns a map."
   [init-xf]
-  ;TODO as-of
+  ;TODO as-ofx
   ; Add params to create query to enable as-of history tracking
   (let [state (atom nil)]
-    {::q/xf    (init-xf state)
-     ::q/state state
-     ::q/id    (random-uuid)}))
+    {::q/xf            (init-xf state)
+     ::q/state         state
+     ::q/id            (random-uuid)
+     ::q/keep-history? true}))
 
 (defn init-result [result result-delta]
   (if (nil? result)
@@ -44,23 +45,23 @@
 
   Returns the full post-transaction query result.
   The result can be a set or a map (in the case of aggregations)."
-  [{::q/keys [state xf] :as _query} zsets]
+  [{::q/keys [state xf keep-history?] :as _query} zsets]
   ;TODO as-of
   ; For queries keeping as-of state save the query root in a vector
   (transduce
     xf
     (fn
-      ;query reducing fn
-      ; sums existing result with query-computed deltas
-      ([] state)
-      ([state] (get state ::q/result))
-      ([state result-delta]
+      ([] state)                                            ;init
+      ([state result-delta]                                 ;reduce step
+       ;query reducing fn; sums the existing result with query-computed deltas
        ;side effect
        (swap! state
          (fn [{::q/keys [result] :as state-m}]
            (let [[result+ result] (init-result result result-delta)]
              (assoc state-m ::q/result
-               (result+ result result-delta)))))))
+               (result+ result result-delta))))))
+      ([state]                                              ;finalize
+       (get state ::q/result)))
     [zsets]))
 
 (defn get-result

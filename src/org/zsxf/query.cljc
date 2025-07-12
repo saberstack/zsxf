@@ -13,10 +13,11 @@
   ;TODO as-ofx
   ; Add params to create query to enable as-of history tracking
   (let [state (atom nil)]
-    {::q/xf            (init-xf state)
-     ::q/state         state
-     ::q/id            (random-uuid)
-     ::q/keep-history? true}))
+    {::q/xf             (init-xf state)
+     ::q/state          state
+     ::q/result-history (atom [])
+     ::q/id             (random-uuid)
+     ::q/keep-history?  true}))
 
 (defn init-result [result result-delta]
   (if (nil? result)
@@ -33,6 +34,12 @@
       :else (throw (ex-info "result and result-delta together must be either maps or sets"
                      {:result result :result-delta result})))))
 
+(defn get-result
+  "View the current query result"
+  [query]
+  ;(set! *print-meta* true)
+  (::q/result @(::q/state query)))
+
 (defn input
   "Takes a query (a map created via create-query) and a vector of zsets representing a transaction.
   Synchronously executes the transaction, summing the existing query result state with new deltas, if any.
@@ -45,7 +52,7 @@
 
   Returns the full post-transaction query result.
   The result can be a set or a map (in the case of aggregations)."
-  [{::q/keys [state xf keep-history?] :as _query} zsets]
+  [{::q/keys [state result-history xf keep-history?] :as _query} zsets]
   ;TODO as-of
   ; For queries keeping as-of state save the query root in a vector
   (transduce
@@ -54,21 +61,18 @@
       ([] state)                                            ;init
       ([state result-delta]                                 ;reduce step
        ;query reducing fn; sums the existing result with query-computed deltas
-       ;side effect
+       ;side effects
+       ;keep history
+       (swap! result-history conj (::q/result @state))
+       ;new query state
        (swap! state
          (fn [{::q/keys [result] :as state-m}]
            (let [[result+ result] (init-result result result-delta)]
              (assoc state-m ::q/result
                (result+ result result-delta))))))
-      ([state]                                              ;finalize
-       (get state ::q/result)))
+      ([state-m]                                            ;finalize
+       (::q/result state-m)))
     [zsets]))
-
-(defn get-result
-  "View the current query result"
-  [query]
-  ;(set! *print-meta* true)
-  (::q/result @(get query ::q/state)))
 
 (defn get-aggregate-result
   [query]

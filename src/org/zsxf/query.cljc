@@ -62,8 +62,8 @@
       ([state result-delta]                                 ;reduce step
        ;query reducing fn; sums the existing result with query-computed deltas
        ;side effects
-       ;keep history
-       (swap! result-history conj (::q/result @state))
+       (when keep-history?
+         (swap! result-history conj (::q/result @state)))
        ;new query state
        (swap! state
          (fn [{::q/keys [result] :as state-m}]

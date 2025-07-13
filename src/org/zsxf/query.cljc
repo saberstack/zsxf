@@ -10,11 +10,13 @@
   and must return a ZSXF-compatible transducer which takes and returns zsets
   Returns a map."
   [init-xf]
-  ;TODO as-ofx
-  ; Add params to create query to enable as-of history tracking
   (let [state (atom nil)]
     {::q/xf             (init-xf state)
      ::q/state          state
+     ;TODO save tx->t for history
+     ;potential data structure:
+     #_{:t->vector-idx {42 0 43 1}
+        :history       [#_result-state-0 #_result-state-1]}
      ::q/result-history (atom [])
      ::q/id             (random-uuid)
      ::q/keep-history?  true}))
@@ -53,8 +55,6 @@
   Returns the full post-transaction query result.
   The result can be a set or a map (in the case of aggregations)."
   [{::q/keys [state result-history xf keep-history?] :as _query} zsets]
-  ;TODO as-of
-  ; For queries keeping as-of state save the query root in a vector
   (transduce
     xf
     (fn

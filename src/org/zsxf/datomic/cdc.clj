@@ -31,9 +31,8 @@
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([cdc-state conn output-rf]
-   (log->output cdc-state conn output-rf (fn [_idents-m] (map identity)) nil nil))
   ([cdc-state conn output-rf ->xf]
+   ; Call with no start or end, which means process all transactions
    (log->output cdc-state conn output-rf ->xf nil nil))
   ([cdc-state conn output-rf ->xf start end]
    (let [log          (dd/log conn)

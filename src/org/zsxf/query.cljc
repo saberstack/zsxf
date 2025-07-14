@@ -113,7 +113,7 @@
       ([state-m]                                            ;finalize
        (let [query-result (::q/result state-m)]
          ;side effects
-         (when keep-history?
+         (when (and (true? keep-history?) (int? basis-t))
            (history-append! result-history basis-t query-result))
          ;return
          query-result

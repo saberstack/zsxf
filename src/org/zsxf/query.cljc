@@ -2,8 +2,7 @@
   (:require [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
-            [org.zsxf.query :as-alias q]
-            [taoensso.timbre :as timbre]))
+            [org.zsxf.query :as-alias q]))
 
 (defn create-query
   "Create a query with init-xf.
@@ -14,11 +13,7 @@
   (let [state (atom nil)]
     {::q/xf             (init-xf state)
      ::q/state          state
-     ;TODO save tx->t for history
-     ;potential data structure:
-     #_{:t->vector-idx {42 0 43 1}
-        :history       [#_result-state-0 #_result-state-1]}
-     ::q/result-history (atom [])
+     ::q/result-history (atom {})
      ::q/id             (random-uuid)
      ::q/keep-history?  true}))
 
@@ -43,6 +38,49 @@
   ;(set! *print-meta* true)
   (::q/result @(::q/state query)))
 
+(defn- history-append!
+  "Implementation detail:
+  Appends a new query result at the given basis-t to the query result history."
+  [result-history basis-t query-result-at-basis]
+  (swap! result-history
+    (fn [m]
+      (let [history'             (conj (:result-states m []) query-result-at-basis)
+            vector-idx           (dec (count history'))
+            basis-t->vector-idx' (assoc (:basis-t->vector-idx m {}) basis-t vector-idx)]
+        (-> m
+          (assoc :result-states history')
+          (assoc :basis-t->vector-idx basis-t->vector-idx'))))))
+
+(defn get-result-as-of
+  "Retrieves the query result at a specific basis-t (point in time).
+
+  This function provides time-travel capabilities by looking up the historical
+  query result that was recorded at the given basis-t. It accesses the query's
+  result history to find the corresponding result state.
+
+  Parameters:
+  - query: A query map created by create-query containing result history
+  - basis-t: The original database/source basis time for which to retrieve the result
+
+  Returns:
+  - The query result that existed at the specified basis-t
+  - nil if no result exists for the given basis-t
+
+  Note: This function only works when the query has history tracking enabled, i.e.
+  (::q/keep-history? query) is true"
+  [query basis-t]
+  (let [{:keys [result-states basis-t->vector-idx]} @(::q/result-history query)
+        idx (get basis-t->vector-idx basis-t)]
+    (when (int? idx)
+      (result-states idx))))
+
+(defn history-index
+  "Implementation detail.
+  Returns the map of basis-t to vector index for the query result history."
+  [query]
+  (let [{:keys [basis-t->vector-idx]} @(::q/result-history query)]
+    basis-t->vector-idx))
+
 (defn input
   "Takes a query (a map created via create-query) and a vector of zsets representing a transaction.
   Synchronously executes the transaction, summing the existing query result state with new deltas, if any.
@@ -60,17 +98,12 @@
   The result can be a set or a map (in the case of aggregations)."
   [{::q/keys [state result-history xf keep-history?] :as _query} zsets
    & {:keys [basis-t]}]
-
-  (timbre/info "basis-t:" basis-t)
   (transduce
     xf
     (fn
       ([] state)                                            ;init
       ([state result-delta]                                 ;reduce step
        ;query reducing fn; sums the existing result with query-computed deltas
-       ;side effects
-       (when keep-history?
-         (swap! result-history conj (::q/result @state)))
        ;new query state
        (swap! state
          (fn [{::q/keys [result] :as state-m}]
@@ -78,7 +111,13 @@
              (assoc state-m ::q/result
                (result+ result result-delta))))))
       ([state-m]                                            ;finalize
-       (::q/result state-m)))
+       (let [query-result (::q/result state-m)]
+         ;side effects
+         (when keep-history?
+           (history-append! result-history basis-t query-result))
+         ;return
+         query-result
+         )))
     [zsets]))
 
 (defn get-aggregate-result

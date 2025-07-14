@@ -88,6 +88,7 @@
 
 (deftest simple-aggregate-1
   (let [query-1  (q/create-query aggregate-example-xf)
+        _        (def tmp-query query-1)
         _        (q/input query-1
                    [(tx-datoms->datoms2->zset
                       [(ddb/datom 1 :team/name "A" 536870913 true)
@@ -1194,29 +1195,29 @@
 
 ;TODO WIP
 #_(deftest simple-window-test
-  (let [query-1 (dcc/static-compile
-                  '[:find ?e
-                    :where
-                    [?e :tx/amount ?tx-amount]
-                    [?e :tx/time ?tx-time]
-                    [(< 70 ?tx-time)]])
-        _       (q/input query-1
-                  [(tx-datoms->datoms2->zset
-                     [(ddb/datom 1 :tx/amount 10 536870913 true)
-                      (ddb/datom 1 :tx/time 0 536870913 true)
+    (let [query-1 (dcc/static-compile
+                    '[:find ?e
+                      :where
+                      [?e :tx/amount ?tx-amount]
+                      [?e :tx/time ?tx-time]
+                      [(< 70 ?tx-time)]])
+          _       (q/input query-1
+                    [(tx-datoms->datoms2->zset
+                       [(ddb/datom 1 :tx/amount 10 536870913 true)
+                        (ddb/datom 1 :tx/time 0 536870913 true)
 
-                      (ddb/datom 2 :tx/amount 30 536870913 true)
-                      (ddb/datom 2 :tx/time 100 536870913 true)
+                        (ddb/datom 2 :tx/amount 30 536870913 true)
+                        (ddb/datom 2 :tx/time 100 536870913 true)
 
-                      (ddb/datom 3 :tx/amount 50 536870913 true)
-                      (ddb/datom 3 :tx/time 200 536870913 true)
+                        (ddb/datom 3 :tx/amount 50 536870913 true)
+                        (ddb/datom 3 :tx/time 200 536870913 true)
 
-                      (ddb/datom 4 :tx/amount 70 536870913 true)
-                      (ddb/datom 4 :tx/time 100 536870913 true)
+                        (ddb/datom 4 :tx/amount 70 536870913 true)
+                        (ddb/datom 4 :tx/time 100 536870913 true)
 
-                      (ddb/datom 5 :tx/amount 90 536870913 true)
-                      (ddb/datom 5 :tx/time 100 536870913 true)])])]
-    ))
+                        (ddb/datom 5 :tx/amount 90 536870913 true)
+                        (ddb/datom 5 :tx/time 100 536870913 true)])])]
+      ))
 
 (defn window-by-time-test []
   (into []

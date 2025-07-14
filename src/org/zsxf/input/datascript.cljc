@@ -1,5 +1,6 @@
 (ns org.zsxf.input.datascript
-  (:require [org.zsxf.query :as q]
+  (:require [org.zsxf.datalog.compiler :as dcc]
+            [org.zsxf.query :as q]
             [org.zsxf.datom :as d2]
             [datascript.core :as d]
             [org.zsxf.util :as util]
@@ -54,7 +55,7 @@
 (comment
   ;WIP parameterized query example
   (let [query-all (q/create-query
-                    (static-compile
+                    (dcc/static-compile
                       '[:find ?d
                         :where
                         [?e :cell/data ?d]

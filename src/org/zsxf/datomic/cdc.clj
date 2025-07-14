@@ -27,14 +27,14 @@
      cdc-state - atom that holds CDC state
      conn - Datomic connection
      output-rf - A reducing function that processes the transformed transactions
-     ->xf - Function that takes an idents map and returns a transducer for transforming transactions
+     xform - Function that takes an idents map and returns a transducer for transforming transactions
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([cdc-state conn output-rf ->xf]
+  ([cdc-state conn output-rf xform]
    ; Call with no start or end, which means process all transactions
-   (log->output cdc-state conn output-rf ->xf nil nil))
-  ([cdc-state conn output-rf ->xf start end]
+   (log->output cdc-state conn output-rf xform nil nil))
+  ([cdc-state conn output-rf xform start end]
    (let [log          (dd/log conn)
          idents-m     (into {} (get-all-idents conn))
          transactions (dd/tx-range log start end)]
@@ -45,7 +45,7 @@
                 (swap! cdc-state assoc :last-t-processed (:t tx-m))
                 ;return tx-m unchanged
                 tx-m))
-         (->xf idents-m))
+         (xform idents-m))
        output-rf
        transactions))))
 
@@ -79,17 +79,17 @@
      id - Unique identifier for the loop
      conn - Datomic connection
      output-rf - Reducing function that processes transformed transactions
-     ->xf - Function that takes an idents map and returns a transducer for transforming transactions
+     xform - Function that takes an idents map and returns a transducer for transforming transactions
 
    Returns the go-loop process. Use stop-all-loops! to stop."
-  [id conn output-rf ->xf]
+  [id conn output-rf xform]
   (let [cdc-state          (atom {:last-t-processed nil})
         tx-report-queue-ch (on-transaction-loop! id conn)]
     (ss.loop/go-loop
       ^{:id [id :log->output]}
       [start nil
        end   nil]
-      (log->output cdc-state conn output-rf ->xf start end)
+      (log->output cdc-state conn output-rf xform start end)
       (let [timeout-ch       (a/timeout 5000)
             [last-t-on-report-queue _ch] (a/alts! [timeout-ch tx-report-queue-ch])
             _                (timbre/info "last-t-on-report-queue" last-t-on-report-queue)

@@ -23,7 +23,7 @@
       (map hash-set))
     data))
 
-(defn ->zsxf-xf
+(defn zsxf-xform
   "Transformation specific to ZSXF"
   [idents-m]
   (map (fn [{:keys [data t id]}]
@@ -40,7 +40,7 @@
         ([] :todo)
         ([_accum datoms2]
          (q/input query datoms2))))
-    ->zsxf-xf))
+    zsxf-xform))
 
 (defn sample-conn []
   (dd/connect (dcdc/db-uri-sqlite "mbrainz")))
@@ -67,4 +67,4 @@
 
   (time
     (let [conn (sample-conn)]
-      (dcdc/log->output (atom {}) conn (xforms/count conj) ->zsxf-xf))))
+      (dcdc/log->output (atom {}) conn (xforms/count conj) zsxf-xform))))

@@ -26,14 +26,13 @@
 (defn ->zsxf-xf
   "Transformation specific to ZSXF"
   [idents-m]
-  (comp
-    (map (fn [{:keys [data t id]}]
-           (tx-data->datomic-datoms2->zsets idents-m data)))))
+  (map (fn [{:keys [data t id]}]
+         (tx-data->datomic-datoms2->zsets idents-m data))))
 
 (defn init-query-with-conn
   "Initial naive implementation. Read all transactions datoms."
   [query conn]
-  (dcdc/log->output-loop!
+  (dcdc/log->output!
     (q/get-id query)
     conn
     (completing
@@ -59,6 +58,10 @@
     (init-query-with-conn query (sample-conn))))
 
 (comment
+
+  (sample-conn)
+
+  (dd/t->tx (dd/basis-t (dd/db (sample-conn))))
 
   (q/get-result query)
 

@@ -54,23 +54,35 @@
   "Function to reactively sync after a transaction"
   [id conn]
   (let [tx-report-queue-ch (a/chan (a/sliding-buffer 1))
-        tx-queue (dd/tx-report-queue conn)]
+        tx-queue           (dd/tx-report-queue conn)]
     ;TODO WIP, not implemented
     #_(ss.loop/go-loop
-      ^{:id [id :react-on-transaction]}
-      []
-      (let [t          (a/<! (a/thread (let [tx (.take tx-queue)]
-                                         (try
-                                           (when (:tx-data tx) (dd/basis-t (:db-after tx)))
-                                           (catch Exception e (timbre/error e "on-transaction error"))))))
-            put-return (a/put! tx-report-queue-ch t)]
-        (timbre/info "put-return" put-return)
-        (timbre/info "reacting on new t:" t)
-        (recur)))
+        ^{:id [id :react-on-transaction]}
+        []
+        (let [t          (a/<! (a/thread (let [tx (.take tx-queue)]
+                                           (try
+                                             (when (:tx-data tx) (dd/basis-t (:db-after tx)))
+                                             (catch Exception e (timbre/error e "on-transaction error"))))))
+              put-return (a/put! tx-report-queue-ch t)]
+          (timbre/info "put-return" put-return)
+          (timbre/info "reacting on new t:" t)
+          (recur)))
     ;return channel
     tx-report-queue-ch))
 
-(defn log->output-loop!
+(defn log->output!
+  "Starts a loop that continuously processes Datomic transaction logs.
+
+   Creates a go-loop that processes transactions, waits for new ones (or timeout),
+   and updates the processing window based on completed transactions.
+
+   Args:
+     id - Unique identifier for the loop
+     conn - Datomic connection
+     output-rf - Reducing function that processes transformed transactions
+     ->xf - Function that takes an idents map and returns a transducer for transforming transactions
+
+   Returns the go-loop process. Use stop-all-loops! to stop."
   [id conn output-rf ->xf]
   (let [cdc-state          (atom {:last-t-processed nil})
         tx-report-queue-ch (on-transaction-loop! id conn)]

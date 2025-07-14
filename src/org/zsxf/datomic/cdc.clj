@@ -39,8 +39,10 @@
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([cdc-state conn output-rf] (log->output cdc-state conn output-rf (fn [_idents-m] (map identity)) nil nil))
-  ([cdc-state conn output-rf ->xf] (log->output cdc-state conn output-rf ->xf nil nil))
+  ([cdc-state conn output-rf]
+   (log->output cdc-state conn output-rf (fn [_idents-m] (map identity)) nil nil))
+  ([cdc-state conn output-rf ->xf]
+   (log->output cdc-state conn output-rf ->xf nil nil))
   ([cdc-state conn output-rf ->xf start end]
    (let [log          (dd/log conn)
          idents-m     (into {} (get-all-idents conn))
@@ -56,7 +58,9 @@
        output-rf
        transactions))))
 
-(defn start-react-on-transaction-loop!
+#_(defn start-react-on-transaction-loop!
+  ;TODO WIP
+  "Function to reactively sync after a transaction"
   [id conn tx-report-queue-ch]
   ;TODO WIP restarting loops
   (let [tx-queue (dd/tx-report-queue conn)]
@@ -76,10 +80,8 @@
   [id conn output-rf ->xf]
   (let [cdc-state          (atom {:last-t-processed nil})
         tx-report-queue-ch (a/chan (a/sliding-buffer 1))]
-
-    ;WIP
+    ;TODO reactively sync after a transaction
     ;(start-react-on-transaction-loop! id conn tx-report-queue-ch)
-
     (ss.loop/go-loop
       ^{:id [id :log->output]}
       [start nil
@@ -99,9 +101,6 @@
   (ss.loop/stop [id :react-on-transaction]))
 
 (comment
-
-  (let [conn (dd/connect (db-uri-sqlite "mbrainz"))]
-    (start-react-on-transaction-loop! conn))
 
 
   (dd/create-database (db-uri-sqlite "zsxf"))

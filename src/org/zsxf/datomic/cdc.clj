@@ -21,14 +21,6 @@
       [?e :db/ident ?attr]]
     (dd/db conn)))
 
-(defn ->reduce-to-chan [ch]
-  (fn
-    ([] ch)
-    ([accum-ch] accum-ch)
-    ([accum-ch item]
-     (a/>!! accum-ch item)
-     accum-ch)))
-
 (defn log->output
   "Retrieves transactions from the Datomic log and processes them via a transducer.
    Args:

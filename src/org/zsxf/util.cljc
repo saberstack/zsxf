@@ -1,5 +1,6 @@
 (ns org.zsxf.util
-  (:require [datascript.core :as d]
+  (:require [clojure.core.async :as a]
+            [datascript.core :as d]
             [taoensso.timbre :as timbre]
             #?(:clj [clojure.edn :as edn])
             #?(:clj [clojure.java.io :as io])
@@ -271,6 +272,15 @@
           (transient {}))
         m))
     (meta m)))
+
+#?(:clj
+   (defn ->reduce-to-chan [ch]
+     (fn
+       ([] ch)
+       ([accum-ch] accum-ch)
+       ([accum-ch item]
+        (a/>!! accum-ch item)
+        accum-ch))))
 
 (defn inheritance-tree [klass]
   (let [f (fn f [c]

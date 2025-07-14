@@ -31,10 +31,10 @@
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([cdc-state conn output-rf xform]
+  ([cdc-state conn xform output-rf]
    ; Call with no start or end, which means process all transactions
-   (log->output cdc-state conn output-rf xform nil nil))
-  ([cdc-state conn output-rf xform start end]
+   (log->output cdc-state conn xform output-rf nil nil))
+  ([cdc-state conn xform output-rf start end]
    (let [log          (dd/log conn)
          idents-m     (into {} (get-all-idents conn))
          transactions (dd/tx-range log start end)]
@@ -47,6 +47,8 @@
                 tx-m))
          (xform idents-m))
        output-rf
+       ;for side effects, no init
+       nil
        transactions))))
 
 (defn on-transaction-loop!
@@ -82,14 +84,14 @@
      xform - Function that takes an idents map and returns a transducer for transforming transactions
 
    Returns the go-loop process. Use stop-all-loops! to stop."
-  [id conn output-rf xform]
+  [id conn xform output-rf]
   (let [cdc-state          (atom {:last-t-processed nil})
         tx-report-queue-ch (on-transaction-loop! id conn)]
     (ss.loop/go-loop
       ^{:id [id :log->output]}
       [start nil
        end   nil]
-      (log->output cdc-state conn output-rf xform start end)
+      (log->output cdc-state conn xform output-rf start end)
       (let [timeout-ch       (a/timeout 5000)
             [last-t-on-report-queue _ch] (a/alts! [timeout-ch tx-report-queue-ch])
             _                (timbre/info "last-t-on-report-queue" last-t-on-report-queue)

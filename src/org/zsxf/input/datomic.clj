@@ -18,16 +18,16 @@
       (map (fn [[_e a _v _t _tf :as datom]]
              (let [a' (get idents-m a)]
                (dd2/ddatom2 datom a'))))
-      (map (fn [ddatom2] ddatom2))
       (map ddatom2->zset-item)
       (map hash-set))
     data))
 
 (defn zsxf-xform
-  "Transformation specific to ZSXF"
+  "Transformation specific to ZSXF."
   [idents-m]
   (map (fn [{:keys [data t id]}]
-         (tx-data->datomic-datoms2->zsets idents-m data))))
+         {:zsets (tx-data->datomic-datoms2->zsets idents-m data)
+          :basis-t         t})))
 
 (defn init-query-with-conn
   "Initial naive implementation. Read all transactions datoms."
@@ -35,12 +35,12 @@
   (dcdc/start-log->output!
     (q/get-id query)
     conn
+    zsxf-xform
     (completing
+      ;accum is not used, this is a side-effecting reducing fn
       (fn
-        ([] :todo)
-        ([_accum datoms2]
-         (q/input query datoms2))))
-    zsxf-xform))
+        [_accum {:keys [zsets basis-t]}]
+        (q/input query zsets :basis-t basis-t)))))
 
 (defn sample-conn []
   (dd/connect (dcdc/db-uri-sqlite "mbrainz")))
@@ -67,4 +67,4 @@
 
   (time
     (let [conn (sample-conn)]
-      (dcdc/log->output (atom {}) conn (xforms/count conj) zsxf-xform))))
+      (dcdc/log->output (atom {}) conn zsxf-xform (xforms/count conj)))))

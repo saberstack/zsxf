@@ -2,7 +2,8 @@
   (:require [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
-            [org.zsxf.query :as-alias q]))
+            [org.zsxf.query :as-alias q]
+            [taoensso.timbre :as timbre]))
 
 (defn create-query
   "Create a query with init-xf.
@@ -52,9 +53,15 @@
     - ::q/xf: Transducer that processes zsets
   - zsets: Input zsets to be processed by the query
 
+  - Optional::
+  - :basis-t: basis-t of the transaction from the original source (used for history tracking, if enabled)
+
   Returns the full post-transaction query result.
   The result can be a set or a map (in the case of aggregations)."
-  [{::q/keys [state result-history xf keep-history?] :as _query} zsets]
+  [{::q/keys [state result-history xf keep-history?] :as _query} zsets
+   & {:keys [basis-t]}]
+
+  (timbre/info "basis-t:" basis-t)
   (transduce
     xf
     (fn

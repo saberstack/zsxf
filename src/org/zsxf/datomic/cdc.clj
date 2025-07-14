@@ -58,13 +58,13 @@
        output-rf
        transactions))))
 
-#_(defn start-react-on-transaction-loop!
-  ;TODO WIP
+(defn on-πtransaction-loop!
   "Function to reactively sync after a transaction"
-  [id conn tx-report-queue-ch]
-  ;TODO WIP restarting loops
-  (let [tx-queue (dd/tx-report-queue conn)]
-    (ss.loop/go-loop
+  [id conn]
+  (let [tx-report-queue-ch (a/chan (a/sliding-buffer 1))
+        tx-queue (dd/tx-report-queue conn)]
+    ;TODO WIP, not implemented
+    #_(ss.loop/go-loop
       ^{:id [id :react-on-transaction]}
       []
       (let [t          (a/<! (a/thread (let [tx (.take tx-queue)]
@@ -74,14 +74,14 @@
             put-return (a/put! tx-report-queue-ch t)]
         (timbre/info "put-return" put-return)
         (timbre/info "reacting on new t:" t)
-        (recur)))))
+        (recur)))
+    ;return channel
+    tx-report-queue-ch))
 
 (defn log->output-loop!
   [id conn output-rf ->xf]
   (let [cdc-state          (atom {:last-t-processed nil})
-        tx-report-queue-ch (a/chan (a/sliding-buffer 1))]
-    ;TODO reactively sync after a transaction
-    ;(start-react-on-transaction-loop! id conn tx-report-queue-ch)
+        tx-report-queue-ch (on-transaction-loop! id conn)]
     (ss.loop/go-loop
       ^{:id [id :log->output]}
       [start nil

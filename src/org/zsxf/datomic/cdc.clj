@@ -58,7 +58,7 @@
        output-rf
        transactions))))
 
-(defn on-πtransaction-loop!
+(defn on-transaction-loop!
   "Function to reactively sync after a transaction"
   [id conn]
   (let [tx-report-queue-ch (a/chan (a/sliding-buffer 1))

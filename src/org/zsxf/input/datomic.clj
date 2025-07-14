@@ -32,7 +32,7 @@
 (defn init-query-with-conn
   "Initial naive implementation. Read all transactions datoms."
   [query conn]
-  (dcdc/log->output!
+  (dcdc/start-log->output!
     (q/get-id query)
     conn
     (completing

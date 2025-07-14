@@ -70,7 +70,7 @@
     ;return channel
     tx-report-queue-ch))
 
-(defn log->output!
+(defn start-log->output!
   "Starts a loop that continuously processes Datomic transaction logs.
 
    Creates a go-loop that processes transactions, waits for new ones (or timeout),

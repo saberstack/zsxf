@@ -42,7 +42,11 @@
         [_accum {:keys [zsets basis-t]}]
         (q/input query zsets :basis-t basis-t)))))
 
-(defn sample-conn []
+
+;; Tests, WIP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn mbrainz-conn []
   (dd/connect (dcdc/db-uri-sqlite "mbrainz")))
 
 (defn poc-query []
@@ -55,16 +59,42 @@
                     [?a :artist/name ?artist-name]]))]
     (def query query)
     ;init
-    (init-query-with-conn query (sample-conn))))
+    (init-query-with-conn query (mbrainz-conn))))
+
+(defn test-query-as-of [basis-t]
+  (let [conn (mbrainz-conn)
+        all-basis-t (dcdc/all-basis-t conn)]
+    (dd/q
+      '[:find ?artist-name
+        :where
+        [?c :country/name-alpha-2 "BG"]
+        [?a :artist/country ?c]
+        [?a :artist/name ?artist-name]]
+      (dd/as-of (dd/db conn) basis-t))))
+
+(defn test-query-history [conn query]
+  (transduce
+    (map (fn [basis-t]
+           (= (test-query-as-of basis-t) (q/get-result-as-of query basis-t))))
+    conj
+    (dcdc/all-basis-t conn)))
 
 (comment
 
-  (sample-conn)
+  (def conn (mbrainz-conn))
 
-  (dd/t->tx (dd/basis-t (dd/db (sample-conn))))
+  (first (dcdc/all-basis-t conn))
+
+  (= (test-query-as-of 992712) (q/get-result-as-of query 992712))
+
+  (test-query-history conn query)
+
+  (= (test-query-as-of 1000) (q/get-result-as-of query 1000))
+
+  (dd/t->tx (dd/basis-t (dd/db (mbrainz-conn))))
 
   (q/get-result query)
 
   (time
-    (let [conn (sample-conn)]
+    (let [conn (mbrainz-conn)]
       (dcdc/log->output (atom {}) conn zsxf-xform (xforms/count conj)))))

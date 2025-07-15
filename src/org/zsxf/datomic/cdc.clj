@@ -21,6 +21,16 @@
       [?e :db/ident ?attr]]
     (dd/db conn)))
 
+(defn all-basis-t
+  "Returns all basis-t values in the database.
+  Depending on the total number of transactions,
+  this might return a very large vector."
+  [conn]
+  (transduce
+    (map (fn [tx-m] (:t tx-m)))
+    conj
+    (dd/tx-range (dd/log conn) nil nil)))
+
 (defn log->output
   "Retrieves transactions from the Datomic log and processes them via a transducer.
    Args:
@@ -35,9 +45,8 @@
    ; Call with no start or end, which means process all transactions
    (log->output cdc-state conn xform output-rf nil nil))
   ([cdc-state conn xform output-rf start end]
-   (let [log          (dd/log conn)
-         idents-m     (into {} (get-all-idents conn))
-         transactions (dd/tx-range log start end)]
+   (let [idents-m     (into {} (get-all-idents conn))
+         transactions (dd/tx-range (dd/log conn) start end)]
      (transduce
        (comp
          (map (fn [tx-m]

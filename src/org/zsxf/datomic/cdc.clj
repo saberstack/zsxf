@@ -9,8 +9,8 @@
 (defn conn? [x]
   (instance? Connection x))
 
-(defn db-uri-sqlite
-  ([db-name] (db-uri-sqlite db-name "./datomic/storage/sqlite.db"))
+(defn uri-sqlite
+  ([db-name] (uri-sqlite db-name "./datomic/storage/sqlite.db"))
   ([db-name path]
    (str "datomic:sql://" db-name "?jdbc:sqlite:" path)))
 
@@ -117,34 +117,34 @@
 (comment
 
 
-  (dd/create-database (db-uri-sqlite "zsxf"))
+  (dd/create-database (uri-sqlite "zsxf"))
 
-  (dd/get-database-names (db-uri-sqlite "*"))
+  (dd/get-database-names (uri-sqlite "*"))
 
-  (dd/connect (db-uri-sqlite "zsxf"))
+  (dd/connect (uri-sqlite "zsxf"))
 
-  (def conn (dd/connect (db-uri-sqlite "zsxf")))
+  (def conn (dd/connect (uri-sqlite "zsxf")))
 
 
-  (get-all-idents (dd/connect (db-uri-sqlite "mbrainz")))
+  (get-all-idents (dd/connect (uri-sqlite "mbrainz")))
 
   ;return all datoms in the db (including internal setup datoms)
   (into []
-    (dd/seek-datoms (dd/db (dd/connect (db-uri-sqlite "zsxf"))) :eavt))
+    (dd/seek-datoms (dd/db (dd/connect (uri-sqlite "zsxf"))) :eavt))
 
-  (let [conn (dd/connect (db-uri-sqlite "zsxf"))]
+  (let [conn (dd/connect (uri-sqlite "zsxf"))]
     (dd/transact conn [{:db/ident       :movie/title
                         :db/valueType   :db.type/string
                         :db/cardinality :db.cardinality/one
                         :db/doc         "The title of the movie"}]))
 
-  (let [conn (dd/connect (db-uri-sqlite "zsxf"))]
+  (let [conn (dd/connect (uri-sqlite "zsxf"))]
     (dd/t))
 
-  (let [conn (dd/connect (db-uri-sqlite "zsxf"))]
+  (let [conn (dd/connect (uri-sqlite "zsxf"))]
     (dd/q
       '[:find ?e ?v
         :where [?e :movie/title ?v]]
       (dd/db conn)))
 
-  (dd/delete-database (db-uri-sqlite "zsxf")))
+  (dd/delete-database (uri-sqlite "zsxf")))

@@ -2,15 +2,18 @@
   (:require [clojure.test :refer [deftest is testing]]
             [datomic.api :as dd]
             [org.zsxf.datomic.cdc :as dcdc]
+            [org.zsxf.setup.datomic :as setup-datomic]
             [taoensso.timbre :as timbre]))
 
 (defn conn! [db-name]
   (try
-    (let [^String db-uri (dcdc/db-uri-sqlite db-name "/tmp/storage/sqlite.db")
-          _              (timbre/info db-uri)
+    (let [sqlite-path "/tmp/storage/sqlite.db"
+          ;_           (setup-datomic/create-sqlite-db sqlite-path)
+          uri         (dcdc/uri-sqlite db-name sqlite-path)
+          _           (timbre/info uri)
           ;_              (dd/delete-database db-uri)
-          ;ret            (timbre/spy (dd/create-database db-uri))
-          conn           (dd/connect db-uri)
+          ;ret         (timbre/spy (dd/create-database uri))
+          conn        (dd/connect uri)
           ]
       conn)
     (catch Throwable e e)))

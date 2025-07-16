@@ -47,7 +47,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn mbrainz-conn []
-  (dd/connect (dcdc/db-uri-sqlite "mbrainz")))
+  (dd/connect (dcdc/uri-sqlite "mbrainz")))
 
 (defn poc-query []
   (let [query (q/create-query

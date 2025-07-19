@@ -11,3 +11,8 @@
 
 ; - create sqlite db
 ; - create transactor.properties config with sqlite path
+
+;TODO playground
+;
+; - One Datomic installation with pre-loaded datasets
+; - On-demand: Datomic Peers + ZSXF

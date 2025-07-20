@@ -15,4 +15,6 @@
 ;TODO playground
 ;
 ; - One Datomic installation with pre-loaded datasets
+;  - Select datasets to use
 ; - On-demand: Datomic Peers + ZSXF
+; - REPL interface, accessed from the web; any existing libs?

@@ -27,6 +27,7 @@
                           criterium/criterium                       {:mvn/version "0.4.6"}
                           com.cnuernber/charred                     {:mvn/version "1.036"}
                           hato/hato                                 {:mvn/version "1.0.0"}
+                          org.babashka/http-client                  {:mvn/version "0.4.22"}
                           com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}
                           com.clojure-goes-fast/clj-java-decompiler {:mvn/version "0.3.4"}
                           org.clojars.abhinav/snitch                {:mvn/version "0.1.15"}
@@ -106,7 +107,10 @@
            :jvm-heap-48gb
            {:jvm-opts ["-Xms48g" "-Xmx48g"]}
            :raspasov/local
-           {:jvm-opts [
+           {:extra-deps
+            {org.saberstack/clj-hackernews-api
+             {:local/root "/Users/raspasov/projects/saberstack/clj-hackernews-api"}}
+            :jvm-opts [
                        ;"-Dclojure.compiler.direct-linking=true"
                        ]}
            :socket-repl

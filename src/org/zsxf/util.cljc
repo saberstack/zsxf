@@ -2,8 +2,11 @@
   (:require [clojure.core.async :as a]
             [datascript.core :as d]
             [taoensso.timbre :as timbre]
+            #?(:clj [babashka.fs :as fs])
+            #?(:clj [charred.api :as charred])
             #?(:clj [clojure.edn :as edn])
             #?(:clj [clojure.java.io :as io])
+            #?(:clj [taoensso.nippy :as nippy])
             #?(:clj [taoensso.encore :as enc]))
   #?(:clj
      (:import (clojure.lang IObj)
@@ -281,6 +284,34 @@
        ([accum-ch item]
         (a/>!! accum-ch item)
         accum-ch))))
+
+#?(:clj
+   (defn available-processors []
+     (.. Runtime getRuntime availableProcessors)
+     8))
+
+#?(:clj
+   (defn pipeline-output
+     "Convenience wrapper for core.async/pipeline to set up a pipeline
+      useful for writing to disk, or other side effects.
+      Applies the main transducer xf to items from the returned input
+      channel, and the output-xf, which can be side-effecting, to the results.
+      Returns the input channel."
+     [output-xf xf]
+     (let [input-ch  (a/chan 1)
+           output-ch (a/chan 1 (comp output-xf (remove any?)))
+           xf'       (comp xf (remove
+                                (fn [x]
+                                  ;nil returned from core.async xforms throw Exception
+                                  ;because nil is not a valid channel value
+                                  (nil? (or x (timbre/info "dropping nil item"))))))]
+       (a/pipeline-blocking (available-processors) output-ch xf' input-ch)
+       (a/go
+         (time
+           (let [_ret (a/<! output-ch)]
+             (timbre/info "output-ch closed"))))
+       ;return input-ch
+       input-ch)))
 
 (defn inheritance-tree [klass]
   (let [f (fn f [c]

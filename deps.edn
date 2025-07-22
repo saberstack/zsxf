@@ -26,6 +26,7 @@
             :extra-deps  {org.clojure/core.async                    {:mvn/version "1.9.808-alpha1"}
                           criterium/criterium                       {:mvn/version "0.4.6"}
                           com.cnuernber/charred                     {:mvn/version "1.036"}
+                          com.techascent/tmducken                   {:mvn/version "0.10.1-01"}
                           hato/hato                                 {:mvn/version "1.0.0"}
                           org.babashka/http-client                  {:mvn/version "0.4.22"}
                           com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}

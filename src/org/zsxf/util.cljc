@@ -287,8 +287,7 @@
 
 #?(:clj
    (defn available-processors []
-     (.. Runtime getRuntime availableProcessors)
-     8))
+     (.. Runtime getRuntime availableProcessors)))
 
 #?(:clj
    (defn pipeline-output

@@ -42,7 +42,8 @@
 
 (comment
   (thaw-item-files (all-item-files))
-  (count @hn-items))
+  (count @hn-items)
+  )
 
 ;; End of section
 
@@ -181,7 +182,7 @@
     ;; Transact in chunks to avoid overwhelming the transactor.
     (transduce
       (comp
-        (hn-item-tx-data-xf nil 50)
+        (hn-item-tx-data-xf nil 100)
         (halt-when halt-now?))
       (completing
         (fn [conn chunk]
@@ -200,7 +201,8 @@
       '[:find (count ?e)
         :in $
         :where [?e :hn.item/id _]]
-      (dd/db conn)))
+      (dd/db conn))
+    )
   )
 
 (comment

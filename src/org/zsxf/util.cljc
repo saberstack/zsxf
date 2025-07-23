@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as a]
             [datascript.core :as d]
             [taoensso.timbre :as timbre]
+            [clojure.string :as str]
             #?(:clj [babashka.fs :as fs])
             #?(:clj [charred.api :as charred])
             #?(:clj [clojure.edn :as edn])
@@ -47,11 +48,11 @@
     (subvec v (max 0 (- cnt n)) cnt)))
 
 (defn system-time2 []
-  #?(:clj (. System (nanoTime))
+  #?(:clj  (. System (nanoTime))
      :cljs (system-time)))
 
 (defn system-time-ms [start end]
-  #?(:clj (/ (double (- end start)) 1000000.0)
+  #?(:clj  (/ (double (- end start)) 1000000.0)
      :cljs (.toFixed ^js/Object (- end start) 6)))
 
 (defmacro time-f
@@ -249,10 +250,10 @@
   "Like group-by, but also applies mapper to the elements before appending."
   [grouper mapper coll]
   (reduce
-   (fn [acc el]
-     (update acc (grouper el) (fnil conj []) (mapper el)))
-   {}
-   coll))
+    (fn [acc el]
+      (update acc (grouper el) (fnil conj []) (mapper el)))
+    {}
+    coll))
 
 (defn map-filter-vals
   "Same as clojure.core/update-vals, but with a predicate.
@@ -312,44 +313,10 @@
        ;return input-ch
        input-ch)))
 
-(defonce tmp-hn-items (atom []))
-
-(defn- id-to-sort-by [unix-path]
-  (parse-long
-    (peek
-      (clojure.string/split (str (fs/file-name unix-path)) #"\-"))))
-
-(defn all-item-files []
-  (sort-by id-to-sort-by
-    (eduction
-      (filter (fn [unix-path] (clojure.string/starts-with? unix-path "./hndl/items-")))
-      (fs/list-dir "./hndl"))))
-
-#?(:clj
-   (defn thaw-item-files [files]
-     (reset! tmp-hn-items [])
-     (System/gc)
-     (let [input-ch (pipeline-output
-                      ;write to atom, parquet, etc
-                      (map (fn [item] (swap! tmp-hn-items conj item)))
-                      ;parallel transform
-                      (comp
-                        (map (fn [unix-path] (str unix-path)))
-                        (mapcat (fn [file] (nippy/thaw-from-file file)))
-                        (map (fn [s] (charred/read-json s :key-fn keyword)))))]
-       ;["./hndl/items-44581001-44582000"]
-       (a/onto-chan!! input-ch files))))
-
-(comment
-  (thaw-item-files (all-item-files))
-
-  (count @tmp-hn-items))
-
-
 (defn inheritance-tree [klass]
   (let [f (fn f [c]
             (reduce (fn [m p] (assoc m p (f p))) {}
-                    (sort-by #(.getName %) (parents c))))]
+              (sort-by #(.getName %) (parents c))))]
     {klass (f klass)}))
 
 (comment

@@ -157,27 +157,39 @@
     ;(contains? item :parts)   (assoc :hn.item/parts (mapv (fn [id] [:hn.item/id id]) (:parts item)))
     (contains? item :descendants) (assoc :hn.item/descendants (:descendants item))))
 
-(defn hn-item-tx-data-xf [chunk-size]
+(defn hn-item-tx-data-xf [num-of-chunks chunk-size]
   (comp
     (map hn-item->tx-data)
     (partition-all chunk-size)
-    (take 1000)))
+    (take (or num-of-chunks Long/MAX_VALUE))))
 
 (comment
   (set! *print-namespace-maps* false)
   (into []
-    (hn-item-tx-data-xf 100)
+    (hn-item-tx-data-xf 1 100)
     @hn-items)
   )
 
+(defonce import-errors (atom []))
+(defonce halt-import? (atom false))
+(defn halt-now? [_] @halt-import?)
+
 (defn import-items-to-datomic! [conn]
   (let [items @hn-items]
+    (reset! halt-import? false)
+    (reset! import-errors [])
     ;; Transact in chunks to avoid overwhelming the transactor.
     (transduce
-      (hn-item-tx-data-xf 1000)
+      (comp
+        (hn-item-tx-data-xf nil 50)
+        (halt-when halt-now?))
       (completing
         (fn [conn chunk]
-          @(dd/transact conn chunk)
+          (try
+            @(dd/transact conn chunk)
+            (catch Exception e
+              (timbre/error "Error during transaction:" (.getMessage e))
+              (swap! import-errors conj {:chunk chunk :error (.getMessage e)})))
           conn))
       conn
       items)))
@@ -197,6 +209,11 @@
 
   (hn-conn)
 
-  (time
-    (import-items-to-datomic! (hn-conn)))
+  (future
+    (time
+      (import-items-to-datomic! (hn-conn))))
+
+  (count @import-errors)
+
+  ;(reset! halt-import? true)
   )

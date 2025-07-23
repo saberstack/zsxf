@@ -217,5 +217,7 @@
 
   (count @import-errors)
 
+  (dd/db-stats (dd/db (hn-conn)))
+
   ;(reset! halt-import? true)
   )

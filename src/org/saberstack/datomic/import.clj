@@ -142,21 +142,23 @@
 (defn- hn-item->tx-data
   "Transforms a HackerNews item map into a Datomic transaction map."
   [item]
-  (cond-> {:hn.item/id (:id item)}
-    (contains? item :deleted) (assoc :hn.item/deleted (:deleted item))
-    (contains? item :type) (assoc :hn.item/type (keyword (:type item)))
-    (contains? item :by) (assoc :hn.item/by (:by item))
-    (contains? item :time) (assoc :hn.item/time (java.util.Date. (* 1000 (:time item))))
-    (contains? item :text) (assoc :hn.item/text (:text item))
-    (contains? item :dead) (assoc :hn.item/dead (:dead item))
-    ;(contains? item :parent) (assoc :hn.item/parent [:hn.item/id (:parent item)])
-    ;(contains? item :poll)    (assoc :hn.item/poll [:hn.item/id (:poll item)])
-    ;(contains? item :kids)    (assoc :hn.item/kids (mapv (fn [id] [:hn.item/id id]) (:kids item)))
-    (contains? item :url) (assoc :hn.item/url (:url item))
-    (contains? item :score) (assoc :hn.item/score (:score item))
-    (contains? item :title) (assoc :hn.item/title (:title item))
-    ;(contains? item :parts)   (assoc :hn.item/parts (mapv (fn [id] [:hn.item/id id]) (:parts item)))
-    (contains? item :descendants) (assoc :hn.item/descendants (:descendants item))))
+  (if (:hn.item/id item)
+    item
+    (cond-> {:hn.item/id (:id item)}
+      (contains? item :deleted) (assoc :hn.item/deleted (boolean (:deleted item)))
+      (contains? item :type) (assoc :hn.item/type (keyword (:type item)))
+      (contains? item :by) (assoc :hn.item/by (:by item))
+      (contains? item :time) (assoc :hn.item/time (java.util.Date. (* 1000 (:time item))))
+      (contains? item :text) (assoc :hn.item/text (:text item))
+      (contains? item :dead) (assoc :hn.item/dead (:dead item))
+      ;(contains? item :parent) (assoc :hn.item/parent [:hn.item/id (:parent item)])
+      ;(contains? item :poll)    (assoc :hn.item/poll [:hn.item/id (:poll item)])
+      ;(contains? item :kids)    (assoc :hn.item/kids (mapv (fn [id] [:hn.item/id id]) (:kids item)))
+      (contains? item :url) (assoc :hn.item/url (:url item))
+      (contains? item :score) (assoc :hn.item/score (:score item))
+      (contains? item :title) (assoc :hn.item/title (:title item))
+      ;(contains? item :parts)   (assoc :hn.item/parts (mapv (fn [id] [:hn.item/id id]) (:parts item)))
+      (contains? item :descendants) (assoc :hn.item/descendants (:descendants item)))))
 
 (defn hn-item-tx-data-xf [num-of-chunks chunk-size]
   (comp
@@ -175,25 +177,42 @@
 (defonce halt-import? (atom false))
 (defn halt-now? [_] @halt-import?)
 
-(defn import-items-to-datomic! [conn]
-  (let [items @hn-items]
-    (reset! halt-import? false)
-    (reset! import-errors [])
-    ;; Transact in chunks to avoid overwhelming the transactor.
-    (transduce
-      (comp
-        (hn-item-tx-data-xf nil 100)
-        (halt-when halt-now?))
-      (completing
-        (fn [conn chunk]
-          (try
-            @(dd/transact conn chunk)
-            (catch Exception e
-              (timbre/error "Error during transaction:" (.getMessage e))
-              (swap! import-errors conj {:chunk chunk :error (.getMessage e)})))
-          conn))
-      conn
-      items)))
+(defn import-items-to-datomic! [conn items]
+  (reset! halt-import? false)
+  (reset! import-errors [])
+  ;; Transact in chunks to avoid overwhelming the transactor.
+  (transduce
+    (comp
+      (hn-item-tx-data-xf nil 100)
+      (halt-when halt-now?))
+    (completing
+      (fn [conn chunk]
+        (try
+          @(dd/transact conn chunk)
+          (catch Exception e
+            (timbre/error "Error during transaction:" (.getMessage e))
+            (swap! import-errors conj {:chunk chunk :error (.getMessage e)})))
+        conn))
+    conn
+    items))
+
+(defonce re-import (atom []))
+
+(defn item-patch-deleted [m]
+  (update m :hn.item/deleted boolean))
+
+(defn errors->items [errors]
+  (into []
+    (comp
+      (mapcat :chunk)
+      (map item-patch-deleted))
+    errors))
+
+(comment
+  (reset! re-import (errors->items @import-errors))
+  (count @re-import)
+  (import-items-to-datomic! (hn-conn) @re-import)
+  )
 
 (defn count-number-of-comments []
   (let [conn (hn-conn)]
@@ -213,7 +232,7 @@
 
   (future
     (time
-      (import-items-to-datomic! (hn-conn))))
+      (import-items-to-datomic! (hn-conn) @hn-items)))
 
   (count @import-errors)
 

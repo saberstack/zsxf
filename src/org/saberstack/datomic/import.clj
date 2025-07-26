@@ -8,6 +8,7 @@
             [org.zsxf.util :as util]
             [taoensso.nippy :as nippy]
             [taoensso.timbre :as timbre]))
+(declare hn-item->tx-data)
 
 (defonce hn-items (atom []))
 
@@ -28,7 +29,8 @@
   (comp
     (map (fn [unix-path] (str unix-path)))
     (mapcat (fn [file] (nippy/thaw-from-file file)))
-    (map (fn [s] (charred/read-json s :key-fn keyword)))))
+    (map (fn [s] (charred/read-json s :key-fn keyword)))
+    (map (fn [m] (hn-item->tx-data m)))))
 
 (defn thaw-item-files [files]
   (reset! hn-items [])
@@ -41,7 +43,7 @@
     (a/onto-chan!! input-ch files)))
 
 (comment
-  (thaw-item-files (all-item-files))
+  (thaw-item-files (take 1 (all-item-files)))
   (count @hn-items)
   )
 
@@ -141,24 +143,24 @@
 
 (defn- hn-item->tx-data
   "Transforms a HackerNews item map into a Datomic transaction map."
-  [item]
-  (if (:hn.item/id item)
-    item
-    (cond-> {:hn.item/id (:id item)}
-      (contains? item :deleted) (assoc :hn.item/deleted (boolean (:deleted item)))
-      (contains? item :type) (assoc :hn.item/type (keyword (:type item)))
-      (contains? item :by) (assoc :hn.item/by (:by item))
-      (contains? item :time) (assoc :hn.item/time (java.util.Date. (* 1000 (:time item))))
-      (contains? item :text) (assoc :hn.item/text (:text item))
-      (contains? item :dead) (assoc :hn.item/dead (:dead item))
-      ;(contains? item :parent) (assoc :hn.item/parent [:hn.item/id (:parent item)])
-      ;(contains? item :poll)    (assoc :hn.item/poll [:hn.item/id (:poll item)])
-      ;(contains? item :kids)    (assoc :hn.item/kids (mapv (fn [id] [:hn.item/id id]) (:kids item)))
-      (contains? item :url) (assoc :hn.item/url (:url item))
-      (contains? item :score) (assoc :hn.item/score (:score item))
-      (contains? item :title) (assoc :hn.item/title (:title item))
-      ;(contains? item :parts)   (assoc :hn.item/parts (mapv (fn [id] [:hn.item/id id]) (:parts item)))
-      (contains? item :descendants) (assoc :hn.item/descendants (:descendants item)))))
+  [m]
+  (if (:hn.item/id m)
+    m
+    (cond-> {:hn.item/id (:id m)}
+      (contains? m :deleted) (assoc :hn.item/deleted (boolean (:deleted m)))
+      (contains? m :type) (assoc :hn.item/type (keyword (:type m)))
+      (contains? m :by) (assoc :hn.item/by (:by m))
+      (contains? m :time) (assoc :hn.item/time (java.util.Date. (* 1000 (:time m))))
+      (contains? m :text) (assoc :hn.item/text (:text m))
+      (contains? m :dead) (assoc :hn.item/dead (:dead m))
+      (contains? m :parent) (assoc :hn.item/parent [:hn.item/id (:parent m)])
+      (contains? m :poll) (assoc :hn.item/poll [:hn.item/id (:poll m)])
+      (contains? m :kids) (assoc :hn.item/kids (mapv (fn [id] [:hn.item/id id]) (:kids m)))
+      (contains? m :url) (assoc :hn.item/url (:url m))
+      (contains? m :score) (assoc :hn.item/score (:score m))
+      (contains? m :title) (assoc :hn.item/title (:title m))
+      (contains? m :parts) (assoc :hn.item/parts (mapv (fn [id] [:hn.item/id id]) (:parts m)))
+      (contains? m :descendants) (assoc :hn.item/descendants (:descendants m)))))
 
 (defn hn-item-tx-data-xf [num-of-chunks chunk-size]
   (comp
@@ -220,9 +222,39 @@
       '[:find (count ?e)
         :in $
         :where [?e :hn.item/id _]]
-      (dd/db conn))
-    )
-  )
+      (dd/db conn))))
+
+(defn query-unicorn []
+  (time
+    (let [conn (hn-conn)]
+      (dd/q
+        '[:find ?e
+          :in $
+          :where
+          [?e :hn.item/title ?text]
+          [(clojure.string/lower-case ?text) ?text-lower-case]
+          [(clojure.string/includes? ?text-lower-case "unicorn")]]
+        (dd/db conn)))))
+
+(defn query-unicorn-fulltext []
+  (time
+    (let [conn (hn-conn)]
+      (dd/q
+        '[:find ?e
+          :in $
+          :where
+          [(fulltext $ :hn.item/title "unicorn") [[?e ?a ?v]]]]
+        (dd/db conn)))))
+
+(defn get-item-by-id [id]
+  (let [conn (hn-conn)]
+    (dd/q
+      '[:find ?id ?v
+        :in $ ?id
+        :where
+        [?id :hn.item/title ?v]]
+      (dd/db conn)
+      id)))
 
 (comment
 

@@ -29,9 +29,8 @@
   this might return a very large vector."
   ([conn] (all-basis-t conn nil nil))
   ([conn start end]
-   (transduce
+   (eduction
      (map (fn [tx-m] (:t tx-m)))
-     conj
      (dd/tx-range (dd/log conn) start end))))
 
 (defn log->output

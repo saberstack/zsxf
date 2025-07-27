@@ -309,8 +309,12 @@
                     [_ :hn.item/by ?username]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! *query query)
-    #_(q/get-result query)
     :pending))
+
+(comment
+
+  (mm/measure @*query)
+  (count (q/get-result @*query)))
 
 (comment
 

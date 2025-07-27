@@ -2,8 +2,10 @@
   (:require
    [datomic.api :as dd]
    [ss.loop]
+   [org.zsxf.query :as-alias q]
    [clojure.core.async :as a]
-   [taoensso.timbre :as timbre])
+   [taoensso.timbre :as timbre]
+   [org.zsxf.datomic.cdc :as-alias dcdc])
   (:import (datomic Connection)))
 
 (defn conn? [x]
@@ -25,33 +27,34 @@
   "Returns all basis-t values in the database.
   Depending on the total number of transactions,
   this might return a very large vector."
-  [conn]
-  (transduce
-    (map (fn [tx-m] (:t tx-m)))
-    conj
-    (dd/tx-range (dd/log conn) nil nil)))
+  ([conn] (all-basis-t conn nil nil))
+  ([conn start end]
+   (transduce
+     (map (fn [tx-m] (:t tx-m)))
+     conj
+     (dd/tx-range (dd/log conn) start end))))
 
 (defn log->output
   "Retrieves transactions from the Datomic log and processes them via a transducer.
    Args:
-     cdc-state - atom that holds CDC state
+     state - atom that holds the query state
      conn - Datomic connection
      output-rf - A reducing function that processes the transformed transactions
      xform - Function that takes an idents map and returns a transducer for transforming transactions
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([cdc-state conn xform output-rf]
+  ([query-state conn xform output-rf]
    ; Call with no start or end, which means process all transactions
-   (log->output cdc-state conn xform output-rf nil nil))
-  ([cdc-state conn xform output-rf start end]
+   (log->output query-state conn xform output-rf nil nil))
+  ([query-state conn xform output-rf start end]
    (let [idents-m     (into {} (get-all-idents conn))
          transactions (dd/tx-range (dd/log conn) start end)]
      (transduce
        (comp
          (map (fn [tx-m]
                 ; Store the last seen transaction ID :t
-                (swap! cdc-state assoc :last-t-processed (:t tx-m))
+                (swap! query-state assoc ::dcdc/last-t-processed (:t tx-m))
                 ;return tx-m unchanged
                 tx-m))
          (xform idents-m))
@@ -92,19 +95,18 @@
      output-rf - Reducing function that processes transformed transactions
      xform - Function that takes an idents map and returns a transducer for transforming transactions
 
-   Returns the go-loop process. Use stop-all-loops! to stop."
-  [id conn xform output-rf]
-  (let [cdc-state          (atom {:last-t-processed nil})
-        tx-report-queue-ch (on-transaction-loop! id conn)]
+   Use stop-all-loops! to stop."
+  [{::q/keys [state id] :as _query} conn xform output-rf]
+  (let [tx-report-queue-ch (on-transaction-loop! id conn)]
     (ss.loop/go-loop
       ^{:id [id :log->output]}
       [start nil
-       end   nil]
-      (log->output cdc-state conn xform output-rf start end)
+       end nil]
+      (log->output state conn xform output-rf start end)
       (let [timeout-ch       (a/timeout 5000)
             [last-t-on-report-queue _ch] (a/alts! [timeout-ch tx-report-queue-ch])
             _                (timbre/info "last-t-on-report-queue" last-t-on-report-queue)
-            last-t-processed (get @cdc-state :last-t-processed)
+            last-t-processed (get @state ::dcdc/last-t-processed)
             next-start       (when (int? last-t-processed) (inc last-t-processed))
             next-end         (when (int? last-t-on-report-queue) (inc last-t-on-report-queue))]
         (timbre/info "log->output-loop! [next-start next-end]" [next-start next-end])

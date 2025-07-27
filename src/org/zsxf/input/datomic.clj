@@ -33,7 +33,7 @@
   "Initial naive implementation. Read all transactions datoms."
   [query conn]
   (dcdc/start-log->output!
-    (q/get-id query)
+    query
     conn
     zsxf-xform
     (completing

@@ -12,6 +12,8 @@
   (zs/zset-item ddatom2 (zs/bool->weight (nth ddatom2 4))))
 
 (defn tx-data->datomic-datoms2->zsets
+  ;TODO check if this fn can run after disj-irrelevant-items
+  ; which can speed up processing, especially initial load
   [idents-m data]
   (into []
     (comp

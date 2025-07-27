@@ -2,6 +2,7 @@
   (:require [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
+            [org.zsxf.datomic.cdc :as-alias dcdc]
             [org.zsxf.query :as-alias q]))
 
 (defn create-query
@@ -16,6 +17,10 @@
      ::q/result-history (atom {})
      ::q/id             (random-uuid)
      ::q/keep-history?  keep-history?}))
+
+(defn cdc-progress
+  [{::q/keys [state] :as _query}]
+  (::dcdc/last-t-processed @state))
 
 (defn init-result [result result-delta]
   (if (nil? result)

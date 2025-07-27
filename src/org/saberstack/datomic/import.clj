@@ -5,7 +5,10 @@
             [clojure.string :as str]
             [datomic.api :as dd]
             [org.zsxf.datomic.cdc :as datomic-cdc]
+            [org.zsxf.input.datomic :as idd]
+            [org.zsxf.query :as q]
             [org.zsxf.util :as util]
+            [org.zsxf.datalog.compiler :as dcc]
             [taoensso.nippy :as nippy]
             [taoensso.timbre :as timbre]))
 (declare hn-item->tx-data)
@@ -50,7 +53,35 @@
 ;; End of section
 
 (def datomic-schema
-  [{:db/ident       :hn.item/id
+  [{:db/ident       :hn.user/id
+    :db/valueType   :db.type/string
+    :db/cardinality :db.cardinality/one
+    :db/unique      :db.unique/identity
+    :db/doc         "The user's unique username. Case-sensitive. Required."}
+
+   {:db/ident       :hn.user/created
+    :db/valueType   :db.type/instant
+    :db/cardinality :db.cardinality/one
+    :db/doc         "Creation date of the user, in Unix Time."}
+
+   {:db/ident       :hn.user/karma
+    :db/valueType   :db.type/long
+    :db/cardinality :db.cardinality/one
+    :db/doc         "The user's karma."}
+
+   {:db/ident       :hn.user/about
+    :db/valueType   :db.type/string
+    :db/cardinality :db.cardinality/one
+    :db/doc         "The user's optional self-description. HTML."}
+
+   {:db/ident       :hn.user/submitted
+    :db/valueType   :db.type/ref
+    :db/cardinality :db.cardinality/many
+    :db/doc         "List of the user's stories, polls and comments."}
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   {:db/ident       :hn.item/id
     :db/valueType   :db.type/long
     :db/cardinality :db.cardinality/one
     :db/unique      :db.unique/identity
@@ -255,6 +286,31 @@
         [?id :hn.item/title ?v]]
       (dd/db conn)
       id)))
+
+(defn get-all-users []
+  (let [conn (hn-conn)]
+    (time
+      (count
+        (dd/q
+          '[:find ?username
+            :in $
+            :where
+            [_ :hn.item/by ?username]]
+          (dd/db conn))))))
+
+(defonce *query (atom nil))
+
+(defn get-all-users-via-zsxf []
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/static-compile
+                  '[:find ?username
+                    :where
+                    [_ :hn.item/by ?username]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! *query query)
+    #_(q/get-result query)
+    :pending))
 
 (comment
 

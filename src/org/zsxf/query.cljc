@@ -9,13 +9,13 @@
   init-xf is a function which takes a single argument,
   and must return a ZSXF-compatible transducer which takes and returns zsets
   Returns a map."
-  [init-xf]
+  [init-xf & {:keys [keep-history?] :or {keep-history? false}}]
   (let [state (atom nil)]
     {::q/xf             (init-xf state)
      ::q/state          state
      ::q/result-history (atom {})
      ::q/id             (random-uuid)
-     ::q/keep-history?  true}))
+     ::q/keep-history?  keep-history?}))
 
 (defn init-result [result result-delta]
   (if (nil? result)

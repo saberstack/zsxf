@@ -40,12 +40,12 @@
 (defn update-zset-item-weight
   [zset-item f]
   (let [f' (determine-weight-f zset-item f)]
-    (vary-meta zset-item (fn [meta-map] (update meta-map :zset/w f')))))
+    (vary-meta zset-item update :zset/w f')))
 
 (defn assoc-zset-item-weight
   [zset-item w]
   (let [w' (determine-weight zset-item w)]
-    (vary-meta zset-item (fn [meta-map] (assoc meta-map :zset/w w')))))
+    (vary-meta zset-item assoc :zset/w w')))
 
 (defn dissoc-meta-weight [meta-map]
   (dissoc meta-map :zset/w))
@@ -218,25 +218,20 @@
              (pv/pair-vector
                (item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
                (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
-             new-weight))
-         #_(pair-f
-             (zset-item
-               [(item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
-                (item-2-f (vary-meta item-2 dissoc-meta-weight))] ;remove weight
-               new-weight)))))))
+             new-weight)))))))
 
 (defn index-xf
   "Returns a group-by-style transducer.
   Groups input items based on the return value of kfn.
   Each group is gathered into-coll (typically a set)."
-  ([kfn]
-   (xforms/by-key
-     kfn
-     (fn [zset-item] zset-item)
-     (fn [k zset-of-grouped-items]
-       (if k {k (ois/optimize-one-item-set zset-of-grouped-items)} {}))
-     ;turn grouped items into a zset
-     (xforms/into #{}))))
+  [kfn]
+  (xforms/by-key
+    kfn
+    identity                                                ;this is (fn [zset-item] zset-item)
+    (fn [k zset-of-grouped-items]
+      (if k {k (ois/optimize-one-item-set zset-of-grouped-items)} {}))
+    ;turn grouped items into a zset
+    (xforms/into #{})))
 
 (defn index
   "Convert a zset into a map indexed by a key function"
@@ -244,8 +239,8 @@
       (index
         (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
         (fn [m] (first (:name m)))))
-  [zset kfn & {:keys [initial-map] :or {initial-map {}}}]
-  (into initial-map (index-xf kfn) zset))
+  [zset kfn]
+  (into {} (index-xf kfn) zset))
 
 (defn indexed-zset->zset
   "Convert an indexed zset back into a zset"
@@ -307,16 +302,20 @@
   Takes maps m1 and m2.
   Returns a set of common keys."
   [m1 m2]
-  ;determine size and switch map order (if needed) for improved efficiency
-  (if (< (count m1) (count m2))
-    (recur m2 m1)
-    (reduce
-      (fn [result item]
-        (if (contains? m1 item)
-          (conj result item)
-          result))
-      #{}
-      (keys m2))))
+  (if (= m1 m2)
+    ;if both maps are the same, return all keys
+    (set (keys m1))
+    ;else, compute intersection
+    ;determine size and switch map order (if needed) for improved efficiency
+    (if (< (count m1) (count m2))
+      (recur m2 m1)
+      (reduce
+        (fn [result item]
+          (if (contains? m1 item)
+            (conj result item)
+            result))
+        #{}
+        (keys m2)))))
 
 (defn intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)

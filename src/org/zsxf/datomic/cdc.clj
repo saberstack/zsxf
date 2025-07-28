@@ -28,9 +28,9 @@
   Depending on the total number of transactions,
   this might return a very large vector."
   ([conn] (all-basis-t conn nil nil))
-  ([conn start end]
+  ([conn start end & {:keys [xform] :or {xform (map (fn [tx-m] (:t tx-m)))}}]
    (eduction
-     (map (fn [tx-m] (:t tx-m)))
+     xform
      (dd/tx-range (dd/log conn) start end))))
 
 (defn log->output
@@ -97,7 +97,8 @@
    Use stop-all-loops! to stop."
   [{::q/keys [state id] :as _query} conn xform output-rf]
   (let [tx-report-queue-ch (on-transaction-loop! id conn)]
-    (ss.loop/go-loop
+    (swap! state assoc ::dcdc/timestamp-start (System/currentTimeMillis))
+    (ss.loop/thread-loop
       ^{:id [id :log->output]}
       [start nil
        end nil]

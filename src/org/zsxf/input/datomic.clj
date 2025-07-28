@@ -42,7 +42,7 @@
       ;accum is not used, this is a side-effecting reducing fn
       (fn
         [_accum {:keys [zsets basis-t]}]
-        (q/input query zsets :basis-t basis-t)))))
+        (q/input query zsets basis-t)))))
 
 
 ;; Tests, WIP
@@ -84,8 +84,6 @@
 (comment
 
   (def conn (mbrainz-conn))
-
-  (first (dcdc/all-basis-t conn))
 
   (= (test-query-as-of 992712) (q/get-result-as-of query 992712))
 

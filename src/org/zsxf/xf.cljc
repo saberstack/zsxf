@@ -21,6 +21,8 @@
   (:require [medley.core :as medley]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.type.datom-like :as dl]
+            [org.zsxf.type.one-item-set :as ois]
+            [org.zsxf.type.pair-vector :as pv]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
@@ -28,7 +30,8 @@
             #?(:clj [org.zsxf.type.datascript.datom2])      ;don't remove! type import fails
             [org.zsxf.util :as util])
   #?(:clj
-     (:import (org.zsxf.type.datascript.datom2 Datom2))))
+     (:import (org.zsxf.type.datascript.datom2 Datom2)
+              (org.zsxf.type.datom_like DatomLike))))
 
 (defn rf-branchable
   "Helper to adapt a reducing function to a branching transducer.
@@ -107,11 +110,11 @@
 (defn detect-join-type [zsi path-f clause]
   (cond
     (and
-      #?(:clj  (satisfies? dl/DatomLike zsi)
+      #?(:clj  (instance? DatomLike zsi)
          :cljs (util/datom-like? zsi))
       (nil? (:xf.clause (meta zsi)))) :datom
     (and
-      #?(:clj  (satisfies? dl/DatomLike zsi)
+      #?(:clj  (instance? DatomLike zsi)
          :cljs (util/datom-like? zsi))
       (not (nil? (:xf.clause (meta zsi))))) :datom-as-relation
     (rel/relation? zsi) :relation
@@ -123,7 +126,7 @@
 (defn can-join?
   [zset-item path-f clause]
   (let [jt             (detect-join-type zset-item path-f clause)
-        item-can-join? (condp = jt
+        item-can-join? (case jt
                          :datom true
                          :datom-as-relation (= clause (:xf.clause (meta (path-f zset-item))))
                          :relation (= clause (:xf.clause (meta (path-f zset-item)))))]
@@ -167,6 +170,8 @@
       (zs/intersect-indexed* index-state-1-prev delta-2 f1 f2 rel/index-clauses)
       ;ΔA ⋈ ΔB
       (zs/intersect-indexed* delta-1 delta-2 f1 f2 rel/index-clauses))))
+
+(defrecord params-join-xf-1 [index-state-1-prev index-state-2-prev delta-1 delta-2 zset])
 
 (defn join-xf
   "Receives:
@@ -212,27 +217,23 @@
     (timbre/info [clause-1 clause-2])
     (comp
       ;receives a zset, unpacks zset into individual items
-      (mapcat identity)
+      cat
       ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
       (map (fn [zsi]
              (let [delta-1 (if (and
                                  (can-join? zsi path-f-1 clause-1)
                                  (pred-1 (path-f-1 zsi)))
-                             (zs/index #{zsi} (comp index-kfn-1 path-f-1)
-                               ;{:initial-map (initial-map index-kfn-1)}
-                               )
+                             (zs/index (ois/one-item-set zsi) (comp index-kfn-1 path-f-1))
                              {})
                    delta-2 (if (and
                                  (can-join? zsi path-f-2 clause-2)
                                  (pred-2 (path-f-2 zsi)))
-                             (zs/index #{zsi} (comp index-kfn-2 path-f-2)
-                               ;{:initial-map (initial-map index-kfn-2)}
-                               )
+                             (zs/index (ois/one-item-set zsi) (comp index-kfn-2 path-f-2))
                              {})
                    ;If last?, we return an empty zset.
                    ; The current zset-item has been "offered" to all transducers and is not needed anymore.
                    ; (!) Returning it would "pollute" the query result with extra data.
-                   zset    (if last? #{} #{zsi})]
+                   zset    (if last? #{} (ois/one-item-set zsi))]
                ;return
                [delta-1 delta-2 zset])))
       (cond-branch
@@ -253,20 +254,28 @@
                          (update uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
                          (update uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
                    ;return
-                   [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]])))
-
-          (map (fn [[index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]]]
+                   (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
+          (map (fn [params]
                  ;return
-                 (vector
+                 (pv/pair-vector
                    ;add :where clauses as metadata to the joined relations (a zset)
                    (zs/indexed-zset->zset
-                     (join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] [clause-1-out' clause-2-out'])
+                     (let [f1 (with-clause-f clause-1)
+                           f2 (with-clause-f clause-2)]
+                       (zs/indexed-zset+
+                         ;ΔA ⋈ B
+                         (zs/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2 rel/index-clauses)
+                         ;A ⋈ ΔB
+                         (zs/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2 rel/index-clauses)
+                         ;ΔA ⋈ ΔB
+                         (zs/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2 rel/index-clauses)))
+                     ;(join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] [clause-1-out' clause-2-out'])
                      ;transducer to transform zset items during conversion indexed-zset -> zset
                      (comp return-zset-item-xf))
                    ;original zset-item wrapped in a zset
-                   zset)))
-
-          (mapcat (fn [[join-xf-delta zset]]
+                   (:zset params))))
+          cat
+          #_(mapcat (fn [[join-xf-delta zset]]
                     ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
                     [join-xf-delta zset])))))))
 
@@ -463,7 +472,8 @@
   "Receives a transaction represented by a vectors of zsets.
   Returns zsets one by one"
   []
-  (mapcat (fn [tx-v] tx-v)))
+  cat ;this is (mapcat (fn [tx-v] tx-v))
+  )
 
 (defn disj-irrelevant-items [zset & preds]
   (into

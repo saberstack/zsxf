@@ -3,7 +3,7 @@
            org.clojure/clojurescript  {:mvn/version "1.12.42"}
            org.clojure/core.async     {:mvn/version "1.9.808-alpha1"}
            saberstack/loop            {:git/url "https://github.com/saberstack/loop"
-                                       :git/sha "627adc4febad2c2105510416fe92003bacf58c4b"}
+                                       :git/sha "3285179c4e7e021ef3179936cdb1f08887c963ba"}
            net.cgrand/xforms          {:mvn/version "0.19.4"}
            datascript/datascript      {:git/url "https://github.com/saberstack/datascript"
                                        :git/sha "c6dd4ac6ec784d4720dd0a5ecabd055e2fda9c95"}

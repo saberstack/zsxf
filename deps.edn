@@ -115,7 +115,8 @@
            {:extra-deps
             {org.saberstack/clj-hackernews-api
              {:local/root "/Users/raspasov/projects/saberstack/clj-hackernews-api"}}
-            :jvm-opts ["-XX:MaxGCPauseMillis=2000"
+            :jvm-opts [
+                       ;"-XX:MaxGCPauseMillis=2000"
                        ;"-Dclojure.compiler.direct-linking=true"
                        ]}
            :socket-repl

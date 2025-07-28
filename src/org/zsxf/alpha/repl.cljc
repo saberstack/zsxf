@@ -91,4 +91,8 @@
                   (= '[?m :movie/cast ?actor] (first k))
                   ))
     :print-stats true)
+
+  (set! *print-meta* true)
+  (sample-indices @org.saberstack.datomic.import/*query
+    :n 50)
   )

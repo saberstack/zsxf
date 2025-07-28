@@ -19,8 +19,12 @@
      ::q/keep-history?  keep-history?}))
 
 (defn cdc-progress
-  [{::q/keys [state] :as _query}]
-  (::dcdc/last-t-processed @state))
+  [query]
+  (::dcdc/last-t-processed @(::q/state query)))
+
+(defn cdc-timestamp-start
+  [query]
+  (::dcdc/timestamp-start @(::q/state query)))
 
 (defn init-result [result result-delta]
   (if (nil? result)
@@ -101,29 +105,30 @@
 
   Returns the full post-transaction query result.
   The result can be a set or a map (in the case of aggregations)."
-  [{::q/keys [state result-history xf keep-history?] :as _query} zsets
-   & {:keys [basis-t]}]
-  (transduce
-    xf
-    (fn
-      ([] state)                                            ;init
-      ([state result-delta]                                 ;reduce step
-       ;query reducing fn; sums the existing result with query-computed deltas
-       ;new query state
-       (swap! state
-         (fn [{::q/keys [result] :as state-m}]
-           (let [[result+ result] (init-result result result-delta)]
-             (assoc state-m ::q/result
-               (result+ result result-delta))))))
-      ([state-m]                                            ;finalize
-       (let [query-result (::q/result state-m)]
-         ;side effects
-         (when (and (true? keep-history?) (int? basis-t))
-           (history-append! result-history basis-t query-result))
-         ;return
-         query-result
-         )))
-    [zsets]))
+  ([query zsets]
+   (input query zsets nil))
+  ([{::q/keys [state result-history xf keep-history?] :as _query} zsets basis-t]
+   (transduce
+     xf
+     (fn
+       ([] state)                                           ;init
+       ([state result-delta]                                ;reduce step
+        ;query reducing fn; sums the existing result with query-computed deltas
+        ;new query state
+        (swap! state
+          (fn [{::q/keys [result] :as state-m}]
+            (let [[result+ result] (init-result result result-delta)]
+              (assoc state-m ::q/result
+                (result+ result result-delta))))))
+       ([state-m]                                           ;finalize
+        (let [query-result (::q/result state-m)]
+          ;side effects
+          #_(when (and (true? keep-history?) (int? basis-t))
+            (history-append! result-history basis-t query-result))
+          ;return
+          query-result
+          )))
+     [zsets])))
 
 (defn get-aggregate-result
   [query]

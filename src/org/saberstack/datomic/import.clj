@@ -1,6 +1,7 @@
 (ns org.saberstack.datomic.import
   (:require [babashka.fs :as fs]
             [charred.api :as charred]
+            [clj-memory-meter.core :as mm]
             [clojure.core.async :as a]
             [clojure.string :as str]
             [datomic.api :as dd]
@@ -290,12 +291,14 @@
 (defn get-all-users []
   (let [conn (hn-conn)]
     (time
-      (count
+      (take 100
         (dd/q
-          '[:find ?username
+          '[:find ?url ?username
             :in $
             :where
-            [_ :hn.item/by ?username]]
+            [?e :hn.item/url ?url]
+            [?e :hn.item/by ?username]
+            ]
           (dd/db conn))))))
 
 (defonce *query (atom nil))
@@ -304,17 +307,31 @@
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/static-compile
-                  '[:find ?username
+                  '[:find ?url ?username
                     :where
-                    [_ :hn.item/by ?username]]))
+                    [?e :hn.item/url ?url]
+                    [?e :hn.item/by ?username]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! *query query)
     :pending))
 
+(defn import-progress [conn]
+  (let [end     (dd/basis-t (dd/db conn))
+        current (q/cdc-progress @*query)]
+    {:timestamp-start  (q/cdc-timestamp-start @*query)
+     :progress-percent (double (* 100 (/ current end)))
+     :basis            [current end]}))
+
 (comment
 
+  (get-all-users-via-zsxf)
+
+  ;progress in percentage
+  (import-progress (hn-conn))
+
   (mm/measure @*query)
-  (count (q/get-result @*query)))
+  (count (q/get-result @*query))
+  )
 
 (comment
 

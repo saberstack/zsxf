@@ -25,37 +25,37 @@
      (length [this] 2)
      (cons [this x] (conj (with-meta [a b] meta) x))
      (assocN [this idx v]
-       (cond
-         (zero? idx) (PairVector. v b meta)
-         (= 1 idx) (PairVector. a v meta)
-         :else (assoc (with-meta [a b] meta) idx v)))
+       (case idx
+         0 (PairVector. v b meta)
+         1 (PairVector. a v meta)
+         (assoc (with-meta [a b] meta) idx v)))
      Indexed
      (nth [this idx]
-       (cond
-         (zero? idx) a
-         (= 1 idx) b
-         :else (nth [a b] idx)))
+       (case idx
+         0 a
+         1 b
+         (nth [a b] idx)))
      (nth [this idx nf]
-       (cond
-         (zero? idx) a
-         (= 1 idx) b
-         :else nf))
+       (case idx
+         0 a
+         1 b
+         nf))
      Associative
      (containsKey [this k]
-       (cond
-         (zero? k) true
-         (= 1 k) true
-         :else false))
+       (case k
+         0 true
+         1 true
+         false))
      (assoc [this idx v]
-       (cond
-         (zero? idx) (PairVector. v b meta)
-         (= 1 idx) (PairVector. a v meta)
-         :else (assoc (with-meta [a b] meta) idx v)))
+       (case idx
+         0 (PairVector. v b meta)
+         1 (PairVector. a v meta)
+         (assoc (with-meta [a b] meta) idx v)))
      (entryAt [this idx]
-       (cond
-         (zero? idx) (MapEntry. idx a)
-         (= 1 idx) (MapEntry. idx b)
-         :else nil))
+       (case idx
+         0 (MapEntry. idx a)
+         1 (MapEntry. idx b)
+         nil))
      IPersistentStack
      (peek [this] b)
      (pop [this] (with-meta [a] meta))

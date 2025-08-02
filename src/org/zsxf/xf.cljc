@@ -106,12 +106,10 @@
 (defn detect-join-type [zsi path-f clause]
   (cond
     (and
-      #?(:clj  (dl/datom-like? zsi)
-         :cljs (util/datom-like-structure? zsi))
+      (dl/datom-like? zsi)
       (nil? (:xf.clause (meta zsi)))) :datom
     (and
-      #?(:clj  (dl/datom-like? zsi)
-         :cljs (util/datom-like-structure? zsi))
+      (dl/datom-like? zsi)
       (not (nil? (:xf.clause (meta zsi))))) :datom-as-relation
     (rel/relation? zsi) :relation
     :else

@@ -212,13 +212,14 @@
   (double
     (/ num-of-bytes 1000000)))
 
-(defn datom-like-structure?
-  "A helper fn to allow working with vectors instead of datoms"
-  [x]
-  (boolean
-    (and (nth2 x 0) (nth2 x 1) (nth2 x 2)
-      (int? (nth2 x 0))
-      (keyword? (nth2 x 1)))))
+#?(:cljs
+   (defn datom-like-structure?
+     "A helper fn to allow working with vectors instead of datoms"
+     [x]
+     (boolean
+       (and (nth2 x 0) (nth2 x 1) (nth2 x 2)
+         (int? (nth2 x 0))
+         (keyword? (nth2 x 1))))))
 
 (defn ?vary-meta [obj f & args]
   (if (can-meta? obj)

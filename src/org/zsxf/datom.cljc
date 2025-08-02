@@ -20,11 +20,6 @@
       (let [[e a v _t add-or-retract :as datom] datom]
         [e a v]))))
 
-(defn datom2? [x]
-  #?(:clj (dl/datom-like? x)
-     ;TODO implement Datom2 for CLJS
-     :cljs (util/datom-like-structure? x)))
-
 (comment
   ;; Used sometimes for hand testing
   (defn tuple->datom2
@@ -37,11 +32,11 @@
   (zs/zset-item (datom2 datom) (zs/bool->weight (nth datom 4))))
 
 (defn datom->eid [datom]
-  (when (datom2? datom)
+  (when (dl/datom-like? datom)
     (nth datom 0 nil)))
 
 (defn datom->attr [datom]
-  (when (datom2? datom)
+  (when (dl/datom-like? datom)
     (nth datom 1 nil)))
 
 (defn datom-attr= [datom attr]
@@ -51,7 +46,7 @@
   (= (datom->eid datom) eid))
 
 (defn datom->val [datom]
-  (when (datom2? datom)
+  (when (dl/datom-like? datom)
     (nth datom 2 nil)))
 
 (defn datom-val= [datom value]

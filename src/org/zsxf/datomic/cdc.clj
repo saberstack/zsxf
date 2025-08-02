@@ -104,7 +104,7 @@
        end nil]
       (log->output state conn xform output-rf start end)
       (let [timeout-ch       (a/timeout 5000)
-            [last-t-on-report-queue _ch] (a/alts! [timeout-ch tx-report-queue-ch])
+            [last-t-on-report-queue _ch] (a/alts!! [timeout-ch tx-report-queue-ch])
             _                (timbre/info "last-t-on-report-queue" last-t-on-report-queue)
             last-t-processed (get @state ::dcdc/last-t-processed)
             next-start       (when (int? last-t-processed) (inc last-t-processed))

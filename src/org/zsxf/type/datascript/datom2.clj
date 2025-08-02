@@ -9,7 +9,7 @@
 (deftype Datom2 [^Datom datom meta]
   ;marker protocol
   dl/DatomLike
-  (datom-like? [this] true)
+  (-datom-like? [this] true)
 
   ;Extends Datascript datoms to support metadata, and potentially more features in the future.
   ; (!) Clojure-only at the moment, ClojureScript requires a slightly different set of methods.

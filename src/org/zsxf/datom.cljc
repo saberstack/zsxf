@@ -21,11 +21,9 @@
         [e a v]))))
 
 (defn datom2? [x]
-  #?(:clj
-     (satisfies? dl/DatomLike x)
-     :cljs
+  #?(:clj (dl/datom-like? x)
      ;TODO implement Datom2 for CLJS
-     (util/datom-like? x)))
+     :cljs (util/datom-like-structure? x)))
 
 (comment
   ;; Used sometimes for hand testing

@@ -212,7 +212,7 @@
   (double
     (/ num-of-bytes 1000000)))
 
-(defn datom-like?
+(defn datom-like-structure?
   "A helper fn to allow working with vectors instead of datoms"
   [x]
   (boolean

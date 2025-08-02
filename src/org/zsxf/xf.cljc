@@ -27,11 +27,7 @@
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]
-            #?(:clj [org.zsxf.type.datascript.datom2])      ;don't remove! type import fails
-            [org.zsxf.util :as util])
-  #?(:clj
-     (:import (org.zsxf.type.datascript.datom2 Datom2)
-              (org.zsxf.type.datom_like DatomLike))))
+            [org.zsxf.util :as util]))
 
 (defn rf-branchable
   "Helper to adapt a reducing function to a branching transducer.
@@ -110,12 +106,12 @@
 (defn detect-join-type [zsi path-f clause]
   (cond
     (and
-      #?(:clj  (instance? DatomLike zsi)
-         :cljs (util/datom-like? zsi))
+      #?(:clj  (dl/datom-like? zsi)
+         :cljs (util/datom-like-structure? zsi))
       (nil? (:xf.clause (meta zsi)))) :datom
     (and
-      #?(:clj  (instance? DatomLike zsi)
-         :cljs (util/datom-like? zsi))
+      #?(:clj  (dl/datom-like? zsi)
+         :cljs (util/datom-like-structure? zsi))
       (not (nil? (:xf.clause (meta zsi))))) :datom-as-relation
     (rel/relation? zsi) :relation
     :else

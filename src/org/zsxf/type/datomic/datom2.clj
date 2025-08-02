@@ -8,7 +8,7 @@
 (deftype DatomicDatom2 [^Datum datom ^Keyword attr ^IPersistentMap metadata]
   ;marker protocol
   dl/DatomLike
-  (datom-like? [this] true)
+  (-datom-like? [this] true)
 
   IObj
   (meta [this] metadata)

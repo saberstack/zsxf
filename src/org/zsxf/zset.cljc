@@ -143,7 +143,7 @@
              (conj s new-zsi)
              s)))
        (fn [accum-final]
-         (ois/optimize-one-item-set accum-final)))
+         (ois/set accum-final)))
      zset-1
      more)))
 
@@ -185,7 +185,7 @@
              (conj s new-zset-item)
              s)))
        (fn [accum]
-         (ois/optimize-one-item-set accum)))
+         (ois/set accum)))
      zset-1
      [zset-2])))
 
@@ -229,7 +229,7 @@
     kfn
     identity                                                ;this is (fn [zset-item] zset-item)
     (fn [k zset-of-grouped-items]
-      (if k {k (ois/optimize-one-item-set zset-of-grouped-items)} {}))
+      (if k {k (ois/set zset-of-grouped-items)} {}))
     ;turn grouped items into a zset
     (xforms/into #{})))
 

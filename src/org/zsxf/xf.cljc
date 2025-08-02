@@ -223,17 +223,17 @@
              (let [delta-1 (if (and
                                  (can-join? zsi path-f-1 clause-1)
                                  (pred-1 (path-f-1 zsi)))
-                             (zs/index (ois/one-item-set zsi) (comp index-kfn-1 path-f-1))
+                             (zs/index (ois/hash-set zsi) (comp index-kfn-1 path-f-1))
                              {})
                    delta-2 (if (and
                                  (can-join? zsi path-f-2 clause-2)
                                  (pred-2 (path-f-2 zsi)))
-                             (zs/index (ois/one-item-set zsi) (comp index-kfn-2 path-f-2))
+                             (zs/index (ois/hash-set zsi) (comp index-kfn-2 path-f-2))
                              {})
                    ;If last?, we return an empty zset.
                    ; The current zset-item has been "offered" to all transducers and is not needed anymore.
                    ; (!) Returning it would "pollute" the query result with extra data.
-                   zset    (if last? #{} (ois/one-item-set zsi))]
+                   zset    (if last? #{} (ois/hash-set zsi))]
                ;return
                [delta-1 delta-2 zset])))
       (cond-branch

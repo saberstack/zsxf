@@ -2,6 +2,7 @@
   "Optimizes a set with one item to a more efficient representation.
   This reduces memory usage when there are many sets with one item.
   Raw performance is a non-goal, focusing on memory usage instead."
+  (:refer-clojure :exclude [hash-set set])
   #?(:clj
      (:import (clojure.lang IFn IHashEq IObj IPersistentCollection IPersistentSet Counted SeqIterator Seqable)
               (java.util Set))))
@@ -47,17 +48,21 @@
      (invoke [this x] (when (= item x) item))))
 
 #?(:clj
-   (defn one-item-set [item]
+   (defn hash-set
+     "Creates a OneItemSet instance with a single item."
+     [item]
      (->OneItemSet item)))
 
-(defn optimize-one-item-set [s]
+(defn set
+  "Optimizes a set with one item to a OneItemSet instance."
+  [s]
   #?(:clj
      (if (and
            (= 1 (count s))
            (not (instance? OneItemSet s))
            ;needed because sets with metadata not currently supported
            (nil? (meta s)))
-       (one-item-set (first s))
+       (hash-set (first s))
        s)
      ;TODO in CLJS (if relevant)
      :cljs s))

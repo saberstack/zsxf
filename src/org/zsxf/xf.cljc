@@ -251,7 +251,7 @@
                    (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
           (map (fn [params]
                  ;return
-                 (pv/pair-vector
+                 (pv/vector
                    ;add :where clauses as metadata to the joined relations (a zset)
                    (zs/indexed-zset->zset
                      (let [f1 (with-clause-f clause-1)

@@ -215,7 +215,7 @@
              new-weight (*' weight-1 weight-2)]
          (pair-f
            (zset-item
-             (pv/pair-vector
+             (pv/vector
                (item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
                (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
              new-weight)))))))
@@ -330,7 +330,7 @@
      (into
        {}
        (map (fn [common]
-              (pv/pair-vector
+              (pv/vector
                 common
                 (zset*
                   (indexed-zset-1 common)

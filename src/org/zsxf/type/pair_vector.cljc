@@ -1,7 +1,8 @@
 (ns org.zsxf.type.pair-vector
+  (:refer-clojure :exclude [vector])
   #?(:clj
      (:import
-      (clojure.lang Associative Counted IHashEq ILookup IObj IPersistentCollection IPersistentStack
+      (clojure.lang Associative Counted IFn IHashEq ILookup IObj IPersistentCollection IPersistentStack
                     IPersistentVector Indexed MapEntry Reversible Seqable))))
 
 (declare pair-vector)
@@ -42,17 +43,17 @@
          nf))
      Associative
      (containsKey [this k]
-       (case k
+       (case (int k)
          0 true
          1 true
          false))
      (assoc [this idx v]
-       (case idx
+       (case (int idx)
          0 (PairVector. v b meta)
          1 (PairVector. a v meta)
          (assoc (with-meta [a b] meta) idx v)))
      (entryAt [this idx]
-       (case idx
+       (case (int idx)
          0 (MapEntry. idx a)
          1 (MapEntry. idx b)
          nil))
@@ -65,13 +66,16 @@
      (valAt [this idx]
        (nth this idx))
      (valAt [this idx nf]
-       (nth this idx nf)))
+       (nth this idx nf))
+     IFn
+     (invoke [this x]
+       (.nth this x)))
    :cljs
    (comment
      ;TODO implement if needed
      ))
 
 
-(defn pair-vector [a b]
+(defn vector [a b]
   #?(:clj  (->PairVector a b nil)
-     :cljs (vector a b)))
+     :cljs [a b]))

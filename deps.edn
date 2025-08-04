@@ -31,7 +31,7 @@
                           hato/hato                                 {:mvn/version "1.0.0"}
                           org.babashka/http-client                  {:mvn/version "0.4.22"}
                           com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}
-                          com.clojure-goes-fast/clj-java-decompiler {:mvn/version "0.3.4"}
+                          com.clojure-goes-fast/clj-java-decompiler {:mvn/version "0.3.7"}
                           org.clojars.abhinav/snitch                {:mvn/version "0.1.15"}
                           vvvvalvalval/scope-capture                {:mvn/version "0.3.3"}
                           philoskim/debux                           {:mvn/version "0.8.2"}

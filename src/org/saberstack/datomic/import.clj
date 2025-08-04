@@ -5,6 +5,7 @@
             [clojure.core.async :as a]
             [clojure.string :as str]
             [datomic.api :as dd]
+            [net.cgrand.xforms :as xforms]
             [org.zsxf.datomic.cdc :as datomic-cdc]
             [org.zsxf.input.datomic :as idd]
             [org.zsxf.query :as q]
@@ -182,7 +183,7 @@
       (contains? m :deleted) (assoc :hn.item/deleted (boolean (:deleted m)))
       (contains? m :type) (assoc :hn.item/type (keyword (:type m)))
       (contains? m :by) (assoc :hn.item/by (:by m))
-      (contains? m :time) (assoc :hn.item/time (java.util.Date. (* 1000 (:time m))))
+      (contains? m :time) (assoc :hn.item/time (java.util.Date. ^long (* 1000 (:time m))))
       (contains? m :text) (assoc :hn.item/text (:text m))
       (contains? m :dead) (assoc :hn.item/dead (:dead m))
       (contains? m :parent) (assoc :hn.item/parent [:hn.item/id (:parent m)])
@@ -307,13 +308,23 @@
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/static-compile
-                  '[:find ?url ?username
+                  '[:find ?username
                     :where
                     [?e :hn.item/url ?url]
                     [?e :hn.item/by ?username]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! *query query)
     :pending))
+
+(defonce *query-result-datomic (atom nil))
+
+(defn get-all-users-via-datomic []
+  (dd/q
+    '[:find ?username
+      :where
+      [?e :hn.item/url ?url]
+      [?e :hn.item/by ?username]]
+    (dd/db (hn-conn))))
 
 (defn import-progress [conn]
   (let [end     (dd/basis-t (dd/db conn))
@@ -326,11 +337,33 @@
 
   (get-all-users-via-zsxf)
 
-  ;progress in percentage
+  (reset! *query nil)
+  (reset! *query-result-datomic nil)
+  (System/gc)
+
   (import-progress (hn-conn))
+
+  ;progress in percentage
+  (time
+    (do
+      (reset! *query-result-datomic (get-all-users-via-datomic))
+      :done))
 
   (mm/measure @*query)
   (count (q/get-result @*query))
+
+  ; Check if the ZSXF query result matches Datomic
+  (= (q/get-result @*query) (get-all-users-via-datomic))
+
+  (xforms/window window-n rf/avg #(rf/avg %1 %2 -1))
+
+  )
+(set! *warn-on-reflection* true)
+
+(def s "hello")
+
+
+(comment
   )
 
 (comment

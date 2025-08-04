@@ -1,6 +1,7 @@
 (ns org.zsxf.datomic.cdc
   (:require
    [datomic.api :as dd]
+   [org.saberstack.clock.monotonic :as monotonic]
    [ss.loop]
    [org.zsxf.query :as-alias q]
    [clojure.core.async :as a]
@@ -97,7 +98,7 @@
    Use stop-all-loops! to stop."
   [{::q/keys [state id] :as _query} conn xform output-rf]
   (let [tx-report-queue-ch (on-transaction-loop! id conn)]
-    (swap! state assoc ::dcdc/timestamp-start (System/currentTimeMillis))
+    (swap! state assoc ::dcdc/timestamp-start (monotonic/now))
     (ss.loop/thread-loop
       ^{:id [id :log->output]}
       [start nil

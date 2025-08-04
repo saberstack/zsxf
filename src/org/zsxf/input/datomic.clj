@@ -5,6 +5,7 @@
             [datomic.api :as dd]
             [org.zsxf.type.datomic.datom2 :as dd2]
             [org.zsxf.query :as q]
+            [org.saberstack.performance.intake-monitor :as perf-intake-monitor]
             [org.zsxf.datalog.compiler :as dcc]
             [org.zsxf.zset :as zs]))
 
@@ -34,15 +35,17 @@
 (defn init-query-with-conn
   "Initial naive implementation. Read all transactions datoms."
   [query conn]
-  (dcdc/start-log->output!
-    query
-    conn
-    zsxf-xform
-    (completing
-      ;accum is not used, this is a side-effecting reducing fn
-      (fn
-        [_accum {:keys [zsets basis-t]}]
-        (q/input query zsets basis-t)))))
+  (let [perf-intake-monitor (perf-intake-monitor/create-monitor)]
+    (dcdc/start-log->output!
+      query
+      conn
+      zsxf-xform
+      (completing
+        ;accum is not used, this is a side-effecting reducing fn
+        (fn
+          [_accum {:keys [zsets basis-t]}]
+          (perf-intake-monitor/input perf-intake-monitor (count zsets))
+          (q/input query zsets basis-t))))))
 
 
 ;; Tests, WIP

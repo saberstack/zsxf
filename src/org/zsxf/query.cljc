@@ -22,10 +22,14 @@
   [query]
   (::dd.cdc/last-t-processed @(::q/state query)))
 
-(defn cdc-start
+(defn cdc-stats
   ;WIP, subject to change
   [query]
-  (::dd.cdc/start @(::q/state query)))
+  (let [query-state @(::q/state query)]
+    (select-keys query-state
+      [::dd.cdc/start
+       ::dd.cdc/initial-sync-end
+       ::dd.cdc/last-t-processed])))
 
 (defn init-result [result result-delta]
   (if (nil? result)

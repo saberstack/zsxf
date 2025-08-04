@@ -21,6 +21,11 @@
     m
     (assoc m k v)))
 
+(defn nano-to-sec
+  "Converts nanoseconds to seconds"
+  [n]
+  (.convert java.util.concurrent.TimeUnit/SECONDS n java.util.concurrent.TimeUnit/NANOSECONDS))
+
 (defn fpred
   "Like fnil, but with a custom predicate"
   ([f pred x]

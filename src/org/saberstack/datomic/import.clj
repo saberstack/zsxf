@@ -5,8 +5,9 @@
             [clojure.core.async :as a]
             [clojure.string :as str]
             [datomic.api :as dd]
+            [medley.core :as medley]
             [net.cgrand.xforms :as xforms]
-            [org.zsxf.datomic.cdc :as datomic-cdc]
+            [org.zsxf.datomic.cdc :as dd.cdc]
             [org.zsxf.input.datomic :as idd]
             [org.zsxf.query :as q]
             [org.zsxf.util :as util]
@@ -163,7 +164,7 @@
     :db/doc         "In the case of stories or polls, the total comment count."}])
 
 (defn delete-and-init-datomic! []
-  (let [^String db-uri (datomic-cdc/uri-sqlite "hackernews")
+  (let [^String db-uri (dd.cdc/uri-sqlite "hackernews")
         _              (dd/delete-database db-uri)
         _              (dd/create-database db-uri)
         conn           (dd/connect db-uri)
@@ -171,7 +172,7 @@
     conn))
 
 (defn hn-conn []
-  (let [^String db-uri (datomic-cdc/uri-sqlite "hackernews")]
+  (let [^String db-uri (dd.cdc/uri-sqlite "hackernews")]
     (dd/connect db-uri)))
 
 (defn- hn-item->tx-data
@@ -327,11 +328,17 @@
     (dd/db (hn-conn))))
 
 (defn import-progress [conn]
-  (let [end     (dd/basis-t (dd/db conn))
-        current (q/cdc-progress @*query)]
-    {:timestamp-start  (q/cdc-start @*query)
-     :progress-percent (double (* 100 (/ current end)))
-     :basis            [current end]}))
+  (let [latest-t (dd/basis-t (dd/db conn))
+        {::dd.cdc/keys [last-t-processed start initial-sync-end] :as cdc-stats} (q/cdc-stats @*query)]
+    (->
+      (q/cdc-stats @*query)
+      (merge
+        {:progress-percent (double (* 100 (/ last-t-processed latest-t)))
+         :basis            [last-t-processed latest-t]})
+      (medley/assoc-some
+        :sync-total-seconds (when (and start initial-sync-end)
+                           (util/nano-to-sec
+                             (- initial-sync-end start)))))))
 
 (comment
 

@@ -11,7 +11,8 @@
             #?(:clj [taoensso.encore :as enc]))
   #?(:clj
      (:import (clojure.lang IObj)
-              (java.io PushbackReader))))
+              (java.io PushbackReader)
+              (java.lang.reflect Method))))
 
 (defn fpred
   "Like fnil, but with a custom predicate"
@@ -125,10 +126,10 @@
      [iface]
      ;; Big thanks to Christophe Grand
      ;; https://groups.google.com/d/msg/clojure/L1GiqSyQVVg/m-WJogaqU8sJ
-     (doseq [[iface methods] (->> iface .getMethods
-                               (map #(vector (.getName (.getDeclaringClass %))
-                                       (symbol (.getName %))
-                                       (count (.getParameterTypes %))))
+     (doseq [[iface methods] (->> ^Class iface .getMethods
+                               (map #(vector (.getName ^Class (.getDeclaringClass ^Method %))
+                                       (symbol (.getName ^Method %))
+                                       (count (.getParameterTypes ^Method %))))
                                (group-by first))]
        (println (str "  " iface))
        (doseq [[_ name argcount] methods]
@@ -317,7 +318,7 @@
 (defn inheritance-tree [klass]
   (let [f (fn f [c]
             (reduce (fn [m p] (assoc m p (f p))) {}
-              (sort-by #(.getName %) (parents c))))]
+              (sort-by #(.getName ^Class %) (parents c))))]
     {klass (f klass)}))
 
 (comment

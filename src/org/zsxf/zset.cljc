@@ -154,7 +154,7 @@
    (zset+ (comp (map zset-item) xf) #{} coll)))
 
 (defn zset-xf+
-  "Takes a transducers and returns a function with the same signature as zset+.
+  "Takes a transducer and returns a function with the same signature as zset+.
   The transducer is applied to each new zset item from the second zset before adding it to the first zset."
   [xf]
   (fn
@@ -220,6 +220,10 @@
                (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
              new-weight)))))))
 
+(defn- index-xf-pair
+  [k zset-of-grouped-items]
+  (if k {k (ois/set zset-of-grouped-items)} {}))
+
 (defn index-xf
   "Returns a group-by-style transducer.
   Groups input items based on the return value of kfn.
@@ -228,8 +232,7 @@
   (xforms/by-key
     kfn
     identity                                                ;this is (fn [zset-item] zset-item)
-    (fn [k zset-of-grouped-items]
-      (if k {k (ois/set zset-of-grouped-items)} {}))
+    index-xf-pair
     ;turn grouped items into a zset
     (xforms/into #{})))
 
@@ -309,13 +312,14 @@
     ;determine size and switch map order (if needed) for improved efficiency
     (if (< (count m1) (count m2))
       (recur m2 m1)
-      (reduce
-        (fn [result item]
-          (if (contains? m1 item)
-            (conj result item)
-            result))
-        #{}
-        (keys m2)))))
+      (persistent!
+        (reduce
+          (fn [result item]
+            (if (contains? m1 item)
+              (conj! result item)
+              result))
+          (transient #{})
+          (keys m2))))))
 
 (defn intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)

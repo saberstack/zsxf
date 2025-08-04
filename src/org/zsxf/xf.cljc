@@ -238,7 +238,7 @@
         ;else, proceed to join
         any?
         (comp
-          (map (fn [[delta-1 delta-2 zset]]
+          (map (fn join-xf-update-state [[delta-1 delta-2 zset]]
                  (let [index-state-1-prev (get @query-state uuid-1 {})
                        index-state-2-prev (get @query-state uuid-2 {})]
                    ;advance indices
@@ -249,7 +249,7 @@
                          (update uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
                    ;return
                    (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
-          (map (fn [params]
+          (map (fn join-xf-intersect-heavy [params]
                  ;return
                  (pv/vector
                    ;add :where clauses as metadata to the joined relations (a zset)

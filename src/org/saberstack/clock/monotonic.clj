@@ -10,7 +10,7 @@
    Returns [new-timestamp new-generation]"
   [[prev-t generation] t]
   (if (<= t prev-t)
-    (vector (inc prev-t) (unchecked-inc generation))
+    (vector (unchecked-inc prev-t) (unchecked-inc generation))
     (vector t (unchecked-inc generation))))
 
 (defn- now-impl

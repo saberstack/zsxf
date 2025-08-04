@@ -5,8 +5,6 @@
       (clojure.lang Associative Counted IFn IHashEq ILookup IObj IPersistentCollection IPersistentStack
                     IPersistentVector Indexed MapEntry Reversible Seqable))))
 
-(declare pair-vector)
-
 #?(:clj
    (deftype PairVector [a b meta]
      IObj

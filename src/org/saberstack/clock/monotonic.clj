@@ -8,10 +8,12 @@
 (defn- increment-clock
   "Ensures monotonic progression given [prev-t generation] and new timestamp t.
    Returns [new-timestamp new-generation]"
-  [[prev-t generation] t]
-  (if (<= t prev-t)
+  [[^long prev-t ^long generation] ^long next-t]
+  (if (<= next-t prev-t)
+    ;this case happens if the system clock goes backwards
     (vector (unchecked-inc prev-t) (unchecked-inc generation))
-    (vector t (unchecked-inc generation))))
+    ;this is the more typical case: system clock goes forward
+    (vector next-t (unchecked-inc generation))))
 
 (defn- now-impl
   "Internal function that atomically updates generation-clock with current time."

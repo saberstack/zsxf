@@ -1,12 +1,13 @@
 (ns org.zsxf.datomic.cdc
   (:require
    [datomic.api :as dd]
-   [org.saberstack.clock.monotonic :as monotonic]
+   [org.saberstack.clock.monotonic :as clock]
+   [org.zsxf.util :as util]
    [ss.loop]
    [org.zsxf.query :as-alias q]
    [clojure.core.async :as a]
    [taoensso.timbre :as timbre]
-   [org.zsxf.datomic.cdc :as-alias dcdc])
+   [org.zsxf.datomic.cdc :as-alias dd.cdc])
   (:import (datomic Connection)))
 
 (defn conn? [x]
@@ -54,7 +55,7 @@
        (comp
          (map (fn [tx-m]
                 ; Store the last seen transaction ID :t
-                (swap! query-state assoc ::dcdc/last-t-processed (:t tx-m))
+                (swap! query-state assoc ::dd.cdc/last-t-processed (:t tx-m))
                 ;return tx-m unchanged
                 tx-m))
          (xform idents-m))
@@ -98,16 +99,17 @@
    Use stop-all-loops! to stop."
   [{::q/keys [state id] :as _query} conn xform output-rf]
   (let [tx-report-queue-ch (on-transaction-loop! id conn)]
-    (swap! state assoc ::dcdc/timestamp-start (monotonic/now))
+    (swap! state assoc ::dd.cdc/start (clock/now))
     (ss.loop/thread-loop
       ^{:id [id :log->output]}
       [start nil
-       end nil]
+       end   nil]
       (log->output state conn xform output-rf start end)
+      (swap! state util/assoc-if-new ::dd.cdc/initial-sync-end (clock/now))
       (let [timeout-ch       (a/timeout 5000)
             [last-t-on-report-queue _ch] (a/alts!! [timeout-ch tx-report-queue-ch])
             _                (timbre/info "last-t-on-report-queue" last-t-on-report-queue)
-            last-t-processed (get @state ::dcdc/last-t-processed)
+            last-t-processed (get @state ::dd.cdc/last-t-processed)
             next-start       (when (int? last-t-processed) (inc last-t-processed))
             next-end         (when (int? last-t-on-report-queue) (inc last-t-on-report-queue))]
         (timbre/info "log->output-loop! [next-start next-end]" [next-start next-end])

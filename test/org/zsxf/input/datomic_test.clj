@@ -1,7 +1,7 @@
 (ns org.zsxf.input.datomic-test
   (:require [clojure.test :refer [deftest is testing]]
             [datomic.api :as dd]
-            [org.zsxf.datomic.cdc :as dcdc]
+            [org.zsxf.datomic.cdc :as dd.cdc]
             [org.zsxf.setup.datomic :as setup-datomic]
             [taoensso.timbre :as timbre]))
 
@@ -9,7 +9,7 @@
   (try
     (let [sqlite-path "/tmp/storage/sqlite.db"
           ;_           (setup-datomic/create-sqlite-db sqlite-path)
-          uri         (dcdc/uri-sqlite db-name sqlite-path)
+          uri         (dd.cdc/uri-sqlite db-name sqlite-path)
           _           (timbre/info uri)
           ;_              (dd/delete-database db-uri)
           ;ret         (timbre/spy (dd/create-database uri))
@@ -22,7 +22,7 @@
   ;re-enable for Datomic deployment
   #_(is
     (true?
-      (dcdc/conn?
+      (dd.cdc/conn?
         (transduce
           (comp
             (map (fn [_conn-attempt] (conn! "app")))

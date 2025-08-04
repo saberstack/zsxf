@@ -18,7 +18,7 @@
             [criterium.core :as criterium]
             [datascript.core :as d]
             [datomic.api :as dd]
-            [org.zsxf.datomic.cdc :as datomic-cdc]
+            [org.zsxf.datomic.cdc :as dd.cdc]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang IAtom)))
 
@@ -270,7 +270,7 @@
     (d/init-db (thaw-artist-datoms!) schema)))
 
 (defn datomic-conn [db-name]
-  (dd/connect (datomic-cdc/uri-sqlite db-name)))
+  (dd/connect (dd.cdc/uri-sqlite db-name)))
 
 (defn conn->db
   "Returns the db from a connection. Works for both Datascript and Datomic connections."
@@ -280,7 +280,7 @@
     (dd/db conn)))
 
 (defn delete-and-init-datomic! []
-  (let [^String db-uri (datomic-cdc/uri-sqlite "mbrainz")
+  (let [^String db-uri (dd.cdc/uri-sqlite "mbrainz")
         _              (dd/delete-database db-uri)
         _              (dd/create-database db-uri)
         conn           (dd/connect db-uri)

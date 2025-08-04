@@ -329,7 +329,7 @@
 (defn import-progress [conn]
   (let [end     (dd/basis-t (dd/db conn))
         current (q/cdc-progress @*query)]
-    {:timestamp-start  (q/cdc-timestamp-start @*query)
+    {:timestamp-start  (q/cdc-start @*query)
      :progress-percent (double (* 100 (/ current end)))
      :basis            [current end]}))
 

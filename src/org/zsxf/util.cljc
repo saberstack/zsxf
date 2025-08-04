@@ -14,6 +14,13 @@
               (java.io PushbackReader)
               (java.lang.reflect Method))))
 
+(defn assoc-if-new
+  "Adds a value only if the key is not already present"
+  [m k v]
+  (if (contains? m k)
+    m
+    (assoc m k v)))
+
 (defn fpred
   "Like fnil, but with a custom predicate"
   ([f pred x]

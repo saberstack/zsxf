@@ -1,7 +1,7 @@
 (ns org.saberstack.clock.monotonic-test
   (:require
    [clojure.test :refer :all]
-   [org.saberstack.clock.monotonic :as monotonic]))
+   [org.saberstack.clock.monotonic :as clock]))
 
 (deftest monotonic-test
   (testing "monotonic clock"
@@ -12,5 +12,5 @@
             (sort-by first
               (pmap
                 (fn [_]
-                  (monotonic/now+generation))
+                  (clock/now+generation))
                 (range 1000)))))))))

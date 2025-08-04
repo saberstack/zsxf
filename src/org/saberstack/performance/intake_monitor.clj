@@ -6,7 +6,7 @@
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
             [ss.loop :as ss.loop]
-            [org.saberstack.clock.monotonic :as monotonic]
+            [org.saberstack.clock.monotonic :as clock]
             [taoensso.timbre :as timbre]))
 
 (defn create-monitor
@@ -24,11 +24,11 @@
                  (fn [accum m-inv]
                    (- accum (m-inv :n))))
                (map (fn [windowed-cnt]
-                      [(monotonic/now) windowed-cnt]))))]
+                      [(clock/now) windowed-cnt]))))]
     (ss.loop/go-loop
       []
       ;; Send heartbeat with zero count to maintain window state
-      (a/>! ch {:ts (monotonic/now) :n 0})
+      (a/>! ch {:ts (clock/now) :n 0})
       ;; Wait between heartbeats
       (a/<! (a/timeout 500))
       (let [intake-data (a/poll! ch)]
@@ -49,7 +49,7 @@
    Blocks until the event is accepted."
   ;TODO potentially add fire-and-forget option
   [monitor n]
-  (a/>!! monitor {:ts (monotonic/now) :n n}))
+  (a/>!! monitor {:ts (clock/now) :n n}))
 
 (comment
   (ss.loop/stop-all))

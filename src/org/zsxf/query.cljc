@@ -2,7 +2,7 @@
   (:require [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
-            [org.zsxf.datomic.cdc :as-alias dcdc]
+            [org.zsxf.datomic.cdc :as-alias dd.cdc]
             [org.zsxf.query :as-alias q]))
 
 (defn create-query
@@ -20,11 +20,12 @@
 
 (defn cdc-progress
   [query]
-  (::dcdc/last-t-processed @(::q/state query)))
+  (::dd.cdc/last-t-processed @(::q/state query)))
 
-(defn cdc-timestamp-start
+(defn cdc-start
+  ;WIP, subject to change
   [query]
-  (::dcdc/timestamp-start @(::q/state query)))
+  (::dd.cdc/start @(::q/state query)))
 
 (defn init-result [result result-delta]
   (if (nil? result)

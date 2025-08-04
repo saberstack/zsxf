@@ -1,7 +1,7 @@
 (ns org.zsxf.input.datomic
   (:require [clojure.core.async :as a]
             [net.cgrand.xforms :as xforms]
-            [org.zsxf.datomic.cdc :as dcdc]
+            [org.zsxf.datomic.cdc :as dd.cdc]
             [datomic.api :as dd]
             [org.zsxf.type.datomic.datom2 :as dd2]
             [org.zsxf.query :as q]
@@ -29,14 +29,14 @@
   "Transformation specific to ZSXF."
   [idents-m]
   (map (fn [{:keys [data t id]}]
-         {:zsets (tx-data->datomic-datoms2->zsets idents-m data)
-          :basis-t         t})))
+         {:zsets   (tx-data->datomic-datoms2->zsets idents-m data)
+          :basis-t t})))
 
 (defn init-query-with-conn
   "Initial naive implementation. Read all transactions datoms."
   [query conn]
   (let [perf-intake-monitor (perf-intake-monitor/create-monitor)]
-    (dcdc/start-log->output!
+    (dd.cdc/start-log->output!
       query
       conn
       zsxf-xform
@@ -52,7 +52,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn mbrainz-conn []
-  (dd/connect (dcdc/uri-sqlite "mbrainz")))
+  (dd/connect (dd.cdc/uri-sqlite "mbrainz")))
 
 (defn poc-query []
   (let [query (q/create-query
@@ -67,8 +67,8 @@
     (init-query-with-conn query (mbrainz-conn))))
 
 (defn test-query-as-of [basis-t]
-  (let [conn (mbrainz-conn)
-        all-basis-t (dcdc/all-basis-t conn)]
+  (let [conn        (mbrainz-conn)
+        all-basis-t (dd.cdc/all-basis-t conn)]
     (dd/q
       '[:find ?artist-name
         :where
@@ -82,7 +82,7 @@
     (map (fn [basis-t]
            (= (test-query-as-of basis-t) (q/get-result-as-of query basis-t))))
     conj
-    (dcdc/all-basis-t conn)))
+    (dd.cdc/all-basis-t conn)))
 
 (comment
 
@@ -100,4 +100,4 @@
 
   (time
     (let [conn (mbrainz-conn)]
-      (dcdc/log->output (atom {}) conn zsxf-xform (xforms/count conj)))))
+      (dd.cdc/log->output (atom {}) conn zsxf-xform (xforms/count conj)))))

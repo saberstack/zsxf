@@ -11,8 +11,8 @@
      (let [port 7899]
        (timbre/merge-config!
          {:output-fn util/timbre-custom-output-fn})
-       (nrepl-server/start-server :port port)
        (server/start-server!)
+       (nrepl-server/start-server :port port)
        (println "ZSXF: REPL on port" port))))
 
 #?(:cljs

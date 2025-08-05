@@ -1,0 +1,61 @@
+(ns org.saberstack.server.aleph
+  (:require [aleph.http :as aleph]
+            [clj-commons.byte-streams :as bs]
+            [aleph.netty]
+            [config.core :as config]
+            [ring.middleware.defaults :as ring-defaults]
+            [ring.middleware.params :as ring-params]
+            [taoensso.timbre :as timbre]))
+
+(defonce server-state (atom nil))
+
+(defn env-vars->ssl-context
+  [{:keys [tls-cert tls-private-key] :as _env-map}]
+  (when (and tls-cert tls-private-key)
+    {:ssl-context
+     (aleph.netty/ssl-server-context
+       {:certificate-chain (bs/to-input-stream (slurp tls-cert))
+        :private-key       (bs/to-input-stream (slurp tls-private-key))})}))
+
+(defn http-req-dispatch
+  [{:keys [uri request-method] :as req}]
+  {:status  200
+   :headers {"content-type" "text/plain"}
+   :body    "hello"})
+
+(defn resp-error [_req ^Throwable e]
+  {:status 500
+   :body   (str (ex-data e))})
+
+(defn handler-2
+  "Indirections for REPL-friendly development."
+  [req]
+  (timbre/info req)
+  (try
+    (http-req-dispatch req)
+    (catch Throwable e (do (timbre/error e) (resp-error req e)))))
+
+(defn handler
+  [req]
+  (handler-2 req))
+
+(defn start-server! [& {:keys [port socket-address] :or {port 443 socket-address "0.0.0.0"}}]
+  (reset! server-state
+    (aleph/start-server
+      (-> handler
+        (ring-defaults/wrap-defaults ring-defaults/api-defaults)
+        (ring-defaults/wrap-defaults
+          (assoc-in ring-defaults/api-defaults [:session :cookie-attrs :same-site] :lax))
+        (ring-params/wrap-params))
+      (merge
+        {:port port
+         :http-versions [:http1]}
+        (env-vars->ssl-context config/env)))))
+
+(defn stop-server! []
+  (.close @server-state))
+
+(comment
+  (do
+    (stop-server!)
+    (start-server!)))

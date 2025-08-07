@@ -115,6 +115,8 @@
            {:jvm-opts ["-Xms48g" "-Xmx48g"]}
            :jvm-heap-64gb
            {:jvm-opts ["-Xms64g" "-Xmx64g"]}
+           :jvm-heap-192gb
+           {:jvm-opts ["-Xms192g" "-Xmx192g"]}
            :raspasov/local
            {:extra-deps
             {org.saberstack/clj-hackernews-api

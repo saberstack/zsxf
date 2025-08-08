@@ -117,6 +117,8 @@
            {:jvm-opts ["-Xms64g" "-Xmx64g"]}
            :jvm-heap-192gb
            {:jvm-opts ["-Xms192g" "-Xmx192g"]}
+           :yourkit-agent
+           {:jvm-opts ["-agentpath:/Applications/YourKit.app/Contents/Resources/bin/mac/libyjpagent.dylib=listen=192.168.86.250"]}
            :raspasov/local
            {:extra-deps
             {org.saberstack/clj-hackernews-api

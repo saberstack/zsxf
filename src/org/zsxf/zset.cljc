@@ -173,7 +173,7 @@
    #_{:pre [(zset? zset-1) (zset? zset-2)]}
    (transduce
      ;get set items one by one
-     (comp cat)
+     cat
      (completing
        (fn [s new-zset-item]
          (if-let [zset-item (s new-zset-item)]
@@ -205,20 +205,19 @@
 (defn zset*
   "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"
   ([zset-1 zset-2]
-   (zset* zset-1 zset-2 identity identity identity))
-  ([zset-1 zset-2 item-1-f item-2-f pair-f]
+   (zset* zset-1 zset-2 identity identity))
+  ([zset-1 zset-2 item-1-f item-2-f]
    #_{:pre [(zset? zset-1) (zset? zset-2)]}
    (set
      (for [item-1 zset-1 item-2 zset-2]
        (let [weight-1   (zset-weight item-1)
              weight-2   (zset-weight item-2)
              new-weight (*' weight-1 weight-2)]
-         (pair-f
-           (zset-item
-             (pv/vector
-               (item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
-               (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
-             new-weight)))))))
+         (zset-item
+           (pv/vector
+             (item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
+             (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
+           new-weight))))))
 
 (defn- index-xf-pair
   [k zset-of-grouped-items]
@@ -284,7 +283,7 @@
        (fn [indexed-zset-1-accum [k-2 zset-2]]
          (if (contains? indexed-zset-1-accum k-2)
            ;key exists in both indexed zsets, call zset-pos+ to add the zsets
-           (let [new-zset (zset-pos+ (get indexed-zset-1-accum k-2) zset-2)]
+           (let [new-zset (zset-pos+ (indexed-zset-1-accum k-2) zset-2)]
              (if (= #{} new-zset)
                (dissoc indexed-zset-1-accum k-2)            ;remove key if zset is empty after zset addition
                (assoc indexed-zset-1-accum k-2 new-zset)))  ;else, add the new zset to the indexed zset map
@@ -328,8 +327,8 @@
   The weight of a common item in the return is the product (via zset*)
   of the weights of the same item in indexed-zset-1 and indexed-zset-2."
   ([indexed-zset-1 indexed-zset-2]
-   (intersect-indexed* indexed-zset-1 indexed-zset-2 identity identity identity))
-  ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f pair-f]
+   (intersect-indexed* indexed-zset-1 indexed-zset-2 identity identity))
+  ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f]
    (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
      (into
        {}
@@ -340,6 +339,5 @@
                   (indexed-zset-1 common)
                   (indexed-zset-2 common)
                   zset*-item-1-f
-                  zset*-item-2-f
-                  pair-f))))
+                  zset*-item-2-f))))
        commons))))

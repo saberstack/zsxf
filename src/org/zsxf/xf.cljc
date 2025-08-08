@@ -245,7 +245,7 @@
                        index-state-2-prev (@query-state uuid-2 {})]
                    ;advance indices
                    (swap! query-state
-                     (fn [state]
+                     (fn update-indices [state]
                        (-> state
                          (update uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
                          (update uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))

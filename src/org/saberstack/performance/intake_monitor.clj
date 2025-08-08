@@ -12,7 +12,7 @@
 (defn create-monitor
   "Creates a monitoring channel that tracks intake rates over 1-second windows."
   []
-  (let [ch (a/chan 42 ;TODO evaluate sliding-buffer here
+  (let [ch (a/chan 64
              (comp
                (xforms/window-by-time
                  (fn [m] (/ (:ts m) 1e9))
@@ -48,7 +48,10 @@
      n - count of items processed in this event
    Blocks until the event is accepted."
   [monitor n]
-  (a/>!! monitor {:ts (clock/now) :n n}))
+  (let [offer-ok? (a/offer! monitor {:ts (clock/now) :n n})]
+    (when-not offer-ok?
+      (timbre/warn "monitor input too fast"))
+    offer-ok?))
 
 (comment
   (ss.loop/stop-all))

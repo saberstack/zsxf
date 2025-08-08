@@ -11,7 +11,7 @@
   and must return a ZSXF-compatible transducer which takes and returns zsets
   Returns a map."
   [init-xf & {:keys [keep-history?] :or {keep-history? false}}]
-  (let [state (atom nil)]
+  (let [state (atom {})]
     {::q/xf             (init-xf state)
      ::q/state          state
      ::q/result-history (atom {})

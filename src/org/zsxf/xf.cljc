@@ -124,14 +124,16 @@
                          :datom true
                          :datom-as-relation (= clause (:xf.clause (meta (path-f zset-item))))
                          :relation (= clause (:xf.clause (meta (path-f zset-item)))))]
-    #_(when (false? item-can-join?)
-        (timbre/info "cannot join !!!")
-        (timbre/info zset-item)
-        (timbre/info "path-f to item ::::" (path-f zset-item))
-        (timbre/info "zset-item clause is" (:xf.clause (meta (path-f zset-item))))
-        (timbre/info "zset-item meta ::::" (meta (path-f zset-item)))
-        (timbre/info "looking for clause:" clause))
     item-can-join?))
+
+;; can join debug
+#_(when (false? item-can-join?)
+    (timbre/info "cannot join !!!")
+    (timbre/info zset-item)
+    (timbre/info "path-f to item ::::" (path-f zset-item))
+    (timbre/info "zset-item clause is" (:xf.clause (meta (path-f zset-item))))
+    (timbre/info "zset-item meta ::::" (meta (path-f zset-item)))
+    (timbre/info "looking for clause:" clause))
 
 (defn can-join-union?
   "Unions use a simpler can-join?

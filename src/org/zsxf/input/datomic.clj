@@ -19,7 +19,7 @@
   (into []
     (comp
       (map (fn [[_e a _v _t _tf :as datom]]
-             (let [a' (get idents-m a)]
+             (let [a' (idents-m a)]
                (dd2/ddatom2 datom a'))))
       (map ddatom2->zset-item)
       (map hash-set))

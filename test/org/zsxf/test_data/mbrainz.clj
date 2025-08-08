@@ -15,7 +15,7 @@
             [org.zsxf.xf :as xf]
             [org.zsxf.zset :as zs]
             [medley.core :as medley]
-            [criterium.core :as criterium]
+            [criterium.core :as crit]
             [datascript.core :as d]
             [datomic.api :as dd]
             [org.zsxf.datomic.cdc :as dd.cdc]

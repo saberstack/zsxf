@@ -274,11 +274,11 @@
                     f2 (with-clause-f clause-2)]
                 (zs/indexed-zset+
                   ;ΔA ⋈ B
-                  @(future (zs/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2))
+                  (zs/intersect-indexed* (:index-state-2-prev params) (:delta-1 params) f1 f2)
                   ;A ⋈ ΔB
-                  @(future (zs/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2))
+                  (zs/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2)
                   ;ΔA ⋈ ΔB
-                  @(future (zs/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2))))
+                  (zs/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2)))
               ;(join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] [clause-1-out' clause-2-out'])
               ;transducer to transform zset items during conversion indexed-zset -> zset
               (comp return-zset-item-xf))

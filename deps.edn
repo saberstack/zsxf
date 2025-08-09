@@ -23,7 +23,8 @@
            aleph/aleph                {:mvn/version "0.9.0"}
            ring/ring-defaults         {:mvn/version "0.6.0"}
            yogthos/config             {:mvn/version "1.2.1"}
-           com.datomic/peer           {:mvn/version "1.0.7387"}}
+           com.datomic/peer           {:mvn/version "1.0.7387"}
+           com.cnuernber/ham-fisted   {:mvn/version "2.031"}}
 
  :aliases {:dev
            {:main-opts   ["-e" "(set! *warn-on-reflection* true)"]

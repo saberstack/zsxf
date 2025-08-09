@@ -340,9 +340,23 @@
                            (util/nano-to-sec
                              (- initial-sync-end start)))))))
 
+(defonce all-hn-zsets (atom []))
+
 (comment
 
   (get-all-users-via-zsxf)
+
+  (dd.cdc/log->output
+    (atom {})
+    (hn-conn)
+    idd/zsxf-xform
+    (fn
+      ([] all-hn-zsets)
+      ([accum item]
+       (swap! accum conj item)
+       accum)
+      ([accum] :done))
+    nil nil)
 
   (reset! *query nil)
   (reset! *query-result-datomic nil)

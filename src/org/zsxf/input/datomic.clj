@@ -7,6 +7,7 @@
             [org.zsxf.query :as q]
             [org.saberstack.performance.intake-monitor :as perf-intake-monitor]
             [org.zsxf.datalog.compiler :as dcc]
+            [org.zsxf.type.one-item-set :as ois]
             [org.zsxf.zset :as zs]))
 
 (defn ddatom2->zset-item [ddatom2]
@@ -22,7 +23,7 @@
              (let [a' (idents-m a)]
                (dd2/ddatom2 datom a'))))
       (map ddatom2->zset-item)
-      (map hash-set))
+      (map ois/hash-set))
     data))
 
 (defn zsxf-xform
@@ -40,12 +41,12 @@
       query
       conn
       zsxf-xform
-      (completing
-        ;accum is not used, this is a side-effecting reducing fn
-        (fn
-          [_accum {:keys [zsets basis-t]}]
-          (perf-intake-monitor/input perf-intake-monitor (count zsets))
-          (q/input query zsets basis-t))))))
+      (fn
+        ([] nil)
+        ([_accum {:keys [zsets basis-t]}]
+         (perf-intake-monitor/input perf-intake-monitor (count zsets))
+         (q/input query zsets basis-t))
+        ([final-accum] final-accum)))))
 
 
 ;; Tests, WIP
@@ -100,4 +101,4 @@
 
   (time
     (let [conn (mbrainz-conn)]
-      (dd.cdc/log->output (atom {}) conn zsxf-xform (xforms/count conj)))))
+      (dd.cdc/log->output (atom {}) conn zsxf-xform (xforms/count conj) nil nil))))

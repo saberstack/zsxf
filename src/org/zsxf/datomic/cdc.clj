@@ -45,9 +45,6 @@
      start - Optional start time/transaction ID to retrieve logs from (default nil)
      end - Optional end time/transaction ID to retrieve logs until (default nil)
   "
-  ([query-state conn xform output-rf]
-   ; Call with no start or end, which means process all transactions
-   (log->output query-state conn xform output-rf nil nil))
   ([query-state conn xform output-rf start end]
    (let [idents-m     (into {} (get-all-idents conn))
          transactions (dd/tx-range (dd/log conn) start end)]
@@ -60,8 +57,6 @@
                 tx-m))
          (xform idents-m))
        output-rf
-       ;for side effects, no init
-       nil
        transactions))))
 
 (defn on-transaction-loop!

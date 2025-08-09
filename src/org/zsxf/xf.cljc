@@ -275,7 +275,7 @@
                 (zs/indexed-zset+
                   (zs/indexed-zset+
                     ;ΔA ⋈ B
-                    (zs/intersect-indexed* (:index-state-2-prev params) (:delta-1 params) f1 f2)
+                    (zs/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2)
                     ;A ⋈ ΔB
                     (zs/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2))
                   ;ΔA ⋈ ΔB

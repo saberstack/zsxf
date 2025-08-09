@@ -62,7 +62,9 @@
            (not (instance? OneItemSet s))
            ;needed because sets with metadata not currently supported
            (nil? (meta s)))
+       ;optimize
        (hash-set (first s))
+       ;else, do not optimize
        s)
      ;TODO in CLJS (if relevant)
      :cljs s))

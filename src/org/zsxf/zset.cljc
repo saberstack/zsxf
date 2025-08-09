@@ -285,13 +285,13 @@
           (if (contains? indexed-zset-1-accum k-2)
             ;key exists in both indexed zsets, call zset-pos+ to add the zsets
             (let [new-zset (zset-pos+ (indexed-zset-1-accum k-2) zset-2)]
-              (if (= #{} new-zset)
+              (if (ham/empty? new-zset)
                 (dissoc indexed-zset-1-accum k-2)           ;remove key if zset is empty after zset addition
                 (assoc indexed-zset-1-accum k-2 new-zset))) ;else, add the new zset to the indexed zset map
             ;else...
             ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
             (let [new-zset (zset-pos+ #{} zset-2)]
-              (if (= #{} new-zset)
+              (if (ham/empty? new-zset)
                 ;return unchanged
                 indexed-zset-1-accum
                 ;else, add new zset-pos

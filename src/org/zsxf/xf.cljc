@@ -79,9 +79,9 @@
   "Based on the computed deltas, decide if we should stop processing the current zset item.
   This is different from halt-when in that we don't halt the entire transducer chain.
   Instead, we return the zset for potential further processing by the next transducer(s), if any."
-  [[delta-1 delta-2 _zset :as _delta-1+delta-2+zset]]
+  [delta-1+delta-2+zset]
   ;if both deltas are empty, we can stop processing the current zset item
-  (and (empty? delta-1) (empty? delta-2)))
+  (and (empty? (delta-1+delta-2+zset 0)) (empty? (delta-1+delta-2+zset 1))))
 
 (defn clause= [zsi clause]
   (= clause (:xf.clause (meta zsi))))
@@ -144,14 +144,14 @@
 
 (defn with-clause-f [clause]
   (fn [item]
-    (vary-meta item (fn [m] (assoc m :xf.clause clause)))))
+    (vary-meta item assoc :xf.clause clause)))
 
 (defn with-clause
   "If ?clause is not nil, set it as metadata.
   Otherwise, return the item unchanged."
   [item ?clause]
   (if (not (nil? ?clause))
-    (vary-meta item (fn [m] (assoc m :xf.clause ?clause)))
+    (vary-meta item assoc :xf.clause ?clause)
     item))
 
 (defn- join-xf-impl
@@ -168,6 +168,44 @@
       (zs/intersect-indexed* delta-1 delta-2 f1 f2))))
 
 (defrecord params-join-xf-1 [index-state-1-prev index-state-2-prev delta-1 delta-2 zset])
+
+(defn not-no-op? [x]
+  (not (::xf/no-op (meta x))))
+
+(defn map-when
+  ([test f]
+   (fn [rf]
+     (fn
+       ([] (rf))
+       ([result] (rf result))
+       ([result input]
+        (rf result
+          (if (test input)
+            (f input)
+            input)))))))
+
+(defn ^:private preserving-reduced
+  [rf]
+  #(let [ret (rf %1 %2)]
+     (if (reduced? ret)
+       (reduced ret)
+       ret)))
+
+(defn cat-when
+  "Same as cat but only when test is truthy for input"
+  [test]
+  (fn [rf]
+    (let [rrf (preserving-reduced rf)]
+      (fn
+        ([] (rf))
+        ([result] (rf result))
+        ([result input]
+         (if (test input)
+           (reduce rrf result input)
+           (rf result input)))))))
+
+(defn meta-no-op [x]
+  (vary-meta x assoc ::xf/no-op true))
 
 (defn join-xf
   "Receives:
@@ -232,48 +270,43 @@
                    zset    (if last? #{} (ois/hash-set zsi))]
                ;return
                [delta-1 delta-2 zset])))
-      (cond-branch
-        ;care about the current item?
-        stop-current-xf?
-        ;stop and return zset
-        (map (fn [[_delta-1 _delta-2 zset]] zset))
-        ;else, proceed to join
-        any?
-        (comp
-          (map (fn join-xf-update-state [[delta-1 delta-2 zset]]
-                 (let [index-state-1-prev (@query-state uuid-1 {})
-                       index-state-2-prev (@query-state uuid-2 {})]
-                   ;advance indices
-                   (swap! query-state
-                     (fn update-indices [state]
-                       (-> state
-                         (update uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
-                         (update uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
-                   ;return
-                   (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
-          (map (fn join-xf-intersect-heavy [params]
-                 ;return
-                 (pv/vector
-                   ;add :where clauses as metadata to the joined relations (a zset)
-                   (zs/indexed-zset->zset
-                     (let [f1 (with-clause-f clause-1)
-                           f2 (with-clause-f clause-2)]
-                       (zs/indexed-zset+
-                         ;ΔA ⋈ B
-                         (zs/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2)
-                         ;A ⋈ ΔB
-                         (zs/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2)
-                         ;ΔA ⋈ ΔB
-                         (zs/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2)))
-                     ;(join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] [clause-1-out' clause-2-out'])
-                     ;transducer to transform zset items during conversion indexed-zset -> zset
-                     (comp return-zset-item-xf))
-                   ;original zset-item wrapped in a zset
-                   (:zset params))))
-          cat
-          #_(mapcat (fn [[join-xf-delta zset]]
-                      ;pass along to next xf join-xf-delta and zset, one at a time via mapcat
-                      [join-xf-delta zset])))))))
+      (map (fn [delta-1+delta-2+zset]
+             (if (stop-current-xf? delta-1+delta-2+zset)
+               (meta-no-op (delta-1+delta-2+zset 2))
+               delta-1+delta-2+zset)))
+      (map-when not-no-op?
+        (fn join-xf-update-state [[delta-1 delta-2 zset]]
+          (let [index-state-1-prev (@query-state uuid-1 {})
+                index-state-2-prev (@query-state uuid-2 {})]
+            ;advance indices
+            (swap! query-state
+              (fn update-indices [state]
+                (-> state
+                  (update uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
+                  (update uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
+            ;return
+            (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
+      (map-when not-no-op?
+        (fn join-xf-intersect-heavy [params]
+          ;return
+          (pv/vector
+            ;add :where clauses as metadata to the joined relations (a zset)
+            (zs/indexed-zset->zset
+              (let [f1 (with-clause-f clause-1)
+                    f2 (with-clause-f clause-2)]
+                (zs/indexed-zset+
+                  ;ΔA ⋈ B
+                  (zs/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2)
+                  ;A ⋈ ΔB
+                  (zs/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2)
+                  ;ΔA ⋈ ΔB
+                  (zs/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2)))
+              ;(join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] [clause-1-out' clause-2-out'])
+              ;transducer to transform zset items during conversion indexed-zset -> zset
+              (comp return-zset-item-xf))
+            ;original zset-item wrapped in a zset
+            (:zset params))))
+      (cat-when not-no-op?))))
 
 (defn difference-xf
   [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f :or {path-f-1 identity item-f-1 identity}}

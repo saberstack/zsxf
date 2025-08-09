@@ -275,29 +275,31 @@
   ([indexed-zset]
    (indexed-zset-pos+ indexed-zset (empty indexed-zset)))
   ([indexed-zset-1 indexed-zset-2]
-   (transduce
-     (map identity)
-     (completing
-       ;reduce function
-       ; sum two indexed zsets, discard non-positive weight items
-       (fn [indexed-zset-1-accum [k-2 zset-2]]
-         (if (contains? indexed-zset-1-accum k-2)
-           ;key exists in both indexed zsets, call zset-pos+ to add the zsets
-           (let [new-zset (zset-pos+ (indexed-zset-1-accum k-2) zset-2)]
-             (if (= #{} new-zset)
-               (dissoc indexed-zset-1-accum k-2)            ;remove key if zset is empty after zset addition
-               (assoc indexed-zset-1-accum k-2 new-zset)))  ;else, add the new zset to the indexed zset map
-           ;else...
-           ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
-           (let [new-zset (zset-pos+ #{} zset-2)]
-             (if (= #{} new-zset)
-               ;return unchanged
-               indexed-zset-1-accum
-               ;else, add new zset-pos
-               (assoc indexed-zset-1-accum k-2 new-zset))))))
-     ;if indexed-zset-1 is nil, use the same type of empty map as indexed-zset-1 for the initial value
-     (or indexed-zset-1 (empty indexed-zset-2))
-     indexed-zset-2)))
+   (if (< (count indexed-zset-1) (count indexed-zset-2))
+     (recur indexed-zset-2 indexed-zset-1)
+     (transduce
+       (map identity)
+       (completing
+         ;reduce function
+         ; sum two indexed zsets, discard non-positive weight items
+         (fn [indexed-zset-1-accum [k-2 zset-2]]
+           (if (contains? indexed-zset-1-accum k-2)
+             ;key exists in both indexed zsets, call zset-pos+ to add the zsets
+             (let [new-zset (zset-pos+ (indexed-zset-1-accum k-2) zset-2)]
+               (if (= #{} new-zset)
+                 (dissoc indexed-zset-1-accum k-2)          ;remove key if zset is empty after zset addition
+                 (assoc indexed-zset-1-accum k-2 new-zset))) ;else, add the new zset to the indexed zset map
+             ;else...
+             ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
+             (let [new-zset (zset-pos+ #{} zset-2)]
+               (if (= #{} new-zset)
+                 ;return unchanged
+                 indexed-zset-1-accum
+                 ;else, add new zset-pos
+                 (assoc indexed-zset-1-accum k-2 new-zset))))))
+       ;if indexed-zset-1 is nil, use the same type of empty map as indexed-zset-1 for the initial value
+       (or indexed-zset-1 (empty indexed-zset-2))
+       indexed-zset-2))))
 
 (defn key-intersection
   "Taken from clojure.set/intersection but adapted to work for maps.

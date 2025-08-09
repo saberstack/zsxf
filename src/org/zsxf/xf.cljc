@@ -145,19 +145,6 @@
     (vary-meta item assoc :xf.clause ?clause)
     item))
 
-(defn- join-xf-impl
-  [[index-state-1-prev index-state-2-prev [delta-1 delta-2 _zset]] [clause-1 clause-2]]
-  ;add :where clauses as metadata to the joined relations (a zset)
-  (let [f1 (with-clause-f clause-1)
-        f2 (with-clause-f clause-2)]
-    (zs/indexed-zset+
-      ;ΔA ⋈ B
-      (zs/intersect-indexed* delta-1 index-state-2-prev f1 f2)
-      ;A ⋈ ΔB
-      (zs/intersect-indexed* index-state-1-prev delta-2 f1 f2)
-      ;ΔA ⋈ ΔB
-      (zs/intersect-indexed* delta-1 delta-2 f1 f2))))
-
 (defrecord params-join-xf-1 [index-state-1-prev index-state-2-prev delta-1 delta-2 zset])
 
 (defn not-no-op? [x]
@@ -287,11 +274,11 @@
                     f2 (with-clause-f clause-2)]
                 (zs/indexed-zset+
                   ;ΔA ⋈ B
-                  (zs/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2)
+                  @(future (zs/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2))
                   ;A ⋈ ΔB
-                  (zs/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2)
+                  @(future (zs/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2))
                   ;ΔA ⋈ ΔB
-                  (zs/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2)))
+                  @(future (zs/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2))))
               ;(join-xf-impl [index-state-1-prev index-state-2-prev [delta-1 delta-2 zset]] [clause-1-out' clause-2-out'])
               ;transducer to transform zset items during conversion indexed-zset -> zset
               (comp return-zset-item-xf))

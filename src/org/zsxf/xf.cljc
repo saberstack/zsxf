@@ -273,8 +273,8 @@
             (swap! query-state
               (fn update-indices [state]
                 (-> state
-                  (update uuid-1 (fn [index] (zs/indexed-zset-pos+ index delta-1)))
-                  (update uuid-2 (fn [index] (zs/indexed-zset-pos+ index delta-2))))))
+                  (update uuid-1 zs/indexed-zset-pos+ delta-1)
+                  (update uuid-2 zs/indexed-zset-pos+ delta-2))))
             ;return
             (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
       (map-when not-no-op?

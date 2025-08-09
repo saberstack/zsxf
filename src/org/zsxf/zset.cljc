@@ -300,7 +300,7 @@
       (or indexed-zset-1 (empty indexed-zset-2))
       indexed-zset-2)))
 
-(defn key-intersection
+#_(defn key-intersection
   "Taken from clojure.set/intersection but adapted to work for maps.
   Takes maps m1 and m2.
   Returns a set of common keys."
@@ -320,6 +320,14 @@
               result))
           (transient #{})
           (keys m2))))))
+
+(defn key-intersection
+  "WIP"
+  [m1 m2]
+  (keys
+    (ham/map-intersection
+      (fn [lhs rhs] nil)
+      m1 m2)))
 
 (defn intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)

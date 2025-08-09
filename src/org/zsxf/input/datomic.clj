@@ -48,6 +48,16 @@
          (q/input query zsets basis-t))
         ([final-accum] final-accum)))))
 
+(defn init-query-with-coll
+  "Initial naive implementation. Read all transactions datoms."
+  [query coll]
+  (let [perf-intake-monitor (perf-intake-monitor/create-monitor)]
+    (run!
+      (fn [{:keys [zsets basis-t]}]
+        (perf-intake-monitor/input perf-intake-monitor (count zsets))
+        (q/input query zsets basis-t))
+      coll)))
+
 
 ;; Tests, WIP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

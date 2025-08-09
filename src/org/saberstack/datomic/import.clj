@@ -317,6 +317,17 @@
     (reset! *query query)
     :pending))
 
+(defn get-all-users-via-zsxf-from-coll [coll]
+  (let [query (q/create-query
+                (dcc/static-compile
+                  '[:find ?username
+                    :where
+                    [?e :hn.item/url ?url]
+                    [?e :hn.item/by ?username]]))
+        _     (idd/init-query-with-coll query coll)]
+    (reset! *query query)
+    :pending))
+
 (defonce *query-result-datomic (atom nil))
 
 (defn get-all-users-via-datomic []
@@ -346,17 +357,21 @@
 
   (get-all-users-via-zsxf)
 
-  (dd.cdc/log->output
-    (atom {})
-    (hn-conn)
-    idd/zsxf-xform
-    (fn
-      ([] all-hn-zsets)
-      ([accum item]
-       (swap! accum conj item)
-       accum)
-      ([accum] :done))
-    nil nil)
+  (time
+    (get-all-users-via-zsxf-from-coll @all-hn-zsets))
+
+  (time
+    (dd.cdc/log->output
+      (atom {})
+      (hn-conn)
+      idd/zsxf-xform
+      (fn
+        ([] all-hn-zsets)
+        ([accum item]
+         (swap! accum conj item)
+         accum)
+        ([accum] :done))
+      nil nil))
 
   (reset! *query nil)
   (reset! *query-result-datomic nil)

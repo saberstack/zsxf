@@ -94,15 +94,6 @@
       (f data)
       (meta data))))
 
-(defn merge-meta-f
-  "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
-  [f]
-  (fn [data]
-    (vary-meta
-      (f data)
-      (fn [m]
-        (merge (meta data) m)))))
-
 (defn detect-join-type [zsi path-f clause]
   (cond
     (and

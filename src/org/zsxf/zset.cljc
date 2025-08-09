@@ -270,9 +270,8 @@
 
 (defn indexed-zset-pos+
   "Same as zset-pos+ but for indexed zset which is a map."
-  [indexed-zset-1 indexed-zset-2]
-  (if (< (count indexed-zset-1) (count indexed-zset-2))
-    (recur indexed-zset-2 indexed-zset-1)
+  [m1 m2]
+  (let [[smaller larger] (if (< (count m1) (count m2)) [m1 m2] [m2 m1])]
     (transduce
       (map identity)
       (completing
@@ -293,30 +292,23 @@
                 indexed-zset-1-accum
                 ;else, add new zset-pos
                 (assoc indexed-zset-1-accum k-2 new-zset))))))
-      ;if indexed-zset-1 is nil, use the same type of empty map as indexed-zset-1 for the initial value
-      (or indexed-zset-1 (empty indexed-zset-2))
-      indexed-zset-2)))
+      larger
+      smaller)))
 
 (defn key-intersection
   "Taken from clojure.set/intersection but adapted to work for maps.
   Takes maps m1 and m2.
   Returns a set of common keys."
   [m1 m2]
-  (if (= m1 m2)
-    ;if both maps are the same, return all keys
-    (set (keys m1))
-    ;else, compute intersection
-    ;determine size and switch map order (if needed) for improved efficiency
-    (if (< (count m1) (count m2))
-      (recur m2 m1)
-      (persistent!
-        (reduce
-          (fn [result item]
-            (if (contains? m1 item)
-              (conj! result item)
-              result))
-          (transient #{})
-          (keys m2))))))
+  (let [[smaller larger] (if (< (count m1) (count m2)) [m1 m2] [m2 m1])]
+    (persistent!
+      (reduce
+        (fn [result item]
+          (if (contains? larger item)
+            (conj! result item)
+            result))
+        (transient #{})
+        (keys smaller)))))
 
 (defn intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)

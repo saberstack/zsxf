@@ -10,7 +10,6 @@
   ;rename to match Clojure
   #?(:cljs (:refer-clojure :rename {+ +' * *'}))
   (:require [clojure.spec.alpha :as s]
-            #?(:clj [ham-fisted.api :as ham])
             [org.zsxf.constant :as const]
             [org.zsxf.type.one-item-set :as ois]
             [org.zsxf.zset :as-alias zs]
@@ -265,11 +264,9 @@
   ([indexed-zset]
    (indexed-zset+ indexed-zset {}))
   ([indexed-zset-1 indexed-zset-2]
-   (ham/persistent!
-     (ham/merge-with zset+ indexed-zset-1 indexed-zset-2)))
+   (merge-with zset+ indexed-zset-1 indexed-zset-2))
   ([indexed-zset-1 indexed-zset-2 & args]
-   (ham/persistent!
-     (apply ham/merge-with zset+ indexed-zset-1 indexed-zset-2 args))))
+   (apply merge-with zset+ indexed-zset-1 indexed-zset-2 args)))
 
 (defn indexed-zset-pos+
   "Same as zset-pos+ but for indexed zset which is a map."
@@ -285,13 +282,13 @@
           (if (contains? indexed-zset-1-accum k-2)
             ;key exists in both indexed zsets, call zset-pos+ to add the zsets
             (let [new-zset (zset-pos+ (indexed-zset-1-accum k-2) zset-2)]
-              (if (ham/empty? new-zset)
+              (if (empty? new-zset)
                 (dissoc indexed-zset-1-accum k-2)           ;remove key if zset is empty after zset addition
                 (assoc indexed-zset-1-accum k-2 new-zset))) ;else, add the new zset to the indexed zset map
             ;else...
             ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
             (let [new-zset (zset-pos+ #{} zset-2)]
-              (if (ham/empty? new-zset)
+              (if (empty? new-zset)
                 ;return unchanged
                 indexed-zset-1-accum
                 ;else, add new zset-pos
@@ -300,7 +297,7 @@
       (or indexed-zset-1 (empty indexed-zset-2))
       indexed-zset-2)))
 
-#_(defn key-intersection
+(defn key-intersection
   "Taken from clojure.set/intersection but adapted to work for maps.
   Takes maps m1 and m2.
   Returns a set of common keys."
@@ -320,16 +317,6 @@
               result))
           (transient #{})
           (keys m2))))))
-
-(defn- lhs-rhs [lhs rhs] nil)
-
-(defn key-intersection
-  "WIP"
-  [m1 m2]
-  (keys
-    (ham/map-intersection
-      lhs-rhs
-      m1 m2)))
 
 (defn intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)

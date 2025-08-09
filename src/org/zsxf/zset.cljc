@@ -321,12 +321,14 @@
           (transient #{})
           (keys m2))))))
 
+(defn- lhs-rhs [lhs rhs] nil)
+
 (defn key-intersection
   "WIP"
   [m1 m2]
   (keys
     (ham/map-intersection
-      (fn [lhs rhs] nil)
+      lhs-rhs
       m1 m2)))
 
 (defn intersect-indexed*

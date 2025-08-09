@@ -272,26 +272,24 @@
   "Same as zset-pos+ but for indexed zset which is a map."
   [m1 m2]
   (let [[smaller larger] (if (< (count m1) (count m2)) [m1 m2] [m2 m1])]
-    (transduce
-      (map identity)
-      (completing
-        ;reduce function
-        ; sum two indexed zsets, discard non-positive weight items
-        (fn [indexed-zset-1-accum [k-2 zset-2]]
-          (if (contains? indexed-zset-1-accum k-2)
-            ;key exists in both indexed zsets, call zset-pos+ to add the zsets
-            (let [new-zset (zset-pos+ (indexed-zset-1-accum k-2) zset-2)]
-              (if (empty? new-zset)
-                (dissoc indexed-zset-1-accum k-2)           ;remove key if zset is empty after zset addition
-                (assoc indexed-zset-1-accum k-2 new-zset))) ;else, add the new zset to the indexed zset map
-            ;else...
-            ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
-            (let [new-zset (zset-pos+ #{} zset-2)]
-              (if (empty? new-zset)
-                ;return unchanged
-                indexed-zset-1-accum
-                ;else, add new zset-pos
-                (assoc indexed-zset-1-accum k-2 new-zset))))))
+    (reduce
+      ;reduce function
+      ; sum two indexed zsets, discard non-positive weight items
+      (fn [larger [k -zset]]
+        (if (contains? larger k)
+          ;key exists in both indexed zsets, call zset-pos+ to add the zsets
+          (let [new-zset (zset-pos+ (larger k) -zset)]
+            (if (empty? new-zset)
+              (dissoc larger k)             ;remove key if zset is empty after zset addition
+              (assoc larger k new-zset)))   ;else, add the new zset to the indexed zset map
+          ;else...
+          ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
+          (let [new-zset (zset-pos+ #{} -zset)]
+            (if (empty? new-zset)
+              ;return unchanged
+              larger
+              ;else, add new zset-pos
+              (assoc larger k new-zset)))))
       larger
       smaller)))
 

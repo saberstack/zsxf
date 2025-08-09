@@ -10,6 +10,7 @@
   ;rename to match Clojure
   #?(:cljs (:refer-clojure :rename {+ +' * *'}))
   (:require [clojure.spec.alpha :as s]
+            #?(:clj [ham-fisted.api :as ham])
             [org.zsxf.constant :as const]
             [org.zsxf.type.one-item-set :as ois]
             [org.zsxf.zset :as-alias zs]
@@ -264,9 +265,11 @@
   ([indexed-zset]
    (indexed-zset+ indexed-zset {}))
   ([indexed-zset-1 indexed-zset-2]
-   (merge-with zset+ indexed-zset-1 indexed-zset-2))
+   (ham/persistent!
+     (ham/merge-with zset+ indexed-zset-1 indexed-zset-2)))
   ([indexed-zset-1 indexed-zset-2 & args]
-   (apply merge-with zset+ indexed-zset-1 indexed-zset-2 args)))
+   (ham/persistent!
+     (apply ham/merge-with zset+ indexed-zset-1 indexed-zset-2 args))))
 
 (defn indexed-zset-pos+
   "Same as zset-pos+ but for indexed zset which is a map."

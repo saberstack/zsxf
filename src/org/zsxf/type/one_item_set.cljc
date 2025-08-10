@@ -58,7 +58,7 @@
   [s]
   #?(:clj
      (if (and
-           (= 1 (count s))
+           (== 1 (count s))
            (not (instance? OneItemSet s))
            ;needed because sets with metadata not currently supported
            (nil? (meta s)))

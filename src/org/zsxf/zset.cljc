@@ -91,7 +91,7 @@
      (assoc-zset-item-weight x weight)
      ;optimization:
      ; reuse metadata map for common weights
-     (if (= 1 weight)
+     (if (== 1 weight)
        (with-meta x const/zset-weight-of-1)
        (assoc-zset-item-weight x weight)))))
 

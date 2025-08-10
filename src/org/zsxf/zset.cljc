@@ -171,10 +171,8 @@
    (zset-pos+ zset-1 (zset #{})))
   ([zset-1 zset-2]
    #_{:pre [(zset? zset-1) (zset? zset-2)]}
-   (transduce
-     ;get set items one by one
-     cat
-     (completing
+   (ois/set
+     (reduce
        (fn [s new-zset-item]
          (if-let [zset-item (s new-zset-item)]
            (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
@@ -184,10 +182,8 @@
            (if (pos-int? (zset-weight new-zset-item))
              (conj s new-zset-item)
              s)))
-       (fn [accum]
-         (ois/set accum)))
-     zset-1
-     [zset-2])))
+       zset-1
+       zset-2))))
 
 (defn zset-negate
   "Change the sign of all the weights in a zset"

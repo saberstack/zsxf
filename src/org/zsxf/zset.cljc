@@ -12,6 +12,7 @@
   (:require [clojure.spec.alpha :as s]
             [org.zsxf.constant :as const]
             [org.zsxf.type.one-item-set :as ois]
+            [clj-fast.inline :as fast.inline]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.type.pair-vector :as pv]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
@@ -272,7 +273,7 @@
       ;reduce function
       ; sum two indexed zsets, discard non-positive weight items
       (fn [larger [k -zset]]
-        (if (get larger k)
+        (if (.get ^java.util.Map larger k)
           ;key exists in both indexed zsets, call zset-pos+ to add the zsets
           (let [new-zset (zset-pos+ (larger k) -zset)]
             (if (empty? new-zset)
@@ -298,7 +299,7 @@
     (persistent!
       (reduce
         (fn [result item]
-          (if (contains? larger item)
+          (if (get larger item)
             (conj! result item)
             result))
         (transient #{})

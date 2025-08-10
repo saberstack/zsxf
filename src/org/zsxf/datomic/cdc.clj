@@ -52,7 +52,7 @@
        (comp
          (map (fn [tx-m]
                 ; Store the last seen transaction ID :t
-                (swap! query-state assoc ::dd.cdc/last-t-processed (:t tx-m))
+                (vswap! query-state assoc ::dd.cdc/last-t-processed (:t tx-m))
                 ;return tx-m unchanged
                 tx-m))
          (xform idents-m))
@@ -94,13 +94,13 @@
    Use stop-all-loops! to stop."
   [{::q/keys [state id] :as _query} conn xform output-rf]
   (let [tx-report-queue-ch (on-transaction-loop! id conn)]
-    (swap! state assoc ::dd.cdc/start (clock/now))
+    (vswap! state assoc ::dd.cdc/start (clock/now))
     (ss.loop/thread-loop
       ^{:id [id :log->output]}
       [start nil
        end   nil]
       (log->output state conn xform output-rf start end)
-      (swap! state util/assoc-if-new ::dd.cdc/initial-sync-end (clock/now))
+      (vswap! state util/assoc-if-new ::dd.cdc/initial-sync-end (clock/now))
       (let [timeout-ch       (a/timeout 5000)
             [last-t-on-report-queue _ch] (a/alts!! [timeout-ch tx-report-queue-ch])
             _                (timbre/info "last-t-on-report-queue" last-t-on-report-queue)

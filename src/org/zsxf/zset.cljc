@@ -272,7 +272,7 @@
       ;reduce function
       ; sum two indexed zsets, discard non-positive weight items
       (fn [larger [k -zset]]
-        (if (contains? larger k)
+        (if (get larger k)
           ;key exists in both indexed zsets, call zset-pos+ to add the zsets
           (let [new-zset (zset-pos+ (larger k) -zset)]
             (if (empty? new-zset)

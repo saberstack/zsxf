@@ -257,11 +257,12 @@
           (let [index-state-1-prev (@query-state uuid-1 {})
                 index-state-2-prev (@query-state uuid-2 {})]
             ;advance indices
-            (swap! query-state
-              (fn update-indices [state]
-                (-> state
-                  (update uuid-1 zs/indexed-zset-pos+ delta-1)
-                  (update uuid-2 zs/indexed-zset-pos+ delta-2))))
+            (swap! query-state update uuid-1 zs/indexed-zset-pos+ delta-1)
+            (swap! query-state update uuid-2 zs/indexed-zset-pos+ delta-2)
+            #_(fn update-indices [state]
+              (-> state
+                (update uuid-1 zs/indexed-zset-pos+ delta-1)
+                (update uuid-2 zs/indexed-zset-pos+ delta-2)))
             ;return
             (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
       (map-when not-no-op?

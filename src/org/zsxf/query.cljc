@@ -127,8 +127,7 @@
                 (result+ result result-delta))))))
        ([state-m]                                           ;finalize
         (let [query-result (::q/result state-m)]
-          ;side effects
-          #_(when (and (true? keep-history?) (int? basis-t))
+          (when (and (true? keep-history?) (int? basis-t))
             (history-append! result-history basis-t query-result))
           ;return
           query-result

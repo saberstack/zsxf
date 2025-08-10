@@ -11,7 +11,7 @@
   and must return a ZSXF-compatible transducer which takes and returns zsets
   Returns a map."
   [init-xf & {:keys [keep-history?] :or {keep-history? false}}]
-  (let [state (volatile! {})]
+  (let [state (atom {})]
     {::q/xf             (init-xf state)
      ::q/state          state
      ::q/result-history (atom {})
@@ -120,7 +120,7 @@
        ([state result-delta]                                ;reduce step
         ;query reducing fn; sums the existing result with query-computed deltas
         ;new query state
-        (vswap! state
+        (swap! state
           (fn [{::q/keys [result] :as state-m}]
             (let [[result+ result] (init-result result result-delta)]
               (assoc state-m ::q/result

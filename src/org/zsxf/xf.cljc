@@ -257,7 +257,7 @@
           (let [index-state-1-prev (@query-state uuid-1 {})
                 index-state-2-prev (@query-state uuid-2 {})]
             ;advance indices
-            (vswap! query-state
+            (swap! query-state
               (fn update-indices [state]
                 (-> state
                   (update uuid-1 zs/indexed-zset-pos+ delta-1)
@@ -413,7 +413,7 @@
                  (let [sub-state-1-prev (get @query-state uuid-1 {})
                        sub-state-2-prev (get @query-state uuid-2 {})]
                    ;advance indices
-                   (vswap! query-state
+                   (swap! query-state
                      (fn [state]
                        (-> state
                          (update uuid-1 (fn [index] (zs/zset-pos+ (or index #{}) delta-1)))

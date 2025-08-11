@@ -235,6 +235,10 @@
 (defn meta-no-op [x]
   (vary-meta x assoc ::xf/no-op true))
 
+(defn where-xf []
+  ;WIP
+  )
+
 (defn join-xf
   "Receives:
 

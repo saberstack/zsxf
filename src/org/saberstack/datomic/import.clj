@@ -305,6 +305,17 @@
 
 (defonce *query (atom nil))
 
+(defn get-all-item-ids-via-zsxf []
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/static-compile
+                  '[:find ?item-id
+                    :where
+                    [_ :hn.item/id ?item-id]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! *query query)
+    :pending))
+
 (defn get-all-users-via-zsxf []
   (let [conn  (hn-conn)
         query (q/create-query
@@ -348,6 +359,13 @@
       [?e :hn.item/by ?username]]
     (dd/db (hn-conn))))
 
+(defn get-all-item-ids-via-datomic []
+  (dd/q
+    '[:find ?item-id
+      :where
+      [_ :hn.item/id ?item-id]]
+    (dd/db (hn-conn))))
+
 (defn import-progress [conn]
   (let [latest-t (dd/basis-t (dd/db conn))
         {::dd.cdc/keys [last-t-processed start initial-sync-end] :as cdc-stats} (q/cdc-stats @*query)]
@@ -369,6 +387,13 @@
   (get-all-users-via-zsxf)
 
   (get-all-users-via-zsxf-single-clause)
+
+  (get-all-item-ids-via-zsxf)
+
+  (time
+    (do
+      (reset! *query-result-datomic (get-all-item-ids-via-datomic))
+      :done))
 
   (time
     (get-all-users-via-zsxf-from-coll @all-hn-zsets))
@@ -396,7 +421,6 @@
 
   (import-progress (hn-conn))
 
-  ;progress in percentage
   (time
     (do
       (reset! *query-result-datomic (get-all-users-via-datomic))
@@ -407,6 +431,8 @@
 
   ; Check if the ZSXF query result matches Datomic
   (= (q/get-result @*query) (get-all-users-via-datomic))
+
+  (= (q/get-result @*query) *query-result-datomic)
 
   (xforms/window window-n rf/avg #(rf/avg %1 %2 -1))
 

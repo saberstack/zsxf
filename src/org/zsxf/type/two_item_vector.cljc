@@ -1,4 +1,4 @@
-(ns org.zsxf.type.pair-vector
+(ns org.zsxf.type.two-item-vector
   (:refer-clojure :exclude [vector])
   #?(:clj
      (:import
@@ -6,10 +6,10 @@
                     IPersistentVector Indexed MapEntry Reversible Seqable))))
 
 #?(:clj
-   (deftype PairVector [a b meta]
+   (deftype TwoItemVector [a b meta]
      IObj
      (meta [this] meta)
-     (withMeta [this m] (PairVector. a b m))
+     (withMeta [this m] (TwoItemVector. a b m))
      IPersistentCollection
      (empty [this] [])
      (equiv [this other] (.equiv [a b] other))
@@ -25,8 +25,8 @@
      (cons [this x] (conj (with-meta [a b] meta) x))
      (assocN [this idx v]
        (case idx
-         0 (PairVector. v b meta)
-         1 (PairVector. a v meta)
+         0 (TwoItemVector. v b meta)
+         1 (TwoItemVector. a v meta)
          (assoc (with-meta [a b] meta) idx v)))
      Indexed
      (nth [this idx]
@@ -47,8 +47,8 @@
          false))
      (assoc [this idx v]
        (case (int idx)
-         0 (PairVector. v b meta)
-         1 (PairVector. a v meta)
+         0 (TwoItemVector. v b meta)
+         1 (TwoItemVector. a v meta)
          (assoc (with-meta [a b] meta) idx v)))
      (entryAt [this idx]
        (case (int idx)
@@ -73,7 +73,19 @@
      ;TODO implement if needed
      ))
 
-
-(defn vector [a b]
-  #?(:clj  (->PairVector a b nil)
+(defn vector-of-2 [a b]
+  #?(:clj  (->TwoItemVector a b nil)
      :cljs [a b]))
+
+(defn optimize-vector [v]
+  #?(:clj
+     (if (and
+           (vector? v)
+           (== 2 (count v))
+           (not (instance? TwoItemVector v)))
+       ;optimize
+       (->TwoItemVector (v 0) (v 1) (meta v))
+       ;else, do not optimize
+       v)
+     ;TODO in CLJS (if relevant)
+     :cljs v))

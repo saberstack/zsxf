@@ -22,7 +22,7 @@
             [net.cgrand.xforms :as xforms]
             [org.zsxf.type.datom-like :as dl]
             [org.zsxf.type.one-item-set :as ois]
-            [org.zsxf.type.pair-vector :as pv]
+            [org.zsxf.type.two-item-vector :as pv]
             [org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
@@ -249,7 +249,7 @@
       (ss.xforms/map-when not-no-op?
         (fn join-xf-intersect-heavy [params]
           ;return
-          (pv/vector
+          (pv/vector-of-2
             ;add :where clauses as metadata to the joined relations (a zset)
             (zs/indexed-zset->zset
               (let [f1 (with-clause-f clause-1)

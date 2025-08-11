@@ -317,6 +317,17 @@
     (reset! *query query)
     :pending))
 
+(defn get-all-users-via-zsxf-single-clause []
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/static-compile
+                  '[:find ?username
+                    :where
+                    [?e :hn.item/by ?username]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! *query query)
+    :pending))
+
 (defn get-all-users-via-zsxf-from-coll [coll]
   (let [query (q/create-query
                 (dcc/static-compile
@@ -334,7 +345,6 @@
   (dd/q
     '[:find ?username
       :where
-      [?e :hn.item/url ?url]
       [?e :hn.item/by ?username]]
     (dd/db (hn-conn))))
 
@@ -357,6 +367,8 @@
 (comment
 
   (get-all-users-via-zsxf)
+
+  (get-all-users-via-zsxf-single-clause)
 
   (time
     (get-all-users-via-zsxf-from-coll @all-hn-zsets))

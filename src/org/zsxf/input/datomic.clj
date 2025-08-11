@@ -23,7 +23,7 @@
              (let [a' (idents-m a)]
                (dd2/ddatom2 datom a'))))
       (map ddatom2->zset-item)
-      (map ois/hash-set))
+      (map ois/one-set))
     data))
 
 (defn zsxf-xform

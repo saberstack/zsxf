@@ -12,7 +12,6 @@
   (:require [clojure.spec.alpha :as s]
             [org.zsxf.constant :as const]
             [org.zsxf.type.one-item-set :as ois]
-            [clj-fast.inline :as fast.inline]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.type.pair-vector :as pv]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs

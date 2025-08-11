@@ -156,9 +156,15 @@
   [x]
   (vary-meta x assoc ::xf/no-op true))
 
-(defn where-xf []
-  ;WIP
-  )
+(defn where-xf
+  [{pred :pred path :path} & {:keys [last?]}]
+  (comp
+    ;receives a zset, unpacks zset into individual items
+    cat
+    (map (fn [zsi]
+           (if (pred (path zsi))
+             (ois/one-set zsi)
+             #{})))))
 
 (defn join-xf
   "Receives:
@@ -205,27 +211,28 @@
     (comp
       ;receives a zset, unpacks zset into individual items
       cat
-      ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
       (map (fn [zsi]
              (let [delta-1 (if (and
                                  (can-join? zsi path-f-1 clause-1)
                                  (pred-1 (path-f-1 zsi)))
-                             (zs/index (ois/hash-set zsi) (comp index-kfn-1 path-f-1))
+                             (zs/index (ois/one-set zsi) (comp index-kfn-1 path-f-1))
                              {})
                    delta-2 (if (and
                                  (can-join? zsi path-f-2 clause-2)
                                  (pred-2 (path-f-2 zsi)))
-                             (zs/index (ois/hash-set zsi) (comp index-kfn-2 path-f-2))
+                             (zs/index (ois/one-set zsi) (comp index-kfn-2 path-f-2))
                              {})
                    ;If last?, we return an empty zset.
                    ; The current zset-item has been "offered" to all transducers and is not needed anymore.
                    ; (!) Returning it would "pollute" the query result with extra data.
-                   zset    (if last? #{} (ois/hash-set zsi))]
+                   zset    (if last? #{} (ois/one-set zsi))]
                ;return
                [delta-1 delta-2 zset])))
       (map (fn [delta-1+delta-2+zset]
              (if (stop-current-xf? delta-1+delta-2+zset)
-               (->no-op (delta-1+delta-2+zset 2))
+               (let [zset (delta-1+delta-2+zset 2)]
+                 ;stopping current, mark as no-op, returning zset at the end of xf chain
+                 (->no-op zset))
                delta-1+delta-2+zset)))
       (ss.xforms/map-when not-no-op?
         (fn join-xf-update-state [[delta-1 delta-2 zset]]
@@ -269,7 +276,6 @@
   (comp
     ;receives a zset, unpacks zset into individual items
     (mapcat identity)
-    ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
     (map (fn [zsi]
            (let [delta-1 (if (and (can-join? zsi path-f-1 clause-1) (pred-1 (path-f-1 zsi)))
                            (zs/zset #{(zs/zset-item (item-f-1 zsi) (zs/zset-weight zsi))})
@@ -311,8 +317,7 @@
       :or   {last? false}}]
   (comp
     ;receives a zset, unpacks zset into individual items
-    (mapcat identity)
-    ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
+    cat
     (map (fn [zsi]
            (timbre/spy zsi)
            (let [delta-1 (if (and (can-join-union? zsi path-f-1 clause-1) (pred-1 (path-f-1 zsi)))
@@ -360,7 +365,6 @@
     (comp
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
-      ;receives a vector pair of zset-meta and zset-item (pair constructed in the previous step)
       (map (fn [zsi]
              (let [delta-1 (if (and
                                  (can-join? zsi path-f-1 clause-1)

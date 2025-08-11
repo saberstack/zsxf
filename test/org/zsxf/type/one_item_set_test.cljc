@@ -9,17 +9,17 @@
 
 #?(:clj
    (deftest one-item-set-test
-     (is (= (ois/hash-set 1) #{1}))
-     (is (= (ois/hash-set 1) (ois/hash-set 1)))
-     (is (= (ois/hash-set 1) (ois/set #{1})))
-     (is (= (ois/hash-set 1) (ois/set #{1})))
-     (is (= #{} (disj (ois/hash-set 1) 1)))
-     (is (nil? ((ois/hash-set 1) 2)))
-     (is (= 2 ((ois/hash-set 2) 2)))))
+     (is (= (ois/one-set 1) #{1}))
+     (is (= (ois/one-set 1) (ois/one-set 1)))
+     (is (= (ois/one-set 1) (ois/set #{1})))
+     (is (= (ois/one-set 1) (ois/set #{1})))
+     (is (= #{} (disj (ois/one-set 1) 1)))
+     (is (nil? ((ois/one-set 1) 2)))
+     (is (= 2 ((ois/one-set 2) 2)))))
 
 #?(:clj
    (deftest one-item-set-equivalence-test
      ;equals with clojure set
-     (is (= #{1} (ois/hash-set 1)))
-     (is (apply = [(ois/hash-set :a) #{:a} #{:a} (ois/hash-set :a)]))
-     (is (false? (apply = [(ois/hash-set :a) #{:a} #{:b} (ois/hash-set :a)])))))
+     (is (= #{1} (ois/one-set 1)))
+     (is (apply = [(ois/one-set :a) #{:a} #{:a} (ois/one-set :a)]))
+     (is (false? (apply = [(ois/one-set :a) #{:a} #{:b} (ois/one-set :a)])))))

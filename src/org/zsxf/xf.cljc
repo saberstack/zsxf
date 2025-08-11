@@ -163,7 +163,7 @@
     cat
     (map (fn [zsi]
            (if (pred (path zsi))
-             (ois/one-set zsi)
+             (ois/set-of-1 zsi)
              #{})))))
 
 (defn join-xf
@@ -215,17 +215,17 @@
              (let [delta-1 (if (and
                                  (can-join? zsi path-f-1 clause-1)
                                  (pred-1 (path-f-1 zsi)))
-                             (zs/index (ois/one-set zsi) (comp index-kfn-1 path-f-1))
+                             (zs/index (ois/set-of-1 zsi) (comp index-kfn-1 path-f-1))
                              {})
                    delta-2 (if (and
                                  (can-join? zsi path-f-2 clause-2)
                                  (pred-2 (path-f-2 zsi)))
-                             (zs/index (ois/one-set zsi) (comp index-kfn-2 path-f-2))
+                             (zs/index (ois/set-of-1 zsi) (comp index-kfn-2 path-f-2))
                              {})
                    ;If last?, we return an empty zset.
                    ; The current zset-item has been "offered" to all transducers and is not needed anymore.
                    ; (!) Returning it would "pollute" the query result with extra data.
-                   zset    (if last? #{} (ois/one-set zsi))]
+                   zset    (if last? #{} (ois/set-of-1 zsi))]
                ;return
                [delta-1 delta-2 zset])))
       (map (fn [delta-1+delta-2+zset]

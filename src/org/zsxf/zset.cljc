@@ -143,7 +143,7 @@
              (conj s new-zsi)
              s)))
        (fn [accum-final]
-         (ois/set accum-final)))
+         (ois/optimize-set accum-final)))
      zset-1
      more)))
 
@@ -171,7 +171,7 @@
    (zset-pos+ zset-1 (zset #{})))
   ([zset-1 zset-2]
    #_{:pre [(zset? zset-1) (zset? zset-2)]}
-   (ois/set
+   (ois/optimize-set
      (reduce
        (fn [s new-zset-item]
          (if-let [zset-item (s new-zset-item)]
@@ -217,7 +217,7 @@
 
 (defn- index-xf-pair
   [k zset-of-grouped-items]
-  (if k {k (ois/set zset-of-grouped-items)} {}))
+  (if k {k (ois/optimize-set zset-of-grouped-items)} {}))
 
 (defn index-xf
   "Returns a group-by-style transducer.
@@ -276,8 +276,8 @@
           ;key exists in both indexed zsets, call zset-pos+ to add the zsets
           (let [new-zset (zset-pos+ (larger k) -zset)]
             (if (empty? new-zset)
-              (dissoc larger k)             ;remove key if zset is empty after zset addition
-              (assoc larger k new-zset)))   ;else, add the new zset to the indexed zset map
+              (dissoc larger k)                             ;remove key if zset is empty after zset addition
+              (assoc larger k new-zset)))                   ;else, add the new zset to the indexed zset map
           ;else...
           ;key does not exist, call zset-pos+ again to make sure we don't return negative weights
           (let [new-zset (zset-pos+ #{} -zset)]

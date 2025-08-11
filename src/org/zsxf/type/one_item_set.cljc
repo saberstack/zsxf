@@ -48,12 +48,12 @@
      (invoke [this x] (when (= item x) item))))
 
 #?(:clj
-   (defn one-set
+   (defn set-of-1
      "Creates a OneItemSet instance with a single item."
      [item]
      (->OneItemSet item)))
 
-(defn set
+(defn optimize-set
   "Optimizes a set with one item to a OneItemSet instance."
   [s]
   #?(:clj
@@ -63,7 +63,7 @@
            ;needed because sets with metadata not currently supported
            (nil? (meta s)))
        ;optimize
-       (one-set (first s))
+       (set-of-1 (first s))
        ;else, do not optimize
        s)
      ;TODO in CLJS (if relevant)

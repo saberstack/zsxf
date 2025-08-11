@@ -115,7 +115,7 @@
   ([{::q/keys [state result-history xf keep-history?] :as _query} zsets basis-t]
    (transduce
      xf
-     (fn
+     (fn swap-query-state
        ([] state)                                           ;init
        ([state result-delta]                                ;reduce step
         ;query reducing fn; sums the existing result with query-computed deltas

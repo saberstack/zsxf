@@ -352,6 +352,7 @@
                              (- initial-sync-end start)))))))
 
 (defonce all-hn-zsets (atom []))
+(defonce all-hn-zsets-time (atom nil))
 
 (comment
 
@@ -360,20 +361,24 @@
   (time
     (get-all-users-via-zsxf-from-coll @all-hn-zsets))
 
-  (time
-    (dd.cdc/log->output
-      (atom {})
-      (hn-conn)
-      idd/zsxf-xform
-      (fn
-        ([] all-hn-zsets)
-        ([accum item]
-         (swap! accum conj item)
-         accum)
-        ([accum] :done))
-      nil nil))
+  (future
+    (util/time-f
+      (dd.cdc/log->output
+        (atom {})
+        (hn-conn)
+        idd/zsxf-xform
+        (fn
+          ([] all-hn-zsets)
+          ([accum item]
+           (swap! accum conj item)
+           accum)
+          ([accum] (println :done)))
+        nil nil)
+      (fn [t] (reset! all-hn-zsets-time t))))
 
   (reset! *query nil)
+  (reset! all-hn-zsets nil)
+  (reset! all-hn-zsets-time nil)
   (reset! *query-result-datomic nil)
   (System/gc)
 

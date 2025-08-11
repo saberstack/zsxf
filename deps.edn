@@ -125,8 +125,11 @@
             {org.saberstack/clj-hackernews-api
              {:local/root "/Users/raspasov/projects/saberstack/clj-hackernews-api"}}
             :jvm-opts [
-                       ;"-XX:MaxGCPauseMillis=2000"
-                       ;"-Dclojure.compiler.direct-linking=true"
+                       ;"-XX:+UseZGC"
+                       ;"-XX:+UseShenandoahGC"
+                       ;"-XX:ShenandoahGCMode=generational"
+                       "-XX:+AlwaysPreTouch"
+                       "-Dclojure.compiler.direct-linking=true"
                        ]}
            :socket-repl
            {:jvm-opts ["-Dclojure.server.repl={:port 5555 :accept clojure.core.server/repl :server-daemon false}"]}

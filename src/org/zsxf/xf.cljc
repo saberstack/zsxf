@@ -232,7 +232,9 @@
            (reduce rrf result input)
            (rf result input)))))))
 
-(defn meta-no-op [x]
+(defn ->no-op
+  "Marks x as a no-op. x must support IMeta"
+  [x]
   (vary-meta x assoc ::xf/no-op true))
 
 (defn where-xf []
@@ -244,7 +246,7 @@
 
     A single zset (at a time)
 
-     Each zset is expanded (via mapcat) at the beginning of join-xf into
+     Each zset is expanded (via cat) at the beginning of join-xf into
      zset-items and joined pairs from previous join-xfs outputs
      zset-items can be
      - `datoms`
@@ -304,7 +306,7 @@
                [delta-1 delta-2 zset])))
       (map (fn [delta-1+delta-2+zset]
              (if (stop-current-xf? delta-1+delta-2+zset)
-               (meta-no-op (delta-1+delta-2+zset 2))
+               (->no-op (delta-1+delta-2+zset 2))
                delta-1+delta-2+zset)))
       (map-when not-no-op?
         (fn join-xf-update-state [[delta-1 delta-2 zset]]

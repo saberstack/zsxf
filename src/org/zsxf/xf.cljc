@@ -30,7 +30,7 @@
             [org.saberstack.xforms :as ss.xforms]
             [org.zsxf.util :as util]))
 
-(defn rf-branchable
+(defn- rf-branchable
   "Helper to adapt a reducing function to a branching transducer.
 
   Don't pass the completing of the rf through because completing multiple times
@@ -40,6 +40,9 @@
   (fn
     ([result] result)
     ([result item] (rf result item))))
+
+;TODO replace cond-branch with map-when, cat-when etc
+; for better performance in all *-xf fns in this ns
 
 (defn cond-branch
   "Will route data down the first path whose predicate is truthy. The results are merged.

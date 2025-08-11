@@ -118,8 +118,11 @@
            {:jvm-opts ["-Xms64g" "-Xmx64g"]}
            :jvm-heap-192gb
            {:jvm-opts ["-Xms192g" "-Xmx192g"]}
-           :yourkit-agent
+           :ultra-1/yourkit-agent
            {:jvm-opts ["-agentpath:/Applications/YourKit.app/Contents/Resources/bin/mac/libyjpagent.dylib=listen=192.168.86.250"]}
+           :jvm-high-performance
+           {:jvm-opts ["-XX:+AlwaysPreTouch"
+                       "-Dclojure.compiler.direct-linking=true"]}
            :raspasov/local
            {:extra-deps
             {org.saberstack/clj-hackernews-api
@@ -128,8 +131,8 @@
                        ;"-XX:+UseZGC"
                        ;"-XX:+UseShenandoahGC"
                        ;"-XX:ShenandoahGCMode=generational"
-                       "-XX:+AlwaysPreTouch"
-                       "-Dclojure.compiler.direct-linking=true"
+                       ;"-XX:+AlwaysPreTouch"
+                       ;"-Dclojure.compiler.direct-linking=true"
                        ]}
            :socket-repl
            {:jvm-opts ["-Dclojure.server.repl={:port 5555 :accept clojure.core.server/repl :server-daemon false}"]}

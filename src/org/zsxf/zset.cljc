@@ -27,25 +27,13 @@
   [x]
   (:zset/w (meta x)))
 
-(defn determine-weight
-  "Potentially override zset-item weight"
-  [_zset-item w]
-  w)
-
-(defn determine-weight-f
-  "Potentially override zset-item weight"
-  [_zset-item f]
-  f)
-
 (defn update-zset-item-weight
   [zset-item f]
-  (let [f' (determine-weight-f zset-item f)]
-    (vary-meta zset-item update :zset/w f')))
+  (vary-meta zset-item update :zset/w f))
 
 (defn assoc-zset-item-weight
   [zset-item w]
-  (let [w' (determine-weight zset-item w)]
-    (vary-meta zset-item assoc :zset/w w')))
+  (vary-meta zset-item assoc :zset/w w))
 
 (defn dissoc-meta-weight [meta-map]
   (dissoc meta-map :zset/w))

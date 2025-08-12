@@ -18,8 +18,7 @@
      [[:R1 :R2] :R3] ;three relations (still a pair!)
      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
      ... etc."
-  (:require [medley.core :as medley]
-            [net.cgrand.xforms :as xforms]
+  (:require [net.cgrand.xforms :as xforms]
             [org.zsxf.type.datom-like :as dl]
             [org.zsxf.type.one-item-set :as ois]
             [org.zsxf.type.two-item-vector :as pv]
@@ -27,8 +26,7 @@
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]
-            [org.saberstack.xforms :as ss.xforms]
-            [org.zsxf.util :as util]))
+            [org.saberstack.xforms :as ss.xforms]))
 
 (defn- rf-branchable
   "Helper to adapt a reducing function to a branching transducer.

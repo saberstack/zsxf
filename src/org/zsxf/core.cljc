@@ -1,9 +1,10 @@
 (ns org.zsxf.core
-  (:require
-   #?(:clj [nrepl.server :as nrepl-server])
-   [org.zsxf.util :as util]
-   [taoensso.timbre :as timbre]
-   [org.saberstack.server.aleph :as server]))
+  #?(:clj
+     (:require
+      [nrepl.server :as nrepl-server]
+      [org.zsxf.util :as util]
+      [taoensso.timbre :as timbre]
+      [org.saberstack.server.aleph :as server])))
 
 #?(:clj
    (defn -main

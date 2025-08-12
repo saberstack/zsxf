@@ -328,6 +328,21 @@
        ;return input-ch
        input-ch)))
 
+(defn key-intersection
+  "Taken from clojure.set/intersection but adapted to work for maps.
+  Takes maps m1 and m2.
+  Returns a set of common keys."
+  [m1 m2]
+  (let [[smaller larger] (if (< (count m1) (count m2)) [m1 m2] [m2 m1])]
+    (persistent!
+      (reduce
+        (fn [result item]
+          (if (get larger item)
+            (conj! result item)
+            result))
+        (transient #{})
+        (keys smaller)))))
+
 (defn inheritance-tree [klass]
   (let [f (fn f [c]
             (reduce (fn [m p] (assoc m p (f p))) {}

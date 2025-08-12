@@ -12,6 +12,7 @@
   (:require [clojure.spec.alpha :as s]
             [org.zsxf.constant :as const]
             [org.zsxf.type.one-item-set :as ois]
+            [org.zsxf.util :as util]
             [org.zsxf.zset :as-alias zs]
             [org.zsxf.type.two-item-vector :as pv]
             [org.zsxf.spec.zset]                            ;do not remove, loads clojure.spec defs
@@ -277,21 +278,6 @@
       larger
       smaller)))
 
-(defn key-intersection
-  "Taken from clojure.set/intersection but adapted to work for maps.
-  Takes maps m1 and m2.
-  Returns a set of common keys."
-  [m1 m2]
-  (let [[smaller larger] (if (< (count m1) (count m2)) [m1 m2] [m2 m1])]
-    (persistent!
-      (reduce
-        (fn [result item]
-          (if (get larger item)
-            (conj! result item)
-            result))
-        (transient #{})
-        (keys smaller)))))
-
 (defn intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)
   Returns an indexed zset.
@@ -301,7 +287,7 @@
   ([indexed-zset-1 indexed-zset-2]
    (intersect-indexed* indexed-zset-1 indexed-zset-2 identity identity))
   ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f]
-   (let [commons (key-intersection indexed-zset-1 indexed-zset-2)]
+   (let [commons (util/key-intersection indexed-zset-1 indexed-zset-2)]
      (into
        {}
        (map (fn [common]

@@ -70,18 +70,23 @@
 (deftest generative-test-1-zset+
   (let [{:keys [equal zsets]} (generate-zsets-with-equal-items)
         ;sum manually
-        weight-sum      (apply + (map zs/zset-weight equal))
+        weight-sum       (apply + (map zs/zset-weight equal))
         ;zset+ sum
-        zset-summed     (transduce (map identity) zs/zset+ zsets)
+        zset-summed      (transduce (map identity) zs/zset+ zsets)
         ;values found in the previous step must be equal, check here
-        equal-value     (into #{} equal)
-        _               (is (= 1 (count equal-value)))
-        equal-value'    (with-meta (first equal-value) nil)
-        zset-sum-result (zs/zset-weight (zset-summed (first equal-value)))]
+        equal-value      (into #{} equal)
+        _                (is (= 1 (count equal-value)))
+        equal-value'     (with-meta (first equal-value) nil)
+        zset-sum-result  (zs/zset-weight (zset-summed (first equal-value)))
+        zset-sum-result' ((fnil + 0) zset-sum-result)]
+    (timbre/set-min-level! :debug)
+    (timbre/spy weight-sum)
+    (timbre/spy zset-summed)
+    (timbre/spy (zset-summed (first equal-value)))
     (timbre/spy equal-value')
     (timbre/spy zset-sum-result)
-    (timbre/spy zset-summed)
-    (is (= zset-sum-result weight-sum))))
+    (timbre/spy zset-sum-result')
+    (is (= zset-sum-result' weight-sum))))
 
 (def property-no-zero-weights-zset+
   (prop/for-all [zset-1 (s/gen ::zs/zset)

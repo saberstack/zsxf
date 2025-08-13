@@ -48,16 +48,17 @@
 (defn any->zsi [x]
   (if (instance? WithWeight x) x (zsi x 1)))
 
+(defn disjoin-exception []
+  (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {}))
+
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map]
   IPersistentSet
   (disjoin [_ _x]
-    (throw
-      ;TODO decide on best way to handle
-      (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {})))
+    (throw (disjoin-exception)))
   ;cons working state
   (cons [this x]
-    (timbre/info "cons" x m)
-    (timbre/spy m)
+    ;(timbre/info "cons" x m)
+    ;(timbre/spy m)
     (let [a-zsi  (any->zsi x)
           k      (item a-zsi)
           w-prev (.valAt m (item a-zsi))
@@ -69,9 +70,8 @@
                    1 (.assoc ^Associative m k 1)
                    (.assoc ^Associative m k w-next))]
       (ZSet. m-next meta-map)))
-  ;TODO continue here
   (seq [this]
-    (timbre/spy ["seq" (count m)])
+    ;(timbre/spy ["seq" (count m)])
     (sequence (map (fn [[x w]] (zsi x w))) m))
   (empty [this]
     (ZSet. {} meta-map))
@@ -90,7 +90,7 @@
 
   Object
   (toString [this]
-    (timbre/info "toString")
+    ;(timbre/info "toString")
     (str "#zset #{" (clojure.string/join " " (map str this)) "}")
     )
   (hashCode [this]
@@ -140,9 +140,7 @@
   (get [_ k]
     (when (.valAt m k) k))
   (disjoin [_ _x]
-    (throw
-      ;TODO decide on best way to handle
-      (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {})))
+    (throw (disjoin-exception)))
   (conj [this x]
     (let [a-zsi  (any->zsi x)
           k      (item a-zsi)
@@ -160,7 +158,7 @@
   (contains [_ k]
     (boolean (.valAt m k)))
   (persistent [_]
-    (ZSet. (timbre/spy (.persistent m)) nil)))
+    (ZSet. (.persistent m) nil)))
 
 (defn transient-zset [^ZSet a-zset]
   (TransientZSet. (transient (.-m a-zset))))

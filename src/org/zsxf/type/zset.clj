@@ -1,6 +1,6 @@
 (ns org.zsxf.type.zset
   "ZSet internal data structure, wip
-   {'x #_-> {:zset/w 1 :meta {}}}"
+   {item #_-> weight}"
   (:require [org.zsxf.constant :as const]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj IPersistentMap IPersistentSet IPersistentVector Indexed MapEntry SeqIterator)
@@ -8,9 +8,9 @@
            (java.util Set)))
 
 (declare zset)
+(declare zsi)
 (declare zset-item)
 (declare zset-item?)
-
 (defonce ^:dynamic *print-weight* false)
 
 (defn set-print-weight! [x]
@@ -42,23 +42,24 @@
     (timbre/info "cons" x m)
     (timbre/spy m)
     (let [zsi?  (zset-item? x)
-          k     (if zsi? (nth x 0) x)             ;if no weight specified, set to 1
-          w     (if zsi? (nth x 1) 1)             ;wrap in a zset item if needed
-          zsi-m (.valAt m k)
-          w'    (if zsi-m (+ (:zset/w zsi-m) w) w)]
+          k     (if zsi? (nth x 0) x)                       ;if no weight specified, set to 1
+          w     (if zsi? (nth x 1) 1)                       ;wrap in a zset item if needed
+          zsi-w (.valAt m k)
+          _ (timbre/spy m)
+          w'    (if zsi-w (+ zsi-w w) w)]
       (timbre/spy w')
       (if-let [m' (case (long w')
                     ;zero zset weight, remove
                     0 (.without m k)
                     ;all other cases, add
-                    1 (.assoc ^Associative m k const/zset-weight-of-1)
+                    1 (.assoc ^Associative m k 1)
                     nil)]
         (ZSet. m' meta-m)
-        (ZSet. (.assoc ^Associative m k {:zset/w w'}) meta-m))))
+        (ZSet. (.assoc ^Associative m k w') meta-m))))
   ;TODO continue here
   (seq [this]
     (timbre/spy ["seq" (count m)])
-    (keys m))
+    (sequence (map (fn [[item]])) m))
   (empty [this]
     (ZSet. {} meta-m))
   (equiv [this other]
@@ -130,39 +131,46 @@
 (defn zset-item? [x]
   (instance? ZSetItem x))
 
-;; Custom printing
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn pr-on
-  [x w]
-  (if *print-dup*
-    (print-dup x w)
-    (print-method x w))
-  nil)
+(defn new-zset+
+  [zset1 zset2]
+  (transduce
+    (map identity)
+    (completing
+      (fn [accum item]))
+    zset1
+    zset2))
 
-(defn- print-meta [o, ^Writer w]
-  (when-let [m (meta o)]
-    (when (and (pos? (count m))
-            (or *print-dup*
-              (and *print-meta* *print-readably*)))
-      (.write w " ^")
-      (if (and (= (count m) 1) (:tag m))
-        (pr-on (:tag m) w)
-        (pr-on m w))
-      (.write w " "))))
 
-(defmethod print-method ZSet [^ZSet zset, ^Writer w]
-  (binding [*out* w]
-    (let [m (.-m zset)]
-      (print-meta zset w)
-      (.write w "#zset ")
-      (pr (into #{}
-            (if *print-weight*
-              (map (fn [[k v]]
-
-                     #zsi[k (:zset/w v)]))
-              (map identity))
-            (if *print-weight* m (keys m))) #_[(.-e d) (.-a d) (.-v d)])
-      )))
+(comment
+  (defn zset+
+    "Adds two zsets"
+    ([] (zset #{}))
+    ([zset-1] zset-1)
+    ([zset-1 zset-2]
+     (zset+ (map identity) zset-1 zset-2))
+    ([xf zset-1 & more]
+     ;{:pre [(zset? zset-1) (zset? zset-2)]}
+     (transduce
+       ;get set items one by one
+       (comp cat xf)
+       (completing
+         (fn [s new-zsi]
+           (if-let [prev-item (s new-zsi)]
+             ;item already exists in the zset
+             (let [new-weight (+' (zset-weight prev-item) (zset-weight new-zsi))]
+               (if (zero? new-weight)
+                 ;remove item
+                 (disj s prev-item)
+                 ;else keep item, adjust weight
+                 (conj (disj s prev-item) (assoc-zset-item-weight new-zsi new-weight))))
+             ;else, new item
+             (if (not= 0 (zset-weight new-zsi))
+               (conj s new-zsi)
+               s)))
+         (fn [accum-final]
+           (ois/optimize-set accum-final)))
+       zset-1
+       more))))
 
 (defmethod print-method ZSetItem [^ZSetItem itm, ^Writer w]
   (binding [*out* w]
@@ -219,3 +227,42 @@
     (into #{}
       (map (fn [kv] (kv 0)))
       m1)))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Custom printing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn pr-on
+  [x w]
+  (if *print-dup*
+    (print-dup x w)
+    (print-method x w))
+  nil)
+
+(defn- print-meta [o, ^Writer w]
+  (when-let [m (meta o)]
+    (when (and (pos? (count m))
+            (or *print-dup*
+              (and *print-meta* *print-readably*)))
+      (.write w " ^")
+      (if (and (= (count m) 1) (:tag m))
+        (pr-on (:tag m) w)
+        (pr-on m w))
+      (.write w " "))))
+
+(defmethod print-method ZSet [^ZSet zset, ^Writer w]
+  (binding [*out* w]
+    (let [m (.-m zset)]
+      (print-meta zset w)
+      (.write w "#zset ")
+      (pr (into #{}
+            (if *print-weight*
+              (map (fn [v]
+                     (zsi (nth v 0) (nth v 1))))
+              (map identity))
+            (if *print-weight* m (keys m))) #_[(.-e d) (.-a d) (.-v d)])
+      )))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; End custom printing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

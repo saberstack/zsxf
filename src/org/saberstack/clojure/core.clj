@@ -2,7 +2,7 @@
   "Experimental. Subject to change.")
 
 (defn conj-conj!
-  "conj! that matches the behavior of conj."
+  "conj! that matches the behavior of conj in terms of handling transients."
   ;TODO measure performance cost
   ([] (transient []))
   ([coll] coll)

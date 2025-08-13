@@ -1,7 +1,9 @@
 (ns org.zsxf.type.zset
   "ZSet internal data structure, wip
    {item #_-> weight}"
-  (:require [taoensso.timbre :as timbre])
+  (:require [criterium.core :as crit]
+            [org.zsxf.zset :as zs]
+            [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj IPersistentMap IPersistentSet IPersistentVector ITransientAssociative ITransientMap ITransientSet Indexed MapEntry SeqIterator)
            (java.io Writer)
            (java.util Set)))
@@ -304,3 +306,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; Performance compare
+(comment
+
+  (def nums-v (into [] (map vector) (range 10000000)))
+
+  (crit/quick-bench
+    (do
+      (zs/zset nums-v)
+      :done))
+
+  (crit/quick-bench
+    (do
+      (into (zset) nums-v)
+      :done))
+
+  )

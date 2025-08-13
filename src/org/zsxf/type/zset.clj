@@ -165,10 +165,10 @@
 (defn transient-zset [^ZSet a-zset]
   (TransientZSet. (transient (.-m a-zset))))
 
-(comment
-  (let [t (transient #zset #{#zsi [:a 42] #zsi [:b 2]})]
-    (persistent!
-      (conj! t (zsi :c 3)))))
+;;(comment
+;;  (let [t (transient #zset #{#zsi [:a 42] #zsi [:b 2]})]
+;;    (persistent!
+;;      (conj! t (zsi :c 3)))))
 
 (defn zset []
   (->ZSet {} nil))
@@ -189,10 +189,10 @@
     zset1
     zset2))
 
-(comment
-  (zset+2
-    #zset #{#zsi [:a 42] #zsi [:b 2]}
-    #zset #{#zsi [:a 42] #zsi [:b -2]}))
+;;(comment
+;;  (zset+2
+;;    #zset #{#zsi [:a 42] #zsi [:b 2]}
+;;    #zset #{#zsi [:a 42] #zsi [:b -2]}))
 
 (comment
   (defn zset+

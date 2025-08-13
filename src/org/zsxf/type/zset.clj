@@ -10,6 +10,7 @@
 (declare zsi)
 (declare zset-item)
 (declare with-weight?)
+(declare transient-zset)
 (defonce ^:dynamic *print-weight* true)
 
 (defn set-print-weight! [x]
@@ -30,18 +31,19 @@
       1 weight
       nf)))
 
-(defn item [^WithWeight x]
+(defn- item [^WithWeight x]
   (.nth x 0))
 
-(defn weight [^WithWeight x]
+(defn- weight [^WithWeight x]
   (.nth x 1))
 
-(defn zsi->w [-zsi w-prev]
+(defn calc-next-weight
+  [zsi w-prev]
   (if (int? w-prev)
     ;w-prev already exists
-    (+ w-prev (weight -zsi))
+    (+ w-prev (weight zsi))
     ;new
-    1))
+    (weight zsi)))
 
 (defn any->zsi [x]
   (if (instance? WithWeight x) x (zsi x 1)))
@@ -59,7 +61,7 @@
     (let [a-zsi  (any->zsi x)
           k      (item a-zsi)
           w-prev (.valAt m (item a-zsi))
-          w-next (zsi->w a-zsi w-prev)
+          w-next (calc-next-weight a-zsi w-prev)
           m-next (case (long w-next)
                    ;zero zset weight, remove
                    0 (.without m k)
@@ -124,48 +126,55 @@
     dest)
   (toArray [this]
     (.toArray this (object-array (.count this))))
-  ;;TODO
-  ;;IEditableCollection
-  ;;(asTransient [this])
+
+  IEditableCollection
+  (asTransient [this]
+    (transient-zset this))
   IFn
   (invoke [this k] (when (.contains this k) k)))
 
-
 (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m]
   ITransientSet
-  (count [this]
+  (count [_]
     (.count m))
-  (get [this k]
+  (get [_ k]
     (when (.valAt m k) k))
   (disjoin [_ _x]
     (throw
       ;TODO decide on best way to handle
       (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {})))
-  (conj [this zsi]
-    (let [zsi       ^WithWeight zsi
-          item      (nth zsi 0)
-          weight    (nth zsi 1)
-          item-prev (.valAt m item)]
-      (when-not item-prev
-        (change! ^ITransientAssociative m .assoc item weight)))
-    this)
-  (contains [_ x]
-    (boolean (.valAt m x)))
+  (conj [this x]
+    (let [a-zsi  (any->zsi x)
+          k      (item a-zsi)
+          w-prev (.valAt m k)
+          w-next (calc-next-weight a-zsi w-prev)]
+      (when-not (= w-prev w-next)
+        (case (long w-next)
+          ;zero zset weight, remove
+          0 (change! ^ITransientMap m .without k)
+          ;all other cases, add
+          1 (change! ^ITransientAssociative m .assoc k 1)
+          ;all other cases, add
+          (change! ^ITransientAssociative m .assoc k w-next)))
+      this))
+  (contains [_ k]
+    (boolean (.valAt m k)))
   (persistent [_]
-    (TransientZSet. (.persistent m))))
+    (ZSet. (timbre/spy (.persistent m)) nil)))
 
-(defn transient-ordered-set [^ZSet s]
-  (TransientZSet. (transient (.-m s))))
+(defn transient-zset [^ZSet a-zset]
+  (TransientZSet. (transient (.-m a-zset))))
 
+(comment
+  (let [t (transient #zset #{#zsi [:a 42] #zsi [:b 2]})]
+    (persistent!
+      (conj! t (zsi :c 3)))))
 
 (defn zset []
   (->ZSet {} nil))
 
 (defn zsi [x weight]
   (->WithWeight x weight))
-
-(defn zsi-weight [zsi]
-  (nth zsi 1))
 
 (defn with-weight? [x]
   (instance? WithWeight x))
@@ -181,13 +190,9 @@
     zset2))
 
 (comment
-
-  ;;(zset+2
-  ;;  #zset #{#zsi [:a 42] #zsi [:b 2]}
-  ;;  #zset #{#zsi [:a 42] #zsi [:b -2]})
-
-  )
-
+  (zset+2
+    #zset #{#zsi [:a 42] #zsi [:b 2]}
+    #zset #{#zsi [:a 42] #zsi [:b -2]}))
 
 (comment
   (defn zset+
@@ -220,15 +225,12 @@
        zset-1
        more))))
 
-
-
 (comment
   (->
     (zset)
     (conj (zsi :a 2))
     (conj (zsi :a -1))
     (conj (zsi :a 1)))
-
   (->
     (zset)
     (conj :a)
@@ -241,11 +243,8 @@
   (into (zset) s))
 
 ;; Scratch
-
 (comment
-
   (def nums-v (into [] (range 10000000)))
-
 
   (def s1 (into #{} (shuffle nums-v)))
   (def s2 (into #{} (shuffle nums-v)))
@@ -265,8 +264,6 @@
     (into #{}
       (map (fn [kv] (kv 0)))
       m1)))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom printing

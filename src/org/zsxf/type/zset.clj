@@ -106,7 +106,7 @@
 
   IHashEq
   (hasheq [this]
-    (hash-unordered-coll (keys m)))
+    (hash-unordered-coll (or (keys m) {})))
 
   Set
   (iterator [this]
@@ -311,7 +311,8 @@
 ;; Performance compare
 (comment
 
-  (def nums-v (into [] (map vector) (range 10000000)))
+  (time
+    (def nums-v (into [] (map vector) (range 10000000))))
 
   (crit/quick-bench
     (do

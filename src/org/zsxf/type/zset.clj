@@ -1,17 +1,16 @@
 (ns org.zsxf.type.zset
   "ZSet internal data structure, wip
    {item #_-> weight}"
-  (:require [org.zsxf.constant :as const]
-            [taoensso.timbre :as timbre])
-  (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj IPersistentMap IPersistentSet IPersistentVector Indexed MapEntry SeqIterator)
+  (:require [taoensso.timbre :as timbre])
+  (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj IPersistentMap IPersistentSet IPersistentVector ITransientAssociative ITransientMap ITransientSet Indexed MapEntry SeqIterator)
            (java.io Writer)
            (java.util Set)))
 
 (declare zset)
 (declare zsi)
 (declare zset-item)
-(declare zset-item?)
-(defonce ^:dynamic *print-weight* false)
+(declare with-weight?)
+(defonce ^:dynamic *print-weight* true)
 
 (defn set-print-weight! [x]
   (alter-var-root #'*print-weight* (constantly x)))
@@ -19,7 +18,7 @@
 (defmacro change! [field f & args]
   `(set! ~field (~f ~field ~@args)))
 
-(deftype ZSetItem [item weight]
+(deftype WithWeight [item weight]
   Indexed
   (nth [_ idx]
     (case idx
@@ -31,9 +30,25 @@
       1 weight
       nf)))
 
-(deftype ZSet [^IPersistentMap m ^IPersistentMap meta-m]
+(defn item [^WithWeight x]
+  (.nth x 0))
+
+(defn weight [^WithWeight x]
+  (.nth x 1))
+
+(defn zsi->w [-zsi w-prev]
+  (if (int? w-prev)
+    ;w-prev already exists
+    (+ w-prev (weight -zsi))
+    ;new
+    1))
+
+(defn any->zsi [x]
+  (if (instance? WithWeight x) x (zsi x 1)))
+
+(deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map]
   IPersistentSet
-  (disjoin [this x]
+  (disjoin [_ _x]
     (throw
       ;TODO decide on best way to handle
       (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {})))
@@ -41,27 +56,23 @@
   (cons [this x]
     (timbre/info "cons" x m)
     (timbre/spy m)
-    (let [zsi?  (zset-item? x)
-          k     (if zsi? (nth x 0) x)                       ;if no weight specified, set to 1
-          w     (if zsi? (nth x 1) 1)                       ;wrap in a zset item if needed
-          zsi-w (.valAt m k)
-          _ (timbre/spy m)
-          w'    (if zsi-w (+ zsi-w w) w)]
-      (timbre/spy w')
-      (if-let [m' (case (long w')
-                    ;zero zset weight, remove
-                    0 (.without m k)
-                    ;all other cases, add
-                    1 (.assoc ^Associative m k 1)
-                    nil)]
-        (ZSet. m' meta-m)
-        (ZSet. (.assoc ^Associative m k w') meta-m))))
+    (let [a-zsi  (any->zsi x)
+          k      (item a-zsi)
+          w-prev (.valAt m (item a-zsi))
+          w-next (zsi->w a-zsi w-prev)
+          m-next (case (long w-next)
+                   ;zero zset weight, remove
+                   0 (.without m k)
+                   ;all other cases, add
+                   1 (.assoc ^Associative m k 1)
+                   (.assoc ^Associative m k w-next))]
+      (ZSet. m-next meta-map)))
   ;TODO continue here
   (seq [this]
     (timbre/spy ["seq" (count m)])
-    (sequence (map (fn [[item]])) m))
+    (sequence (map (fn [[x w]] (zsi x w))) m))
   (empty [this]
-    (ZSet. {} meta-m))
+    (ZSet. {} meta-map))
   (equiv [this other]
     (.equals this other))
   (get [this k]
@@ -71,9 +82,9 @@
     (.count m))
 
   IObj
-  (meta [this] meta-m)
-  (withMeta [this meta-m]
-    (ZSet. m meta-m))
+  (meta [this] meta-map)
+  (withMeta [this meta-map]
+    (ZSet. m meta-map))
 
   Object
   (toString [this]
@@ -119,26 +130,63 @@
   IFn
   (invoke [this k] (when (.contains this k) k)))
 
+
+(deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m]
+  ITransientSet
+  (count [this]
+    (.count m))
+  (get [this k]
+    (when (.valAt m k) k))
+  (disjoin [_ _x]
+    (throw
+      ;TODO decide on best way to handle
+      (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {})))
+  (conj [this zsi]
+    (let [zsi       ^WithWeight zsi
+          item      (nth zsi 0)
+          weight    (nth zsi 1)
+          item-prev (.valAt m item)]
+      (when-not item-prev
+        (change! ^ITransientAssociative m .assoc item weight)))
+    this)
+  (contains [_ x]
+    (boolean (.valAt m x)))
+  (persistent [_]
+    (TransientZSet. (.persistent m))))
+
+(defn transient-ordered-set [^ZSet s]
+  (TransientZSet. (transient (.-m s))))
+
+
 (defn zset []
   (->ZSet {} nil))
 
 (defn zsi [x weight]
-  (->ZSetItem x weight))
+  (->WithWeight x weight))
 
 (defn zsi-weight [zsi]
   (nth zsi 1))
 
-(defn zset-item? [x]
-  (instance? ZSetItem x))
+(defn with-weight? [x]
+  (instance? WithWeight x))
 
-(defn new-zset+
+(defn zset+2
   [zset1 zset2]
   (transduce
     (map identity)
     (completing
-      (fn [accum item]))
+      (fn [accum item+w]
+        (conj accum item+w)))
     zset1
     zset2))
+
+(comment
+
+  ;;(zset+2
+  ;;  #zset #{#zsi [:a 42] #zsi [:b 2]}
+  ;;  #zset #{#zsi [:a 42] #zsi [:b -2]})
+
+  )
 
 
 (comment
@@ -172,10 +220,7 @@
        zset-1
        more))))
 
-(defmethod print-method ZSetItem [^ZSetItem itm, ^Writer w]
-  (binding [*out* w]
-    (.write w "#zsi")
-    (pr [(nth itm 0) (nth itm 1)])))
+
 
 (comment
   (->
@@ -190,13 +235,9 @@
     (conj :a)))
 
 (defn zsi-from-reader [[item weight]]
-  ; This does not seem possible until this is solved:
-  ; https://clojure.atlassian.net/jira/software/c/projects/CLJ/issues/CLJ-2904
-  (->ZSetItem item weight))
+  (->WithWeight item weight))
 
 (defn zset-from-reader [s]
-  ; This does not seem possible until this is solved:
-  ; https://clojure.atlassian.net/jira/software/c/projects/CLJ/issues/CLJ-2904
   (into (zset) s))
 
 ;; Scratch
@@ -205,9 +246,6 @@
 
   (def nums-v (into [] (range 10000000)))
 
-  (def m1 (into {}
-            (map (fn [n] (MapEntry/create n const/zset-weight-of-1)))
-            nums-v))
 
   (def s1 (into #{} (shuffle nums-v)))
   (def s2 (into #{} (shuffle nums-v)))
@@ -263,6 +301,11 @@
               (map identity))
             (if *print-weight* m (keys m))) #_[(.-e d) (.-a d) (.-v d)])
       )))
+
+(defmethod print-method WithWeight [^WithWeight obj, ^Writer w]
+  (binding [*out* w]
+    (.write w "#zsi")
+    (pr [(nth obj 0) (nth obj 1)])))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

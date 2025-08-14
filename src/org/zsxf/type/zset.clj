@@ -1,14 +1,21 @@
 (ns org.zsxf.type.zset
   "ZSet internal data structure, wip
    {item #_-> weight}"
-  (:require [criterium.core :as crit]
+  (:require [clj-memory-meter.core :as mm]
+            [criterium.core :as crit]
+            [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre])
-  (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj IPersistentMap IPersistentSet IPersistentVector ITransientAssociative ITransientMap ITransientSet Indexed MapEntry SeqIterator)
+  (:import (clojure.lang Associative IEditableCollection IFn IHashEq IObj
+                         IPersistentMap IPersistentSet ITransientAssociative ITransientMap ITransientSet
+                         Indexed SeqIterator)
            (java.io Writer)
            (java.util Set)))
 
+;TODO Continue here
+
 (declare zset)
+(declare zset-cons)
 (declare zsi)
 (declare zset-item)
 (declare with-weight?)
@@ -53,30 +60,38 @@
 (defn disjoin-exception []
   (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {}))
 
-(deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map]
+(defn- m-next ^IPersistentMap [^IPersistentMap m k w-next]
+  (case (long w-next)
+    ;zero zset weight, remove
+    0 (.without m k)
+    ;all other cases, add
+    1 (.assoc ^Associative m k 1)
+    (.assoc ^Associative m k w-next)))
+
+(defn- m-next-pos [^IPersistentMap m k w-next]
+  (if (neg-int? w-next)
+    (.without m k)
+    (m-next m k w-next)))
+
+(deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   IPersistentSet
   (disjoin [_ _x]
     (throw (disjoin-exception)))
   ;cons working state
   (cons [this x]
-    ;(timbre/info "cons" x m)
-    ;(timbre/spy m)
     (let [a-zsi  (any->zsi x)
           k      (item a-zsi)
           w-prev (.valAt m (item a-zsi))
-          w-next (calc-next-weight a-zsi w-prev)
-          m-next (case (long w-next)
-                   ;zero zset weight, remove
-                   0 (.without m k)
-                   ;all other cases, add
-                   1 (.assoc ^Associative m k 1)
-                   (.assoc ^Associative m k w-next))]
-      (ZSet. m-next meta-map)))
+          w-next (calc-next-weight a-zsi w-prev)]
+      (case pos
+        true (ZSet. (m-next-pos m k w-next) meta-map pos)
+        false (ZSet. (m-next m k w-next) meta-map pos))))
+  ;(cons2 [this x])
   (seq [this]
     ;(timbre/spy ["seq" (count m)])
     (sequence (map (fn [[x w]] (zsi x w))) m))
   (empty [this]
-    (ZSet. {} meta-map))
+    (ZSet. {} meta-map pos))
   (equiv [this other]
     (.equals this other))
   (get [this k]
@@ -88,7 +103,7 @@
   IObj
   (meta [this] meta-map)
   (withMeta [this meta-map]
-    (ZSet. m meta-map))
+    (ZSet. m meta-map pos))
 
   Object
   (toString [this]
@@ -135,7 +150,7 @@
   IFn
   (invoke [this k] (when (.contains this k) k)))
 
-(deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m]
+(deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
   ITransientSet
   (count [_]
     (.count m))
@@ -160,10 +175,10 @@
   (contains [_ k]
     (boolean (.valAt m k)))
   (persistent [_]
-    (ZSet. (.persistent m) nil)))
+    (ZSet. (.persistent m) nil pos)))
 
 (defn transient-zset [^ZSet a-zset]
-  (TransientZSet. (transient (.-m a-zset))))
+  (TransientZSet. (transient (.-m a-zset)) (.-pos ^ZSet a-zset)))
 
 ;;(comment
 ;;  (let [t (transient #zset #{#zsi [:a 42] #zsi [:b 2]})]
@@ -171,28 +186,33 @@
 ;;      (conj! t (zsi :c 3)))))
 
 (defn zset []
-  (->ZSet {} nil))
+  (->ZSet {} nil false))
 
-(defn zsi [x weight]
-  (->WithWeight x weight))
+(defn zset-pos []
+  (->ZSet {} nil true))
+
+(defn zsi
+  ([x]
+   (->WithWeight x 1))
+  ([x weight]
+   (->WithWeight x weight)))
 
 (defn with-weight? [x]
   (instance? WithWeight x))
 
 (defn zset+2
   [zset1 zset2]
-  (transduce
-    (map identity)
+  (into
+    zset1
     (completing
       (fn [accum item+w]
         (conj accum item+w)))
-    zset1
     zset2))
 
-;;(comment
-;;  (zset+2
-;;    #zset #{#zsi [:a 42] #zsi [:b 2]}
-;;    #zset #{#zsi [:a 42] #zsi [:b -2]}))
+(defn zset-pos+2 [zset1 zset]
+  )
+
+
 
 (comment
   (defn zset+
@@ -241,6 +261,9 @@
 
 (defn zset-from-reader [s]
   (into (zset) s))
+
+(defn zset-pos-from-reader [s]
+  (into (zset-pos) s))
 
 ;; Scratch
 (comment
@@ -307,6 +330,9 @@
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;In progress:
+; - efficient zset-pos+
+;
 
 ;; Performance compare
 (comment
@@ -319,9 +345,43 @@
       (zs/zset nums-v)
       :done))
 
+  (time
+    (do
+      (zs/zset nums-v)
+      :done))
+
+  (mm/measure (zs/zset nums-v))
+
   (crit/quick-bench
     (do
       (into (zset) nums-v)
       :done))
 
+  (first
+    (sequence
+      (comp
+        (map (fn [x w] (zsi x w)))
+        (xforms/reduce
+          (completing
+            (fn into-zset
+              ([] (zset-pos))
+              ([accum item+w]
+               (conj accum item+w))))))
+      [:a :b :c :d]
+      (cycle [-1 1])))
+
+  (time
+    (do
+      (into (zset) nums-v)
+      :done))
+
+  (mm/measure (into (zset) nums-v))
+
   )
+
+(comment
+  (zset+2
+    #zset #{#zsi [:a 42] #zsi [:b 4]}
+    #zset-pos #{#zsi [:a 42] #zsi [:b -4]})
+
+  (zset-po))

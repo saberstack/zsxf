@@ -8,11 +8,11 @@
             [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre])
-  (:import (clojure.lang IEditableCollection IFn IHashEq IObj
+  (:import (clojure.lang APersistentMap Counted IEditableCollection IFn IHashEq IObj
                          IPersistentCollection IPersistentMap IPersistentSet ITransientSet ITransientSet
-                         SeqIterator)
+                         MapEntry MapEquivalence SeqIterator)
            (java.io Writer)
-           (java.util Set)))
+           (java.util Map Set)))
 (declare zset)
 (declare zset-cons)
 (declare zsi)
@@ -27,24 +27,45 @@
   `(set! ~field (~f ~field ~@args)))
 
 (deftype ZSItem [item weight]
+  MapEquivalence
+
   IObj
   (meta [_] (meta item))
   (withMeta [_ m] (ZSItem. (with-meta item m) weight))
-  IPersistentCollection
-  (equiv [_ other]
-    (= item other))
+
+  IPersistentMap
+  (equiv [this other]
+    (println "equiv")
+    (and (instance? Map other)
+      (= (.count ^IPersistentCollection item) (.size ^Map other))
+      (every? (fn [^MapEntry e]
+                (let [k (.key e)]
+                  (and (.containsKey ^Map other k)
+                    (= (.val e) (.get ^Map other k)))))
+        (.seq this))))
+  (seq [this]
+    (println "seq")
+    (when (map? item)
+      (seq item)))
 
   IHashEq
-  (hasheq [_]
-    (hash item))
+  (hasheq [this]
+    (println "hasheq")
+    (cond (map? item)
+      (hash-unordered-coll item)))
+
+  Counted
+  (count [_]
+    (println "count")
+    (cond (map? item)
+      (count item)))
 
   Object
-  (equals [this other]
-    (or
-      (identical? this other)
-      (= item other)))
-  (hashCode [_]
-    (.hashCode item)))
+  (hashCode [this]
+    (println "hashCode")
+    (cond
+      (map? item) (APersistentMap/mapHash item)))
+  )
 
 (defn calc-next-weight
   [w-x w-prev]
@@ -55,6 +76,11 @@
     w-x))
 
 (defn zsi->x ^Object [zsi]
+  (if (instance? ZSItem zsi)
+    (.-item ^ZSItem zsi)
+    zsi))
+
+(defn zsi->w ^Object [zsi]
   (if (instance? ZSItem zsi)
     (.-item ^ZSItem zsi)
     zsi))
@@ -145,8 +171,8 @@
   (toArray [this]
     (.toArray this (object-array (.count this))))
 
-  IEditableCollection
-  (asTransient [this] (transient-zset this))
+  ;;IEditableCollection
+  ;;(asTransient [this] (transient-zset this))
 
   IFn
   (invoke [this x]
@@ -160,8 +186,8 @@
      0 (set! ~s# (.disjoin ~s# ~x#))
      ;all other cases, add
      (let [s'# (-> ~s#
-               (.disjoin ^ITransientSet ~x#)
-               (.conj ^ITransientSet (zsi (zsi->x ~x#) ~w-next#)))]
+                 (.disjoin ^ITransientSet ~x#)
+                 (.conj ^ITransientSet (zsi (zsi->x ~x#) ~w-next#)))]
        (set! ~s# s'#))))
 
 (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientSet} s ^boolean pos]

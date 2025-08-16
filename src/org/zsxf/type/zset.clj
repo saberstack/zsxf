@@ -6,9 +6,9 @@
             [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre])
-  (:import (clojure.lang Associative IEditableCollection IFn IHashEq IObj
+  (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj
                          IPersistentMap IPersistentSet ITransientAssociative ITransientMap ITransientSet
-                         Indexed SeqIterator)
+                         Indexed Keyword SeqIterator)
            (java.io Writer)
            (java.util Set)))
 
@@ -28,7 +28,10 @@
 (defmacro change! [field f & args]
   `(set! ~field (~f ~field ~@args)))
 
-(deftype WithWeight [item weight]
+(deftype ZSItem [item weight]
+  IMapEntry
+  (key [_] item)
+  (val [_] weight)
   Indexed
   (nth [_ idx]
     (case idx
@@ -40,10 +43,10 @@
       1 weight
       nf)))
 
-(defn- item [^WithWeight x]
+(defn- item [^ZSItem x]
   (.nth x 0))
 
-(defn- weight [^WithWeight x]
+(defn- weight [^ZSItem x]
   (.nth x 1))
 
 (defn calc-next-weight
@@ -55,7 +58,7 @@
     (weight zsi)))
 
 (defn any->zsi [x]
-  (if (instance? WithWeight x) x (zsi x 1)))
+  (if (instance? ZSItem x) x (zsi x 1)))
 
 (defn disjoin-exception []
   (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {}))
@@ -88,8 +91,9 @@
         false (ZSet. (m-next m k w-next) meta-map pos))))
   ;(cons2 [this x])
   (seq [this]
-    ;(timbre/spy ["seq" (count m)])
-    (sequence (map (fn [[x w]] (zsi x w))) m))
+    (timbre/spy ["seq" (count m)])
+    (sequence (map (fn [[x w]]
+                     (zsi x w))) m))
   (empty [this]
     (ZSet. {} meta-map pos))
   (equiv [this other]
@@ -108,8 +112,7 @@
   Object
   (toString [this]
     ;(timbre/info "toString")
-    (str "#zset #{" (clojure.string/join " " (map str this)) "}")
-    )
+    (str "#zs #{" (clojure.string/join " " (map str this)) "}"))
   (hashCode [this]
     (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
   (equals [this other]
@@ -125,6 +128,7 @@
 
   Set
   (iterator [this]
+    (timbre/info "iterator")
     (SeqIterator. (.seq this)))
   (contains [this k]
     (.containsKey m k))
@@ -150,6 +154,17 @@
   IFn
   (invoke [this k] (when (.contains this k) k)))
 
+(defmacro m-next! [^ITransientMap m ^Object k w-next]
+  ;need a macro to re-use this code that does mutation;
+  ; it doesn't compile with mutable variables outside deftype
+  `(case (long ~w-next)
+     ;zero zset weight, remove
+     0 (set! ~m (.without ~m ~k))
+     ;all other cases, add
+     1 (set! ~m (.assoc ^ITransientMap ~m ~k ^Object (long 1)))
+     ;all other cases, add
+     (set! ~m (.assoc ^ITransientMap ~m ~k ~w-next))))
+
 (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
   ITransientSet
   (count [_]
@@ -164,13 +179,11 @@
           w-prev (.valAt m k)
           w-next (calc-next-weight a-zsi w-prev)]
       (when-not (= w-prev w-next)
-        (case (long w-next)
-          ;zero zset weight, remove
-          0 (change! ^ITransientMap m .without k)
-          ;all other cases, add
-          1 (change! ^ITransientAssociative m .assoc k 1)
-          ;all other cases, add
-          (change! ^ITransientAssociative m .assoc k w-next)))
+        (case pos
+          false (m-next! m k w-next)
+          true  (if (neg-int? w-next)
+                  (change! ^ITransientMap m .without k)
+                  (m-next! m k w-next))))
       this))
   (contains [_ k]
     (boolean (.valAt m k)))
@@ -181,24 +194,33 @@
   (TransientZSet. (transient (.-m a-zset)) (.-pos ^ZSet a-zset)))
 
 ;;(comment
-;;  (let [t (transient #zset #{#zsi [:a 42] #zsi [:b 2]})]
+;;  (let [t (transient #zs #{#zsi [:a 42] #zsi [:b 2]})]
 ;;    (persistent!
 ;;      (conj! t (zsi :c 3)))))
 
-(defn zset []
-  (->ZSet {} nil false))
+(defn zset
+  ([]
+   (->ZSet {} nil false))
+  ([coll]
+   (into (zset) coll)))
 
 (defn zset-pos []
   (->ZSet {} nil true))
 
+(defn zset-pos? [^ZSet s]
+  (.-pos s))
+
 (defn zsi
   ([x]
-   (->WithWeight x 1))
+   (->ZSItem x 1))
   ([x weight]
-   (->WithWeight x weight)))
+   (->ZSItem x weight)))
 
-(defn with-weight? [x]
-  (instance? WithWeight x))
+(defn zsi? [x]
+  (instance? ZSItem x))
+
+(defn zset? [x]
+  (instance? ZSet x))
 
 (defn zset+2
   [zset1 zset2]
@@ -257,13 +279,10 @@
     (conj :a)))
 
 (defn zsi-from-reader [[item weight]]
-  (->WithWeight item weight))
+  (->ZSItem item weight))
 
 (defn zset-from-reader [s]
   (into (zset) s))
-
-(defn zset-pos-from-reader [s]
-  (into (zset-pos) s))
 
 ;; Scratch
 (comment
@@ -313,7 +332,7 @@
   (binding [*out* w]
     (let [m (.-m zset)]
       (print-meta zset w)
-      (.write w "#zset ")
+      (.write w "#zs ")
       (pr (into #{}
             (if *print-weight*
               (map (fn [v]
@@ -322,7 +341,7 @@
             (if *print-weight* m (keys m))) #_[(.-e d) (.-a d) (.-v d)])
       )))
 
-(defmethod print-method WithWeight [^WithWeight obj, ^Writer w]
+(defmethod print-method ZSItem [^ZSItem obj, ^Writer w]
   (binding [*out* w]
     (.write w "#zsi")
     (pr [(nth obj 0) (nth obj 1)])))
@@ -357,6 +376,11 @@
       (into (zset) nums-v)
       :done))
 
+  (time
+    (do
+      (into (zset) nums-v)
+      :done))
+
   (first
     (sequence
       (comp
@@ -370,18 +394,13 @@
       [:a :b :c :d]
       (cycle [-1 1])))
 
-  (time
-    (do
-      (into (zset) nums-v)
-      :done))
-
-  (mm/measure (into (zset) nums-v))
+  (mm/measure (into (zset-pos) nums-v))
 
   )
 
 (comment
   (zset+2
-    #zset #{#zsi [:a 42] #zsi [:b 4]}
-    #zset-pos #{#zsi [:a 42] #zsi [:b -4]})
+    #zs #{#zsi [:a 42] #zsi [:b 4]}
+    #zs #{#zsi [:a -42] #zsi [:b -4]})
 
   (zset-po))

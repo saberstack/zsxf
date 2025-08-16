@@ -13,7 +13,37 @@
            (java.io Writer)
            (java.util Set)))
 
-;TODO Continue here
+(comment
+  ;wip list
+  ;public fns
+  zset-weight
+  zset-sum+
+  zset-count+
+  zset-item
+  zset+
+  zset-xf+
+  zset-pos+
+  zset-negate
+
+  ;public / aggregates
+  zset-count-item
+  zset-sum-item
+  ;; Public
+
+  (defn zsi-weight [^ZSItem zsi]
+    (.-weight zsi))
+
+  (defn zsi-item [^ZSItem zsi]
+    (.-item zsi))
+
+  (defn zset-negate [a-zset]
+    (into
+      (zset)
+      (map (fn [a-zsi]
+             (zsi (zsi->x a-zsi) (* -1 (zsi-weight a-zsi)))))
+      a-zset))
+
+  )
 
 (declare zset)
 (declare zset-cons)
@@ -45,6 +75,13 @@
   (hashCode [this]
     (.hashCode item)))
 
+
+(defn zsi-weight [^ZSItem zsi]
+  (.-weight zsi))
+
+(defn zsi-item [^ZSItem zsi]
+  (.-item zsi))
+
 (defn calc-next-weight
   [zsi w-prev]
   (if (int? w-prev)
@@ -55,6 +92,11 @@
 
 (defn any->zsi ^ZSItem [x]
   (if (instance? ZSItem x) x (zsi x 1)))
+
+(defn any->zsi-neg ^ZSItem [x]
+  (if (instance? ZSItem x)
+    (zsi (zsi-item x) (* -1 (zsi-weight x)))
+    (zsi x -1)))
 
 (defn disjoin-exception []
   (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {}))
@@ -74,8 +116,10 @@
 
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   IPersistentSet
-  (disjoin [_ _x]
-    (throw (disjoin-exception)))
+  (disjoin [this x]
+    ;WARN better to use data instead of disjoin
+    ;implemented for compatibility with clojure.set/intersection and others
+    (.cons this (any->zsi-neg x)))
   (cons [this x]
     (let [a-zsi  (any->zsi x)
           k      (.-item ^ZSItem a-zsi)
@@ -167,8 +211,10 @@
     (.count m))
   (get [_ k]
     (when (.valAt m k) k))
-  (disjoin [_ _x]
-    (throw (disjoin-exception)))
+  (disjoin [this x]
+    ;WARN better to use data instead of disjoin
+    ;implemented for compatibility with clojure.set/intersection and others
+    (.conj this (any->zsi-neg x)))
   (conj [this x]
     (let [a-zsi  (any->zsi x)
           k      (.-item ^ZSItem a-zsi)
@@ -345,9 +391,12 @@
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;In progress:
-; - efficient zset-pos+
-;
+(defn zset-negate [a-zset]
+  (into
+    (zset)
+    (map (fn [a-zsi]
+           (zsi (zsi-item a-zsi) (* -1 (zsi-weight a-zsi)))))
+    a-zset))
 
 ;; Performance compare
 (comment

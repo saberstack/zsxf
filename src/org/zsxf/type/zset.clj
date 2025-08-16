@@ -3,12 +3,13 @@
    {item #_-> weight}"
   (:require [clj-memory-meter.core :as mm]
             [criterium.core :as crit]
+            [flatland.ordered.map]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj
-                         IPersistentMap IPersistentSet ITransientAssociative ITransientMap ITransientSet
-                         Indexed Keyword SeqIterator)
+                         IPersistentCollection IPersistentMap IPersistentSet ITransientAssociative ITransientMap ITransientSet
+                         Indexed Keyword MapEntry SeqIterator)
            (java.io Writer)
            (java.util Set)))
 
@@ -17,7 +18,6 @@
 (declare zset)
 (declare zset-cons)
 (declare zsi)
-(declare zset-item)
 (declare with-weight?)
 (declare transient-zset)
 (defonce ^:dynamic *print-weight* true)
@@ -29,35 +29,31 @@
   `(set! ~field (~f ~field ~@args)))
 
 (deftype ZSItem [item weight]
-  IMapEntry
-  (key [_] item)
-  (val [_] weight)
-  Indexed
-  (nth [_ idx]
-    (case idx
-      0 item
-      1 weight))
-  (nth [_ idx nf]
-    (case idx
-      0 item
-      1 weight
-      nf)))
+  IPersistentCollection
+  (equiv [this other]
+    (= item other))
 
-(defn- item [^ZSItem x]
-  (.nth x 0))
+  IHashEq
+  (hasheq [this]
+    (hash item))
 
-(defn- weight [^ZSItem x]
-  (.nth x 1))
+  Object
+  (equals [this other]
+    (or
+      (identical? this other)
+      (= item other)))
+  (hashCode [this]
+    (.hashCode item)))
 
 (defn calc-next-weight
   [zsi w-prev]
   (if (int? w-prev)
     ;w-prev already exists
-    (+ w-prev (weight zsi))
+    (+ w-prev (.-weight ^ZSItem zsi))
     ;new
-    (weight zsi)))
+    (.-weight ^ZSItem zsi)))
 
-(defn any->zsi [x]
+(defn any->zsi ^ZSItem [x]
   (if (instance? ZSItem x) x (zsi x 1)))
 
 (defn disjoin-exception []
@@ -81,10 +77,18 @@
   (disjoin [_ _x]
     (throw (disjoin-exception)))
   ;cons working state
+  #_(cons [this x]
+      (let [a-zsi  (any->zsi x)
+            k      (.-item ^ZSItem a-zsi)
+            w-prev (.valAt m (.-item ^ZSItem a-zsi))
+            w-next (calc-next-weight a-zsi w-prev)]
+        (case pos
+          true (ZSet. (m-next-pos m k w-next) meta-map pos)
+          false (ZSet. (m-next m k w-next) meta-map pos))))
   (cons [this x]
     (let [a-zsi  (any->zsi x)
-          k      (item a-zsi)
-          w-prev (.valAt m (item a-zsi))
+          k      (.-item ^ZSItem a-zsi)
+          w-prev (.valAt m (.-item ^ZSItem a-zsi))
           w-next (calc-next-weight a-zsi w-prev)]
       (case pos
         true (ZSet. (m-next-pos m k w-next) meta-map pos)
@@ -128,7 +132,6 @@
 
   Set
   (iterator [this]
-    (timbre/info "iterator")
     (SeqIterator. (.seq this)))
   (contains [this k]
     (.containsKey m k))
@@ -152,7 +155,9 @@
   (asTransient [this]
     (transient-zset this))
   IFn
-  (invoke [this k] (when (.contains this k) k)))
+  (invoke [this k] (when (.contains this k)
+                     (let [[k weight] (find m k)]
+                       (zsi k weight)))))
 
 (defmacro m-next! [^ITransientMap m ^Object k w-next]
   ;need a macro to re-use this code that does mutation;
@@ -175,15 +180,15 @@
     (throw (disjoin-exception)))
   (conj [this x]
     (let [a-zsi  (any->zsi x)
-          k      (item a-zsi)
+          k      (.-item ^ZSItem a-zsi)
           w-prev (.valAt m k)
           w-next (calc-next-weight a-zsi w-prev)]
       (when-not (= w-prev w-next)
         (case pos
           false (m-next! m k w-next)
-          true  (if (neg-int? w-next)
-                  (change! ^ITransientMap m .without k)
-                  (m-next! m k w-next))))
+          true (if (neg-int? w-next)
+                 (change! ^ITransientMap m .without k)
+                 (m-next! m k w-next))))
       this))
   (contains [_ k]
     (boolean (.valAt m k)))
@@ -214,7 +219,7 @@
   ([x]
    (->ZSItem x 1))
   ([x weight]
-   (->ZSItem x weight)))
+   (->ZSItem x (long weight))))
 
 (defn zsi? [x]
   (instance? ZSItem x))
@@ -335,7 +340,7 @@
       (.write w "#zs ")
       (pr (into #{}
             (if *print-weight*
-              (map (fn [v]
+              (map (fn [^MapEntry v]
                      (zsi (nth v 0) (nth v 1))))
               (map identity))
             (if *print-weight* m (keys m))) #_[(.-e d) (.-a d) (.-v d)])
@@ -344,7 +349,7 @@
 (defmethod print-method ZSItem [^ZSItem obj, ^Writer w]
   (binding [*out* w]
     (.write w "#zsi")
-    (pr [(nth obj 0) (nth obj 1)])))
+    (pr [(.-item ^ZSItem obj) (.-weight ^ZSItem obj)])))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

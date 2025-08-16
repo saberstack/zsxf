@@ -69,7 +69,6 @@
   (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {}))
 
 (defn- m-next ^IPersistentSet [^IPersistentSet s x w-next]
-  (timbre/spy s)
   (case (long w-next)
     ;zero zset weight, remove
     0 (.disjoin s x)
@@ -89,7 +88,7 @@
   (cons [this x]
     (let [w-x    (x->weight x)
           w-prev (when-let [zsi-prev (s x)] (.-weight ^ZSItem zsi-prev))
-          w-next (timbre/spy (calc-next-weight w-x w-prev))]
+          w-next (calc-next-weight w-x w-prev)]
       (if (= w-prev w-next)
         this
         (case pos
@@ -97,7 +96,6 @@
           false (ZSet. (m-next s x w-next) meta-map pos)))))
   ;(cons2 [this x])
   (seq [this]
-    (timbre/spy ["seq" (count s)])
     (seq s))
   (empty [this]
     (ZSet. #{} meta-map pos))
@@ -116,7 +114,6 @@
 
   Object
   (toString [this]
-    ;(timbre/info "toString")
     (str "#zs #{" (clojure.string/join " " (map str this)) "}"))
   (hashCode [this]
     (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
@@ -133,10 +130,8 @@
 
   Set
   (iterator [this]
-    (timbre/info "iterator")
     (SeqIterator. (.seq this)))
   (contains [this x]
-    (timbre/spy ['contains x])
     (.contains s x))
   (containsAll [this xs]
     (every? #(.contains this %) xs))
@@ -158,11 +153,9 @@
   (asTransient [this] (transient-zset this))
   IFn
   (invoke [this x]
-    (timbre/spy ['invoke x])
     (s x)))
 (comment
   (defn- m-next ^IPersistentSet [^IPersistentSet s x w-next]
-    (timbre/spy s)
     (case (long w-next)
       ;zero zset weight, remove
       0 (.disjoin s x)
@@ -194,8 +187,6 @@
     (let [w-x    (x->weight x)
           w-prev (when-let [zsi-prev (.get s x)] (.-weight ^ZSItem zsi-prev))
           w-next (calc-next-weight w-x w-prev)]
-      (timbre/spy [w-prev w-next])
-
       (when-not (= w-prev w-next)
         (case pos
           false (m-next! s x w-next)
@@ -260,37 +251,6 @@
   )
 
 
-
-(comment
-  (defn zset+
-    "Adds two zsets"
-    ([] (zset #{}))
-    ([zset-1] zset-1)
-    ([zset-1 zset-2]
-     (zset+ (map identity) zset-1 zset-2))
-    ([xf zset-1 & more]
-     ;{:pre [(zset? zset-1) (zset? zset-2)]}
-     (transduce
-       ;get set items one by one
-       (comp cat xf)
-       (completing
-         (fn [s new-zsi]
-           (if-let [prev-item (s new-zsi)]
-             ;item already exists in the zset
-             (let [new-weight (+' (zset-weight prev-item) (zset-weight new-zsi))]
-               (if (zero? new-weight)
-                 ;remove item
-                 (disj s prev-item)
-                 ;else keep item, adjust weight
-                 (conj (disj s prev-item) (assoc-zset-item-weight new-zsi new-weight))))
-             ;else, new item
-             (if (not= 0 (zset-weight new-zsi))
-               (conj s new-zsi)
-               s)))
-         (fn [accum-final]
-           (ois/optimize-set accum-final)))
-       zset-1
-       more))))
 
 (comment
   (->
@@ -388,6 +348,28 @@
   (time
     (def nums-v (into [] (map vector) (range 10000000))))
 
+
+  (time
+    (def set-of-nums (into #{} nums-v)))
+
+  (time
+    (def set-of-nums-2 (into #{} nums-v)))
+
+  (time
+    (= set-of-nums set-of-nums-2))
+
+  (time
+    (def zset-of-nums (into (zset) nums-v)))
+
+  (time
+    (def old-zset-of-nums (zs/zset nums-v)))
+
+  (time
+    (= zset-of-nums set-of-nums))
+
+  (time
+    (= old-zset-of-nums set-of-nums))
+
   (crit/quick-bench
     (do
       (zs/zset nums-v)
@@ -401,11 +383,6 @@
   (mm/measure (zs/zset nums-v))
 
   (crit/quick-bench
-    (do
-      (into (zset) nums-v)
-      :done))
-
-  (time
     (do
       (into (zset) nums-v)
       :done))
@@ -430,6 +407,4 @@
 (comment
   (zset+2
     #zs #{#zsi [:a 42] #zsi [:b 4]}
-    #zs #{#zsi [:a -42] #zsi [:b -5]})
-
-  (zset-po))
+    #zs #{#zsi [:a -42] #zsi [:b -5]}))

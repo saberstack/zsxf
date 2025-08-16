@@ -93,19 +93,20 @@
       (case pos
         true (ZSet. (m-next-pos m k w-next) meta-map pos)
         false (ZSet. (m-next m k w-next) meta-map pos))))
-  ;(cons2 [this x])
   (seq [this]
-    (timbre/spy ["seq" (count m)])
-    (sequence (map (fn [[x w]]
-                     (zsi x w))) m))
+    (println "seq")
+    (sequence (map (fn [[x w]] (zsi x w))) m))
   (empty [this]
     (ZSet. {} meta-map pos))
   (equiv [this other]
+    (println "equiv")
     (.equals this other))
   (get [this k]
+    (println "get")
     ;behaves like get on a Clojure set
     (when (.valAt m k) k))
   (count [this]
+    (println "count")
     (.count m))
 
   IObj
@@ -115,11 +116,13 @@
 
   Object
   (toString [this]
-    ;(timbre/info "toString")
+    (timbre/info "toString")
     (str "#zs #{" (clojure.string/join " " (map str this)) "}"))
   (hashCode [this]
+    (println "hashCode")
     (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
   (equals [this other]
+    (println "equals")
     (or (identical? this other)
       (and (instance? Set other)
         (let [^Set s other]
@@ -128,18 +131,24 @@
 
   IHashEq
   (hasheq [this]
+    (println "hasheq")
     (hash-unordered-coll (or (keys m) {})))
 
   Set
   (iterator [this]
+    (println "iterator")
     (SeqIterator. (.seq this)))
   (contains [this k]
+    (println "contains")
     (.containsKey m k))
   (containsAll [this ks]
+    (println "containsAll")
     (every? #(.contains this %) ks))
   (size [this]
+    (println "size")
     (.count this))
   (isEmpty [this]
+    (println "isEmpty")
     (zero? (.count this)))
   (^objects toArray [this ^objects dest]
     (reduce (fn [idx item]

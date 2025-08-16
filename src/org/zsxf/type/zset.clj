@@ -76,15 +76,6 @@
   IPersistentSet
   (disjoin [_ _x]
     (throw (disjoin-exception)))
-  ;cons working state
-  #_(cons [this x]
-      (let [a-zsi  (any->zsi x)
-            k      (.-item ^ZSItem a-zsi)
-            w-prev (.valAt m (.-item ^ZSItem a-zsi))
-            w-next (calc-next-weight a-zsi w-prev)]
-        (case pos
-          true (ZSet. (m-next-pos m k w-next) meta-map pos)
-          false (ZSet. (m-next m k w-next) meta-map pos))))
   (cons [this x]
     (let [a-zsi  (any->zsi x)
           k      (.-item ^ZSItem a-zsi)
@@ -215,8 +206,8 @@
 (defn zset
   ([]
    (->ZSet {} nil false))
-  ([coll]
-   (into (zset) coll)))
+  ([& args]
+   (into (zset) args)))
 
 (defn zset-pos []
   (->ZSet {} nil true))
@@ -225,9 +216,9 @@
   (.-pos s))
 
 (defn zsi
-  ([x]
+  (^ZSItem [x]
    (->ZSItem x 1))
-  ([x weight]
+  (^ZSItem [x weight]
    (->ZSItem x (long weight))))
 
 (defn zsi? [x]

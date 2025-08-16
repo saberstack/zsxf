@@ -6,12 +6,13 @@
             [flatland.ordered.map]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zs]
+            [clojure.string :as str]
             [taoensso.timbre :as timbre])
-  (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj
-                         IPersistentCollection IPersistentMap IPersistentSet ITransientAssociative ITransientMap ITransientSet
-                         Indexed Keyword MapEntry SeqIterator)
+  (:import (clojure.lang Associative IEditableCollection IFn IHashEq ILookup IMapEntry IObj
+                         IPersistentCollection IPersistentMap IPersistentSet IPersistentVector ITransientAssociative ITransientMap ITransientSet
+                         Indexed Keyword MapEntry MapEquivalence SeqIterator)
            (java.io Writer)
-           (java.util Set)))
+           (java.util Map Set)))
 
 (comment
   ;wip list
@@ -58,10 +59,39 @@
 (defmacro change! [field f & args]
   `(set! ~field (~f ~field ~@args)))
 
+(defprotocol IZSItem
+  :extend-via-metadata true
+  (item [_])
+  (weight [_]))
+
+;TODO continue here
+; ZSItem vs metadata
+
 (deftype ZSItem [item weight]
   IPersistentCollection
-  (equiv [this other]
+   (equiv [this other]
+    (println "ZSItem equiv")
     (= item other))
+
+  IPersistentVector
+  (count [this ]
+    (count item))
+  (nth [this x]
+    (println "nth")
+    (nth item x))
+
+  Map
+  (size [_]
+    (count item))
+  (containsKey [_ k]
+    (contains? item k))
+  (get [_ k]
+    (get item k))
+
+  ILookup
+  (valAt [_ k]
+    (get item k))
+
 
   IHashEq
   (hasheq [this]
@@ -69,12 +99,12 @@
 
   Object
   (equals [this other]
+    (println "ZSItem equals")
     (or
       (identical? this other)
       (= item other)))
   (hashCode [this]
     (.hashCode item)))
-
 
 (defn zsi-weight [^ZSItem zsi]
   (.-weight zsi))
@@ -97,9 +127,6 @@
   (if (instance? ZSItem x)
     (zsi (zsi-item x) (* -1 (zsi-weight x)))
     (zsi x -1)))
-
-(defn disjoin-exception []
-  (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {}))
 
 (defn- m-next ^IPersistentMap [^IPersistentMap m k w-next]
   (case (long w-next)
@@ -131,8 +158,7 @@
   ;(cons2 [this x])
   (seq [this]
     (timbre/spy ["seq" (count m)])
-    (sequence (map (fn [[x w]]
-                     (zsi x w))) m))
+    (sequence (map (fn [[x w]] (zsi x w))) m))
   (empty [this]
     (ZSet. {} meta-map pos))
   (equiv [this other]
@@ -151,7 +177,7 @@
   Object
   (toString [this]
     ;(timbre/info "toString")
-    (str "#zs #{" (clojure.string/join " " (map str this)) "}"))
+    (str "#zs #{" (str/join " " (map str this)) "}"))
   (hashCode [this]
     (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
   (equals [this other]
@@ -167,6 +193,7 @@
 
   Set
   (iterator [this]
+    (println "iterator")
     (SeqIterator. (.seq this)))
   (contains [this k]
     (.containsKey m k))
@@ -188,6 +215,7 @@
 
   IEditableCollection
   (asTransient [this]
+    (println "asTransient")
     (transient-zset this))
   IFn
   (invoke [this k] (when (.contains this k)
@@ -320,11 +348,11 @@
     (conj :a)
     (conj :a)))
 
-(defn zsi-from-reader [[item weight]]
-  (->ZSItem item weight))
+(defn zsi-from-reader [v]
+  `(->ZSItem ~@v))
 
 (defn zset-from-reader [s]
-  (into (zset) s))
+  `(into (zset) ~s))
 
 ;; Scratch
 (comment
@@ -385,7 +413,7 @@
 
 (defmethod print-method ZSItem [^ZSItem obj, ^Writer w]
   (binding [*out* w]
-    (.write w "#zsi")
+    (.write w "#zsi ")
     (pr [(.-item ^ZSItem obj) (.-weight ^ZSItem obj)])))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing

@@ -22,53 +22,21 @@
 ;How to turn a zset into a proper Clojure collection (maybe in the future, if beneficial)
 ; Follow the example from https://github.com/clj-commons/ordered/blob/master/src/flatland/ordered/set.clj
 
-(comment
-  ;wip list
-  ;public fns
-  zset-weight
-  zset-sum+
-  zset-count+
-  zset-item
-  zset+
-  zset-xf+
-  zset-pos+
-  zset-negate
-
-  ;public / aggregates
-  zset-count-item
-  zset-sum-item
-  ;; Public
-
-  (defn zsi-weight [^ZSItem zsi]
-    (.-weight zsi))
-
-  (defn zsi-item [^ZSItem zsi]
-    (.-item zsi))
-
-  (defn zset-negate [a-zset]
-    (into
-      (zset)
-      (map (fn [a-zsi]
-             (zsi (zsi->x a-zsi) (* -1 (zsi-weight a-zsi)))))
-      a-zset))
-
-  )
-
 (defn zset-weight
   "Get the weight of a zset item.
   x must have metadata with :zset/w integer value"
   [x]
   (:zset/w (meta x)))
 
-(defn- update-zset-item-weight
+(defn update-zset-item-weight
   [zset-item f]
   (vary-meta zset-item update :zset/w f))
 
-(defn- assoc-zset-item-weight
+(defn assoc-zset-item-weight
   [zset-item w]
   (vary-meta zset-item assoc :zset/w w))
 
-(defn- dissoc-meta-weight [meta-map]
+(defn dissoc-meta-weight [meta-map]
   (dissoc meta-map :zset/w))
 
 (defn zset-sum+

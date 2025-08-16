@@ -8,7 +8,7 @@
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj
-                         IPersistentCollection IPersistentMap IPersistentSet ITransientAssociative ITransientSet ITransientSet
+                         IPersistentCollection IPersistentMap IPersistentSet ITransientAssociative ITransientMap ITransientSet
                          Indexed Keyword MapEntry SeqIterator)
            (java.io Writer)
            (java.util Set)))
@@ -46,73 +46,72 @@
     (.hashCode item)))
 
 (defn calc-next-weight
-  [w-x w-prev]
+  [zsi w-prev]
   (if (int? w-prev)
     ;w-prev already exists
-    (+ w-prev w-x)
+    (+ w-prev (.-weight ^ZSItem zsi))
     ;new
-    w-x))
+    (.-weight ^ZSItem zsi)))
 
-(defn x->zsi ^ZSItem [^Object x w-next]
-  ;if zsi, return, else make it
-  (if (instance? ZSItem x) x (zsi x w-next)))
-
-(defn zsi->x ^Object [zsi]
-  (if (instance? ZSItem zsi)
-    (.-item ^ZSItem zsi)
-    zsi))
-
-(defn x->weight ^long [x]
-  (if (instance? ZSItem x) (.-weight ^ZSItem x) 1))
+(defn any->zsi ^ZSItem [x]
+  (if (instance? ZSItem x) x (zsi x 1)))
 
 (defn disjoin-exception []
   (ex-info "removal from a zset is expressed with data, disj (disjoin) not implemented" {}))
 
-(defn- m-next ^IPersistentSet [^IPersistentSet s x w-next]
-  (timbre/spy s)
+(defn- m-next ^IPersistentMap [^IPersistentMap m k w-next]
   (case (long w-next)
     ;zero zset weight, remove
-    0 (.disjoin s x)
-    (-> s
-      (.disjoin x)
-      (.cons ^IPersistentSet (zsi (zsi->x x) w-next)))))
+    0 (.without m k)
+    ;all other cases, add
+    1 (.assoc ^Associative m k 1)
+    (.assoc ^Associative m k w-next)))
 
-(defn- m-next-pos [^IPersistentSet s x w-next]
+(defn- m-next-pos [^IPersistentMap m k w-next]
   (if (neg-int? w-next)
-    (.disjoin s x)
-    (m-next s x w-next)))
+    (.without m k)
+    (m-next m k w-next)))
 
-(deftype ZSet [^IPersistentSet s ^IPersistentSet meta-map ^boolean pos]
+(deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   IPersistentSet
   (disjoin [_ _x]
     (throw (disjoin-exception)))
-  (cons [this x]
-    (let [w-x    (x->weight x)
-          w-prev (when-let [zsi-prev (s x)] (.-weight ^ZSItem zsi-prev))
-          w-next (timbre/spy (calc-next-weight w-x w-prev))]
-      (if (= w-prev w-next)
-        this
+  ;cons working state
+  #_(cons [this x]
+      (let [a-zsi  (any->zsi x)
+            k      (.-item ^ZSItem a-zsi)
+            w-prev (.valAt m (.-item ^ZSItem a-zsi))
+            w-next (calc-next-weight a-zsi w-prev)]
         (case pos
-          true (ZSet. (m-next-pos s x w-next) meta-map pos)
-          false (ZSet. (m-next s x w-next) meta-map pos)))))
+          true (ZSet. (m-next-pos m k w-next) meta-map pos)
+          false (ZSet. (m-next m k w-next) meta-map pos))))
+  (cons [this x]
+    (let [a-zsi  (any->zsi x)
+          k      (.-item ^ZSItem a-zsi)
+          w-prev (.valAt m (.-item ^ZSItem a-zsi))
+          w-next (calc-next-weight a-zsi w-prev)]
+      (case pos
+        true (ZSet. (m-next-pos m k w-next) meta-map pos)
+        false (ZSet. (m-next m k w-next) meta-map pos))))
   ;(cons2 [this x])
   (seq [this]
-    (timbre/spy ["seq" (count s)])
-    (seq s))
+    (timbre/spy ["seq" (count m)])
+    (sequence (map (fn [[x w]]
+                     (zsi x w))) m))
   (empty [this]
-    (ZSet. #{} meta-map pos))
+    (ZSet. {} meta-map pos))
   (equiv [this other]
     (.equals this other))
-  (get [this x]
+  (get [this k]
     ;behaves like get on a Clojure set
-    (when (s x) x))
+    (when (.valAt m k) k))
   (count [this]
-    (.count s))
+    (.count m))
 
   IObj
   (meta [this] meta-map)
   (withMeta [this meta-map]
-    (ZSet. s meta-map pos))
+    (ZSet. m meta-map pos))
 
   Object
   (toString [this]
@@ -129,17 +128,15 @@
 
   IHashEq
   (hasheq [this]
-    (hash-unordered-coll s))
+    (hash-unordered-coll (or (keys m) {})))
 
   Set
   (iterator [this]
-    (timbre/info "iterator")
     (SeqIterator. (.seq this)))
-  (contains [this x]
-    (timbre/spy ['contains x])
-    (.contains s x))
-  (containsAll [this xs]
-    (every? #(.contains this %) xs))
+  (contains [this k]
+    (.containsKey m k))
+  (containsAll [this ks]
+    (every? #(.contains this %) ks))
   (size [this]
     (.count this))
   (isEmpty [this]
@@ -155,90 +152,73 @@
     (.toArray this (object-array (.count this))))
 
   IEditableCollection
-  (asTransient [this] (transient-zset this))
+  (asTransient [this]
+    (transient-zset this))
   IFn
-  (invoke [this x]
-    (timbre/spy ['invoke x])
-    (s x)))
-(comment
-  (defn- m-next ^IPersistentSet [^IPersistentSet s x w-next]
-    (timbre/spy s)
-    (case (long w-next)
-      ;zero zset weight, remove
-      0 (.disjoin s x)
-      (-> s
-        (.disjoin x)
-        (.cons ^IPersistentSet (zsi (zsi->x x) w-next))))))
+  (invoke [this k] (when (.contains this k)
+                     (let [[k weight] (find m k)]
+                       (zsi k weight)))))
 
-(defmacro m-next! [^ITransientSet s# ^Object x# w-next#]
+(defmacro m-next! [^ITransientMap m ^Object k w-next]
   ;need a macro to re-use this code that does mutation;
   ; it doesn't compile with mutable variables outside deftype
-  `(case (long ~w-next#)
+  `(case (long ~w-next)
      ;zero zset weight, remove
-     0 (set! ~s# (.disjoin ~s# ~x#))
+     0 (set! ~m (.without ~m ~k))
      ;all other cases, add
-     (let [s'# (-> ~s#
-               (.disjoin ^ITransientSet ~x#)
-               (.conj ^ITransientSet (zsi (zsi->x ~x#) ~w-next#)))]
-       (set! ~s# s'#))))
+     1 (set! ~m (.assoc ^ITransientMap ~m ~k ^Object (long 1)))
+     ;all other cases, add
+     (set! ~m (.assoc ^ITransientMap ~m ~k ~w-next))))
 
-(deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientSet} s ^boolean pos]
+(deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
   ITransientSet
   (count [_]
-    (.count s))
-  (get [_ x]
-    (when (.get s x) x))
+    (.count m))
+  (get [_ k]
+    (when (.valAt m k) k))
   (disjoin [_ _x]
     (throw (disjoin-exception)))
   (conj [this x]
-    (let [w-x    (x->weight x)
-          w-prev (when-let [zsi-prev (.get s x)] (.-weight ^ZSItem zsi-prev))
-          w-next (calc-next-weight w-x w-prev)]
-      (timbre/spy [w-prev w-next])
-
+    (let [a-zsi  (any->zsi x)
+          k      (.-item ^ZSItem a-zsi)
+          w-prev (.valAt m k)
+          w-next (calc-next-weight a-zsi w-prev)]
       (when-not (= w-prev w-next)
         (case pos
-          false (m-next! s x w-next)
+          false (m-next! m k w-next)
           true (if (neg-int? w-next)
-                 (change! ^ITransientSet s .disjoin x)
-                 (m-next! s x w-next))))
+                 (change! ^ITransientMap m .without k)
+                 (m-next! m k w-next))))
       this))
   (contains [_ k]
-    (boolean (.get s k)))
+    (boolean (.valAt m k)))
   (persistent [_]
-    (ZSet. (.persistent s) nil pos))
-  IFn
-  (invoke [this x]
-    (s x)))
+    (ZSet. (.persistent m) nil pos)))
 
 (defn transient-zset [^ZSet a-zset]
-  (TransientZSet. (transient (.-s a-zset)) (.-pos ^ZSet a-zset)))
+  (TransientZSet. (transient (.-m a-zset)) (.-pos ^ZSet a-zset)))
+
+;;(comment
+;;  (let [t (transient #zs #{#zsi [:a 42] #zsi [:b 2]})]
+;;    (persistent!
+;;      (conj! t (zsi :c 3)))))
 
 (defn zset
-  (^ZSet []
-   (->ZSet #{} nil false))
-  (^ZSet [& args]
-   (into (zset) args)))
+  ([]
+   (->ZSet {} nil false))
+  ([coll]
+   (into (zset) coll)))
 
-(comment
-  (meta ((transient #{(with-meta 'a {:meta 42}) 'b 'c}) 'a))
-  ;=> {:meta 42}
-
-  )
-
-(defn zset-pos
-  (^ZSet []
-   (->ZSet #{} nil true))
-  (^ZSet [& args]
-   (into (->ZSet #{} nil true) args)))
+(defn zset-pos []
+  (->ZSet {} nil true))
 
 (defn zset-pos? [^ZSet s]
   (.-pos s))
 
 (defn zsi
-  (^ZSItem [x]
+  ([x]
    (->ZSItem x 1))
-  (^ZSItem [x weight]
+  ([x weight]
    (->ZSItem x (long weight))))
 
 (defn zsi? [x]
@@ -353,22 +333,18 @@
         (pr-on m w))
       (.write w " "))))
 
-;;(defmethod print-dup ZSet [^ZSet zset, ^Writer w]
-;;  (print-ctor zset (fn [^ZSet o w] (print-dup (.-s o) w)) w))
-
 (defmethod print-method ZSet [^ZSet zset, ^Writer w]
   (binding [*out* w]
-    (let [s (.s zset)]
+    (let [m (.-m zset)]
       (print-meta zset w)
       (.write w "#zs ")
-      (pr s)
+      (pr (into #{}
+            (if *print-weight*
+              (map (fn [^MapEntry v]
+                     (zsi (nth v 0) (nth v 1))))
+              (map identity))
+            (if *print-weight* m (keys m))) #_[(.-e d) (.-a d) (.-v d)])
       )))
-
-;;(defmethod print-dup ZSItem [^ZSItem zsi, ^Writer w]
-;;  (print-ctor zsi
-;;    (fn [^ZSItem o ^Writer w]
-;;      (.write w "#zsi")
-;;      (print-dup [(.-item o) (.-weight ^ZSItem o)] w)) w))
 
 (defmethod print-method ZSItem [^ZSItem obj, ^Writer w]
   (binding [*out* w]
@@ -430,6 +406,6 @@
 (comment
   (zset+2
     #zs #{#zsi [:a 42] #zsi [:b 4]}
-    #zs #{#zsi [:a -42] #zsi [:b -5]})
+    #zs #{#zsi [:a -42] #zsi [:b -4]})
 
   (zset-po))

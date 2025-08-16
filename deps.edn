@@ -33,6 +33,7 @@
                           com.cnuernber/charred                     {:mvn/version "1.036"}
                           com.techascent/tmducken                   {:mvn/version "0.10.1-01"}
                           hato/hato                                 {:mvn/version "1.0.0"}
+                          org.flatland/ordered                      {:git/url "https://github.com/clj-commons/ordered" :git/sha "b5315081f24858e3169923f0de6b9f08bc0dda5a"}
                           org.babashka/http-client                  {:mvn/version "0.4.22"}
                           com.clojure-goes-fast/clj-memory-meter    {:mvn/version "0.4.0"}
                           com.clojure-goes-fast/clj-java-decompiler {:mvn/version "0.3.7"}

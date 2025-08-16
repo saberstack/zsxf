@@ -4,17 +4,15 @@
   (:require [clj-memory-meter.core :as mm]
             [criterium.core :as crit]
             [flatland.ordered.map]
+            [clojure.string :as str]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.zset :as zs]
             [taoensso.timbre :as timbre])
-  (:import (clojure.lang Associative IEditableCollection IFn IHashEq IMapEntry IObj
-                         IPersistentCollection IPersistentMap IPersistentSet ITransientAssociative ITransientSet ITransientSet
-                         Indexed Keyword MapEntry SeqIterator)
+  (:import (clojure.lang IEditableCollection IFn IHashEq IObj
+                         IPersistentCollection IPersistentMap IPersistentSet ITransientSet ITransientSet
+                         SeqIterator)
            (java.io Writer)
            (java.util Set)))
-
-;TODO Continue here
-
 (declare zset)
 (declare zset-cons)
 (declare zsi)
@@ -29,12 +27,15 @@
   `(set! ~field (~f ~field ~@args)))
 
 (deftype ZSItem [item weight]
+  IObj
+  (meta [_] (meta item))
+  (withMeta [_ m] (ZSItem. (with-meta item m) weight))
   IPersistentCollection
-  (equiv [this other]
+  (equiv [_ other]
     (= item other))
 
   IHashEq
-  (hasheq [this]
+  (hasheq [_]
     (hash item))
 
   Object
@@ -42,7 +43,7 @@
     (or
       (identical? this other)
       (= item other)))
-  (hashCode [this]
+  (hashCode [_]
     (.hashCode item)))
 
 (defn calc-next-weight
@@ -52,10 +53,6 @@
     (+ w-prev w-x)
     ;new
     w-x))
-
-(defn x->zsi ^ZSItem [^Object x w-next]
-  ;if zsi, return, else make it
-  (if (instance? ZSItem x) x (zsi x w-next)))
 
 (defn zsi->x ^Object [zsi]
   (if (instance? ZSItem zsi)
@@ -76,12 +73,12 @@
       (.disjoin x)
       (.cons ^IPersistentSet (zsi (zsi->x x) w-next)))))
 
-(defn- m-next-pos [^IPersistentSet s x w-next]
+(defn- m-next-pos ^IPersistentSet [^IPersistentSet s x w-next]
   (if (neg-int? w-next)
     (.disjoin s x)
     (m-next s x w-next)))
 
-(deftype ZSet [^IPersistentSet s ^IPersistentSet meta-map ^boolean pos]
+(deftype ZSet [^IPersistentSet s ^IPersistentMap meta-map ^boolean pos]
   IPersistentSet
   (disjoin [_ _x]
     (throw (disjoin-exception)))
@@ -94,27 +91,26 @@
         (case pos
           true (ZSet. (m-next-pos s x w-next) meta-map pos)
           false (ZSet. (m-next s x w-next) meta-map pos)))))
-  ;(cons2 [this x])
-  (seq [this]
+  (seq [_]
     (seq s))
-  (empty [this]
+  (empty [_]
     (ZSet. #{} meta-map pos))
   (equiv [this other]
     (.equals this other))
-  (get [this x]
+  (get [_ x]
     ;behaves like get on a Clojure set
     (when (s x) x))
-  (count [this]
+  (count [_]
     (.count s))
 
   IObj
   (meta [this] meta-map)
-  (withMeta [this meta-map]
-    (ZSet. s meta-map pos))
+  (withMeta [_ m]
+    (ZSet. s m pos))
 
   Object
   (toString [this]
-    (str "#zs #{" (clojure.string/join " " (map str this)) "}"))
+    (str "#zs #{" (str/join " " (map str this)) "}"))
   (hashCode [this]
     (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
   (equals [this other]
@@ -151,17 +147,10 @@
 
   IEditableCollection
   (asTransient [this] (transient-zset this))
+
   IFn
   (invoke [this x]
     (s x)))
-(comment
-  (defn- m-next ^IPersistentSet [^IPersistentSet s x w-next]
-    (case (long w-next)
-      ;zero zset weight, remove
-      0 (.disjoin s x)
-      (-> s
-        (.disjoin x)
-        (.cons ^IPersistentSet (zsi (zsi->x x) w-next))))))
 
 (defmacro m-next! [^ITransientSet s# ^Object x# w-next#]
   ;need a macro to re-use this code that does mutation;
@@ -263,11 +252,11 @@
     (conj :a)
     (conj :a)))
 
-(defn zsi-from-reader [[item weight]]
-  (->ZSItem item weight))
+(defn zsi-from-reader [v]
+  `(zsi ~@v))
 
 (defn zset-from-reader [s]
-  (into (zset) s))
+  `(zset ~@s))
 
 ;; Scratch
 (comment
@@ -313,9 +302,6 @@
         (pr-on m w))
       (.write w " "))))
 
-;;(defmethod print-dup ZSet [^ZSet zset, ^Writer w]
-;;  (print-ctor zset (fn [^ZSet o w] (print-dup (.-s o) w)) w))
-
 (defmethod print-method ZSet [^ZSet zset, ^Writer w]
   (binding [*out* w]
     (let [s (.s zset)]
@@ -324,16 +310,14 @@
       (pr s)
       )))
 
-;;(defmethod print-dup ZSItem [^ZSItem zsi, ^Writer w]
-;;  (print-ctor zsi
-;;    (fn [^ZSItem o ^Writer w]
-;;      (.write w "#zsi")
-;;      (print-dup [(.-item o) (.-weight ^ZSItem o)] w)) w))
-
 (defmethod print-method ZSItem [^ZSItem obj, ^Writer w]
   (binding [*out* w]
     (.write w "#zsi")
-    (pr [(.-item ^ZSItem obj) (.-weight ^ZSItem obj)])))
+    (.write w "[")
+    (pr (.-item ^ZSItem obj))
+    (.write w " ")
+    (pr (.-weight ^ZSItem obj))
+    (.write w "]")))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

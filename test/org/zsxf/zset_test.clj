@@ -7,6 +7,7 @@
    [org.zsxf.constant :as const]
    [org.zsxf.util :as util]
    [org.zsxf.zset :as zs]
+   [org.zsxf.type.zset :as zs2]
    [clojure.test :refer :all]
    [taoensso.timbre :as timbre]))
 
@@ -87,6 +88,42 @@
     (timbre/spy zset-sum-result)
     (timbre/spy zset-sum-result')
     (is (= zset-sum-result' weight-sum))))
+
+(defonce *generated (atom nil))
+
+(deftest new-generative-test-1-zset+
+  (let [{:keys [equal zsets] :as generated} (generate-zsets-with-equal-items)
+        _                (reset! *generated generated)
+        ;sum manually
+        weight-sum       (apply + (map zs2/meta-weight equal))
+        ;zset+ sum
+        zset-summed      (transduce (map identity) zs2/zset+ zsets)
+        ;values found in the previous step must be equal, check here
+        one-value        (into #{} equal)
+        _                (is (= 1 (count one-value)))
+        one-value'       (with-meta (first one-value) nil)
+        zset-sum-result  (zs2/meta-weight (zset-summed (first one-value)))
+        zset-sum-result' ((fnil + 0) zset-sum-result)]
+    (timbre/set-min-level! :debug)
+    (timbre/spy weight-sum)
+    (timbre/spy zset-summed)
+    (timbre/spy (zset-summed (first one-value)))
+    (timbre/spy one-value')
+    (timbre/spy zset-sum-result)
+    (timbre/spy zset-sum-result')
+    (is (= zset-sum-result' weight-sum))))
+
+(comment
+  (mapv zs2/meta-weight
+    (:equal @*generated))
+
+  (transduce (map identity)
+    zs2/zset+
+    (:zsets @*generated))
+
+  (count (into #{} (:equal @*generated)))
+
+  )
 
 (def property-no-zero-weights-zset+
   (prop/for-all [zset-1 (s/gen ::zs/zset)

@@ -28,3 +28,5 @@
 
 (s/def ::zs/zset
   (s/coll-of ::zs/zset-item :kind set?))
+
+;TODO update spec and generators for zset2

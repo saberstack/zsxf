@@ -24,76 +24,25 @@
            (java.io Writer)
            (java.util Map Set)))
 
-(comment
-  ;wip list
-  ;public fns
-  zset-weight
-  zset-sum+
-  zset-count+
-  zset-item
-  zset+
-  zset-xf+
-  zset-pos+
-  zset-negate
-
-  ;public / aggregates
-  zset-count-item
-  zset-sum-item
-  ;; Public
-
-  (defn zsi-weight [^ZSItem zsi]
-    (.-weight zsi))
-
-  (defn zsi-item [^ZSItem zsi]
-    (.-item zsi))
-
-  (defn zset-negate [a-zset]
-    (into
-      (zset)
-      (map (fn [a-zsi]
-             (zsi (zsi->x a-zsi) (* -1 (zsi-weight a-zsi)))))
-      a-zset))
-
-  )
-
 (declare zset)
-(declare zset-cons)
 (declare zsi)
-(declare with-weight?)
 (declare transient-zset)
-(defonce ^:dynamic *print-weight* true)
-
-(defn set-print-weight! [x]
-  (alter-var-root #'*print-weight* (constantly x)))
 
 (defmacro change! [field f & args]
   `(set! ~field (~f ~field ~@args)))
-
-(defn weight-of-1 [_m] 1)
-
-(defn weight-of [n]
-  (fn [_m] n))
 
 (defn zsi-out
   ([x w]
    (if (util/can-meta? x)
      (with-meta x
        (if (== 1 w) const/zset-weight-of-1 {:zset/w w}))
-     ;TODO decide how to return w in this case if needed
      (do
+       ;TODO decide how to return w in this case if needed
        (timbre/error "Emitting no weight for" x)
        (println)
        x))))
 
-;TODO continue here
-; ZSItem vs metadata
-
-; - ZSItem to import
-; - ZSItem to export (if value is not a collection)
-; - with-meta if value is a collection
-
-(deftype ZSItem [item ^long weight]
-  )
+(deftype ZSItem [item ^long weight])
 
 (defn zsi-weight [^ZSItem zsi]
   (.-weight zsi))
@@ -158,7 +107,6 @@
           x'     (any->x x)
           w-prev (.valAt m x')
           w-next (calc-next-weight w-now w-prev)]
-
       ;;(timbre/spy m)
       ;;(timbre/spy x')
       ;;(timbre/spy [w-prev w-next])
@@ -318,45 +266,11 @@
        [zset2]
        more))))
 
-(comment
-  (->
-    (zset)
-    (conj (zsi :a 2))
-    (conj (zsi :a -1))
-    (conj (zsi :a 1)))
-  (->
-    (zset)
-    (conj :a)
-    (conj :a)))
-
 (defn zsi-from-reader [v]
   `(->ZSItem ~@v))
 
 (defn zset-from-reader [s]
   `(into (zset) ~s))
-
-;; Scratch
-(comment
-  (def nums-v (into [] (range 10000000)))
-
-  (def s1 (into #{} (shuffle nums-v)))
-  (def s2 (into #{} (shuffle nums-v)))
-
-  (time (= s1 s2))
-
-  (def s3 (into #{} nums-v))
-  (def s4 (into #{} nums-v))
-
-  (time (= s3 s4))
-
-  (def s5 (conj s4 -1))
-
-  (time (= s4 s5))
-
-  (def s-from-m1
-    (into #{}
-      (map (fn [kv] (kv 0)))
-      m1)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom printing
@@ -385,12 +299,9 @@
       (print-meta zset w)
       (.write w "#zs ")
       (pr (into #{}
-            (if *print-weight*
-              (map (fn [^MapEntry v]
-                     (zsi-out (nth v 0) (nth v 1))))
-              (map identity))
-            (if *print-weight* m (keys m))) #_[(.-e d) (.-a d) (.-v d)])
-      )))
+            (map (fn [^MapEntry v]
+                   (zsi-out (nth v 0) (nth v 1))))
+            m)))))
 
 (defmethod print-method ZSItem [^ZSItem obj, ^Writer w]
   (binding [*out* w]
@@ -427,9 +338,25 @@
 (defn vector-sum [v]
   (reduce + 0 v))
 
+;Usage
+(comment
+  (->
+    (zset)
+    (conj (zsi :a 2))
+    (conj (zsi :a -1))
+    (conj (zsi :a 1)))
+  (->
+    (zset)
+    (conj :a)
+    (conj :a))
+
+  (->
+    (zset)
+    (conj [:a])
+    (conj [:a])))
+
 ;; Performance compare
 (comment
-
   (time
     (def nums-v (into []
                   (comp
@@ -441,20 +368,6 @@
     (def nums-v-split (vector-split nums-v 32)))
 
   (= nums-v (vector-unsplit nums-v-split))
-
-
-  #_(time
-      (let [cnt     (count nums-v)
-            split-n (int (/ cnt 2))
-            v1      (subvec nums-v 0 split-n)
-            v2      (subvec nums-v split-n)]
-
-        #_(transduce (map first) + nums-v)
-        (let [f1 (future
-                   (transduce (map first) + v1))
-              f2 (future
-                   (transduce (map first) + v2))]
-          (+ @f1 @f2))))
 
   (time
     (vector-sum nums-v))
@@ -511,13 +424,30 @@
 
   (mm/measure (into (zset-pos) nums-v))
 
-  )
-
-(comment
   (zset+
     #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
     #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
     #zs #{#zsi [[:c] 2]})
+
   )
+
+(comment
+  ;wip list from prev zset impl
+  ;public fns
+  zset-weight
+  zset-sum+
+  zset-count+
+  zset-item
+  zset+
+  zset-xf+
+  zset-pos+
+  zset-negate
+
+  ;public / aggregates
+  zset-count-item
+  zset-sum-item
+
+  )
+
 
 (set! *print-meta* true)

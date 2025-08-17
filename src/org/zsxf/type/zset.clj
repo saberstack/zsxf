@@ -143,6 +143,7 @@
   (disjoin [this x]
     ;WARN better to use data instead of disjoin
     ;implemented for compatibility with clojure.set/intersection and others
+    (throw (ex-info "zsets do not support disjoin!" {}))
     (.cons this (any->zsi-neg x)))
   (cons [this x]
     (let [w-now  (any->weight x)
@@ -241,6 +242,7 @@
   (disjoin [this x]
     ;WARN better to use data instead of disjoin
     ;implemented for compatibility with clojure.set/intersection and others
+    (throw (ex-info "zsets do not support disjoin!" {}))
     (.conj this (any->zsi-neg x)))
   (conj [this x]
     (let [w-now  (any->weight x)

@@ -6,6 +6,7 @@
             [flatland.ordered.map]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
+            [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
             [clojure.string :as str]
             [taoensso.timbre :as timbre])
@@ -60,52 +61,31 @@
 (defmacro change! [field f & args]
   `(set! ~field (~f ~field ~@args)))
 
-(defprotocol IZSItem
-  :extend-via-metadata true
-  (item [_])
-  (weight [_]))
+(defn weight-of-1 [_m] 1)
+
+(defn weight-of [n]
+  (fn [_m] n))
+
+(defn zsi-out
+  ([x w]
+   (if (util/can-meta? x)
+     (with-meta x
+       (if (== 1 w) const/zset-weight-of-1 {:zset/w w}))
+     ;TODO decide how to return w in this case if needed
+     (do
+       (timbre/error "Emitting no weight for" x)
+       (println)
+       x))))
 
 ;TODO continue here
 ; ZSItem vs metadata
 
-(deftype ZSItem [item weight]
-  IPersistentCollection
-  (equiv [this other]
-    (println "ZSItem equiv")
-    (= item other))
+; - ZSItem to import
+; - ZSItem to export (if value is not a collection)
+; - with-meta if value is a collection
 
-  IPersistentVector
-  (count [this]
-    (count item))
-  (nth [this x]
-    (println "nth")
-    (nth item x))
-
-  Map
-  (size [_]
-    (count item))
-  (containsKey [_ k]
-    (contains? item k))
-  (get [_ k]
-    (get item k))
-
-  ILookup
-  (valAt [_ k]
-    (get item k))
-
-
-  IHashEq
-  (hasheq [this]
-    (hash item))
-
-  Object
-  (equals [this other]
-    (println "ZSItem equals")
-    (or
-      (identical? this other)
-      (= item other)))
-  (hashCode [this]
-    (.hashCode item)))
+(deftype ZSItem [item ^long weight]
+  )
 
 (defn zsi-weight [^ZSItem zsi]
   (.-weight zsi))
@@ -114,33 +94,49 @@
   (.-item zsi))
 
 (defn calc-next-weight
-  [zsi w-prev]
-  (if (int? w-prev)
-    ;w-prev already exists
-    (+ w-prev (.-weight ^ZSItem zsi))
-    ;new
-    (.-weight ^ZSItem zsi)))
+  ^Object [w-now w-prev]
+  (long
+    (if (int? w-prev)
+      ;w-prev already exists
+      (+ w-prev w-now)
+      ;new
+      w-now)))
 
 (defn any->zsi ^ZSItem [x]
-  (if (instance? ZSItem x) x (zsi x 1)))
+  (if (instance? ZSItem x)
+    x
+    (zsi x 1)))
+
+(defn any->weight ^long [x]
+  (if-let [^ZSItem x (when (instance? ZSItem x) x)]
+    (.-weight x)
+    (or (:zset/w (meta x)) 1)))
+
+(defn meta-weight [x]
+  (:zset/w (meta x)))
+
+(defn any->x ^Object [x]
+  (if-let [^ZSItem x (when (instance? ZSItem x) x)]
+    (.-item x)
+    x))
 
 (defn any->zsi-neg ^ZSItem [x]
   (if (instance? ZSItem x)
     (zsi (zsi-item x) (* -1 (zsi-weight x)))
     (zsi x -1)))
 
-(defn- m-next ^IPersistentMap [^IPersistentMap m k w-next]
+(defn- m-next ^IPersistentMap [^IPersistentMap m x w-next]
   (case (long w-next)
     ;zero zset weight, remove
-    0 (.without m k)
+    0 (.without m x)
     ;all other cases, add
-    1 (.assoc ^Associative m k 1)
-    (.assoc ^Associative m k w-next)))
+    1 (.assoc ^Associative m x 1)
+    (.assoc ^Associative m x w-next)))
 
-(defn- m-next-pos [^IPersistentMap m k w-next]
+(defn- m-next-pos [^IPersistentMap m x w-next]
   (if (neg-int? w-next)
-    (.without m k)
-    (m-next m k w-next)))
+    (.without m x)
+    (m-next m x w-next)))
 
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   IPersistentSet
@@ -149,16 +145,22 @@
     ;implemented for compatibility with clojure.set/intersection and others
     (.cons this (any->zsi-neg x)))
   (cons [this x]
-    (let [a-zsi  (any->zsi x)
-          k      (.-item ^ZSItem a-zsi)
-          w-prev (.valAt m (.-item ^ZSItem a-zsi))
-          w-next (calc-next-weight a-zsi w-prev)]
+    (let [w-now  (any->weight x)
+          x'     (any->x x)
+          w-prev (.valAt m x')
+          w-next (calc-next-weight w-now w-prev)]
+
+      ;;(timbre/spy m)
+      ;;(timbre/spy x')
+      ;;(timbre/spy [w-prev w-next])
+      ;;(println)
       (case pos
-        true (ZSet. (m-next-pos m k w-next) meta-map pos)
-        false (ZSet. (m-next m k w-next) meta-map pos))))
+        false (ZSet. (m-next m x' w-next) meta-map pos)
+        true (ZSet. (m-next-pos m x' w-next) meta-map pos))))
+
   (seq [this]
-    (timbre/spy ["seq" (count m)])
-    (sequence (map (fn [[x w]] (zsi x w))) m))
+    ;(timbre/spy ["seq" (count m)])
+    (sequence (map (fn [[x w]] (zsi-out x w))) m))
   (empty [this]
     (ZSet. {} meta-map pos))
   (equiv [this other]
@@ -176,7 +178,6 @@
 
   Object
   (toString [this]
-    ;(timbre/info "toString")
     (str "#zs #{" (str/join " " (map str this)) "}"))
   (hashCode [this]
     (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
@@ -193,7 +194,6 @@
 
   Set
   (iterator [this]
-    (println "iterator")
     (SeqIterator. (.seq this)))
   (contains [this k]
     (.containsKey m k))
@@ -215,23 +215,22 @@
 
   IEditableCollection
   (asTransient [this]
-    (println "asTransient")
     (transient-zset this))
   IFn
   (invoke [this k] (when (.contains this k)
                      (let [[k weight] (find m k)]
-                       (zsi k weight)))))
+                       (zsi-out k weight)))))
 
-(defmacro m-next! [^ITransientMap m ^Object k w-next]
+(defmacro m-next! [^ITransientMap m x w-next]
   ;need a macro to re-use this code that does mutation;
   ; it doesn't compile with mutable variables outside deftype
   `(case (long ~w-next)
      ;zero zset weight, remove
-     0 (set! ~m (.without ~m ~k))
+     0 (set! ~m (.without ~m ~x))
      ;all other cases, add
-     1 (set! ~m (.assoc ^ITransientMap ~m ~k ^Object (long 1)))
+     1 (set! ~m (.assoc ^ITransientMap ~m ~x ^Object (long 1)))
      ;all other cases, add
-     (set! ~m (.assoc ^ITransientMap ~m ~k ~w-next))))
+     (set! ~m (.assoc ^ITransientMap ~m ~x ~w-next))))
 
 (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
   ITransientSet
@@ -244,16 +243,16 @@
     ;implemented for compatibility with clojure.set/intersection and others
     (.conj this (any->zsi-neg x)))
   (conj [this x]
-    (let [a-zsi  (any->zsi x)
-          k      (.-item ^ZSItem a-zsi)
-          w-prev (.valAt m k)
-          w-next (calc-next-weight a-zsi w-prev)]
+    (let [w-now  (any->weight x)
+          x'     (any->x x)
+          w-prev (.valAt m x')
+          w-next (calc-next-weight w-now w-prev)]
       (when-not (= w-prev w-next)
         (case pos
-          false (m-next! m k w-next)
+          false (m-next! m x' w-next)
           true (if (neg-int? w-next)
-                 (change! ^ITransientMap m .without k)
-                 (m-next! m k w-next))))
+                 (change! ^ITransientMap m .without x')
+                 (m-next! m x' w-next))))
       this))
   (contains [_ k]
     (boolean (.valAt m k)))
@@ -262,11 +261,6 @@
 
 (defn transient-zset [^ZSet a-zset]
   (TransientZSet. (transient (.-m a-zset)) (.-pos ^ZSet a-zset)))
-
-;;(comment
-;;  (let [t (transient #zs #{#zsi [:a 42] #zsi [:b 2]})]
-;;    (persistent!
-;;      (conj! t (zsi :c 3)))))
 
 (defn zset
   ([]
@@ -292,49 +286,26 @@
 (defn zset? [x]
   (instance? ZSet x))
 
-(defn zset+2
-  [zset1 zset2]
-  (into
-    zset1
-    (completing
-      (fn [accum item+w]
-        (conj accum item+w)))
-    zset2))
-
-(defn zset-pos+2 [zset1 zset]
-  )
-
-
-
-(comment
-  (defn zset+
-    "Adds two zsets"
-    ([] (zset #{}))
-    ([zset-1] zset-1)
-    ([zset-1 zset-2]
-     (zset+ (map identity) zset-1 zset-2))
-    ([xf zset-1 & more]
-     ;{:pre [(zset? zset-1) (zset? zset-2)]}
-     (transduce
-       ;get set items one by one
-       (comp cat xf)
+(defn zset+
+  ([] (zset))
+  ([zset1] zset1)
+  ([zset1 zset2]
+   (into
+     zset1
+     (completing
+       (fn [accum item+w]
+         (conj accum item+w)))
+     zset2))
+  ([zset1 zset2 & more]
+   (into
+     zset1
+     (comp
+       cat
        (completing
-         (fn [s new-zsi]
-           (if-let [prev-item (s new-zsi)]
-             ;item already exists in the zset
-             (let [new-weight (+' (zset-weight prev-item) (zset-weight new-zsi))]
-               (if (zero? new-weight)
-                 ;remove item
-                 (disj s prev-item)
-                 ;else keep item, adjust weight
-                 (conj (disj s prev-item) (assoc-zset-item-weight new-zsi new-weight))))
-             ;else, new item
-             (if (not= 0 (zset-weight new-zsi))
-               (conj s new-zsi)
-               s)))
-         (fn [accum-final]
-           (ois/optimize-set accum-final)))
-       zset-1
+         (fn [accum item+w]
+           (conj accum item+w))))
+     (concat
+       [zset2]
        more))))
 
 (comment
@@ -406,7 +377,7 @@
       (pr (into #{}
             (if *print-weight*
               (map (fn [^MapEntry v]
-                     (zsi (nth v 0) (nth v 1))))
+                     (zsi-out (nth v 0) (nth v 1))))
               (map identity))
             (if *print-weight* m (keys m))) #_[(.-e d) (.-a d) (.-v d)])
       )))
@@ -425,10 +396,6 @@
     (map (fn [a-zsi]
            (zsi (zsi-item a-zsi) (* -1 (zsi-weight a-zsi)))))
     a-zset))
-
-(defn -with-meta [x]
-  (with-meta x const/zset-weight-of-1))
-
 
 (defn vector-split
   "Split vector into parts via subvec"
@@ -455,10 +422,10 @@
 
   (time
     (def nums-v (into []
-                  #_(comp
-                      (map vector)
-                      (map -with-meta))
-                  (range 100000000))))
+                  (comp
+                    (map vector)
+                    )
+                  (range 10000000))))
 
   (time
     (def nums-v-split (vector-split nums-v 32)))
@@ -467,17 +434,17 @@
 
 
   #_(time
-    (let [cnt     (count nums-v)
-          split-n (int (/ cnt 2))
-          v1      (subvec nums-v 0 split-n)
-          v2      (subvec nums-v split-n)]
+      (let [cnt     (count nums-v)
+            split-n (int (/ cnt 2))
+            v1      (subvec nums-v 0 split-n)
+            v2      (subvec nums-v split-n)]
 
-      #_(transduce (map first) + nums-v)
-      (let [f1 (future
-                 (transduce (map first) + v1))
-            f2 (future
-                 (transduce (map first) + v2))]
-        (+ @f1 @f2))))
+        #_(transduce (map first) + nums-v)
+        (let [f1 (future
+                   (transduce (map first) + v1))
+              f2 (future
+                   (transduce (map first) + v2))]
+          (+ @f1 @f2))))
 
   (time
     (vector-sum nums-v))
@@ -485,6 +452,14 @@
   (time
     (vector-sum
       (pmap vector-sum nums-v-split)))
+
+  (crit/quick-bench
+    (vector-sum nums-v))
+
+  (crit/quick-bench
+    (vector-sum
+      (pmap vector-sum nums-v-split)))
+
 
   (time
     (reduce unchecked-add 0 (eduction (map first) nums-v)))
@@ -514,7 +489,7 @@
   (first
     (sequence
       (comp
-        (map (fn [x w] (zsi x w)))
+        (map (fn [x w] (zsi [x] w)))
         (xforms/reduce
           (completing
             (fn into-zset
@@ -529,6 +504,10 @@
   )
 
 (comment
-  (zset+2
-    #zs #{#zsi [:a 42] #zsi [:b 4]}
-    #zs #{#zsi [:a -42] #zsi [:b -4]}))
+  (zset+
+    #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
+    #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
+    #zs #{#zsi [[:c] 2]})
+  )
+
+(set! *print-meta* true)

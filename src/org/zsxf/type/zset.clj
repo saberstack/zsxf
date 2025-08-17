@@ -1,6 +1,14 @@
 (ns org.zsxf.type.zset
-  "ZSet internal data structure, wip
-   {item #_-> weight}"
+  "ZSet internal data structure
+   {item #_-> weight}
+
+   ZSet implementation details
+   - zset items are ephemeral
+   - used to convey weight information
+   - data stored internally in a map wrapped in a deftype ZSet
+   - deftype ZSet implements IPersistentSet
+   - TODO disjoin is inherently incompatible with ZSets
+      which convey ops via data with positive and negative weights"
   (:require [clj-memory-meter.core :as mm]
             [criterium.core :as crit]
             [flatland.ordered.map]

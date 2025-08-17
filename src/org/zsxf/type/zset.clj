@@ -5,6 +5,7 @@
             [criterium.core :as crit]
             [flatland.ordered.map]
             [net.cgrand.xforms :as xforms]
+            [org.zsxf.constant :as const]
             [org.zsxf.zset :as zs]
             [clojure.string :as str]
             [taoensso.timbre :as timbre])
@@ -69,12 +70,12 @@
 
 (deftype ZSItem [item weight]
   IPersistentCollection
-   (equiv [this other]
+  (equiv [this other]
     (println "ZSItem equiv")
     (= item other))
 
   IPersistentVector
-  (count [this ]
+  (count [this]
     (count item))
   (nth [this x]
     (println "nth")
@@ -155,7 +156,6 @@
       (case pos
         true (ZSet. (m-next-pos m k w-next) meta-map pos)
         false (ZSet. (m-next m k w-next) meta-map pos))))
-  ;(cons2 [this x])
   (seq [this]
     (timbre/spy ["seq" (count m)])
     (sequence (map (fn [[x w]] (zsi x w))) m))
@@ -426,11 +426,68 @@
            (zsi (zsi-item a-zsi) (* -1 (zsi-weight a-zsi)))))
     a-zset))
 
+(defn -with-meta [x]
+  (with-meta x const/zset-weight-of-1))
+
+
+(defn vector-split
+  "Split vector into parts via subvec"
+  [v n-parts]
+  (if (zero? n-parts)
+    []
+    (let [len       (count v)
+          part-size (quot len n-parts)
+          remainder (rem len n-parts)]
+      (mapv (fn [i]
+              (let [start (+ (* i part-size) (min i remainder))
+                    size  (+ part-size (if (< i remainder) 1 0))]
+                (subvec v start (+ start size))))
+        (range n-parts)))))
+
+(defn vector-unsplit [v]
+  (into [] (comp cat conj) v))
+
+(defn vector-sum [v]
+  (reduce + 0 v))
+
 ;; Performance compare
 (comment
 
   (time
-    (def nums-v (into [] (map vector) (range 10000000))))
+    (def nums-v (into []
+                  #_(comp
+                      (map vector)
+                      (map -with-meta))
+                  (range 100000000))))
+
+  (time
+    (def nums-v-split (vector-split nums-v 32)))
+
+  (= nums-v (vector-unsplit nums-v-split))
+
+
+  #_(time
+    (let [cnt     (count nums-v)
+          split-n (int (/ cnt 2))
+          v1      (subvec nums-v 0 split-n)
+          v2      (subvec nums-v split-n)]
+
+      #_(transduce (map first) + nums-v)
+      (let [f1 (future
+                 (transduce (map first) + v1))
+            f2 (future
+                 (transduce (map first) + v2))]
+        (+ @f1 @f2))))
+
+  (time
+    (vector-sum nums-v))
+
+  (time
+    (vector-sum
+      (pmap vector-sum nums-v-split)))
+
+  (time
+    (reduce unchecked-add 0 (eduction (map first) nums-v)))
 
   (crit/quick-bench
     (do
@@ -474,6 +531,4 @@
 (comment
   (zset+2
     #zs #{#zsi [:a 42] #zsi [:b 4]}
-    #zs #{#zsi [:a -42] #zsi [:b -4]})
-
-  (zset-po))
+    #zs #{#zsi [:a -42] #zsi [:b -4]}))

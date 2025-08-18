@@ -40,15 +40,12 @@
   (:zset/w (meta x)))
 
 (defn- zsi-out-with-weight [x w]
-  (timbre/info)
-  (if (meta-weight x)
-    x
-    (vary-meta x (fnil conj {}) (w->map w))))
+  (vary-meta x (fnil conj {}) (w->map w)))
 
 (defn zsi-out
   ([x w]
    (if (util/can-meta? x)
-     (timbre/spy (zsi-out-with-weight x w))
+     (zsi-out-with-weight x w)
      (do
        ;TODO decide how to return w in this case if needed
        (timbre/error "Emitting no weight for" x)
@@ -72,17 +69,14 @@
       ;new
       w-now)))
 
-(defn any->zsi ^ZSItem [x]
-  (if (instance? ZSItem x)
-    x
-    (zsi x 1)))
-
 (defn any->weight ^long [x]
   (if-let [^ZSItem x (when (instance? ZSItem x) x)]
     (.-weight x)
     (or (:zset/w (meta x)) 1)))
 
 (defn any->x ^Object [x]
+  ;TODO should we remove zset weight from metadata
+  ;  due to existing transient behavior ?
   (if-let [^ZSItem x (when (instance? ZSItem x) x)]
     (.-item x)
     x))
@@ -236,10 +230,10 @@
   ([& args]
    (into (zset) args)))
 
-(defn zset-pos []
+(defn zset>0 []
   (->ZSet {} nil true))
 
-(defn zset-pos? [^ZSet s]
+(defn zset>0? [^ZSet s]
   (.-pos s))
 
 (defn zsi
@@ -426,13 +420,13 @@
         (xforms/reduce
           (completing
             (fn into-zset
-              ([] (zset-pos))
+              ([] (zset>0))
               ([accum item+w]
                (conj accum item+w))))))
       [:a :b :c :d]
       (cycle [-1 1])))
 
-  (mm/measure (into (zset-pos) nums-v))
+  (mm/measure (into (zset>0) nums-v))
 
   (zset+
     #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}

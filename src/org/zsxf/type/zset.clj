@@ -31,11 +31,24 @@
 (defmacro change! [field f & args]
   `(set! ~field (~f ~field ~@args)))
 
+(defn- w->map [w]
+  (if (== 1 w)
+    const/zset-weight-of-1
+    {:zset/w w}))
+
+(defn meta-weight [x]
+  (:zset/w (meta x)))
+
+(defn- zsi-out-with-weight [x w]
+  (timbre/info)
+  (if (meta-weight x)
+    x
+    (vary-meta x (fnil conj {}) (w->map w))))
+
 (defn zsi-out
   ([x w]
    (if (util/can-meta? x)
-     (with-meta x
-       (if (== 1 w) const/zset-weight-of-1 {:zset/w w}))
+     (timbre/spy (zsi-out-with-weight x w))
      (do
        ;TODO decide how to return w in this case if needed
        (timbre/error "Emitting no weight for" x)
@@ -68,9 +81,6 @@
   (if-let [^ZSItem x (when (instance? ZSItem x) x)]
     (.-weight x)
     (or (:zset/w (meta x)) 1)))
-
-(defn meta-weight [x]
-  (:zset/w (meta x)))
 
 (defn any->x ^Object [x]
   (if-let [^ZSItem x (when (instance? ZSItem x) x)]
@@ -174,9 +184,9 @@
   (asTransient [this]
     (transient-zset this))
   IFn
-  (invoke [this k] (when (.contains this k)
-                     (let [[k weight] (find m k)]
-                       (zsi-out k weight)))))
+  (invoke [this x] (when (.contains this x)
+                     (let [[x w] (find m x)]
+                       (zsi-out x w)))))
 
 (defmacro m-next! [^ITransientMap m x w-next]
   ;need a macro to re-use this code that does mutation;
@@ -434,14 +444,21 @@
 (comment
   ;wip list from prev zset impl
   ;public fns
-  zset-weight
+  zs/zset-weight :ok
+  ;convert value to zset-item
+  zs/zset-item
+
+  zs/zset+ :ok
+
+  zs/zset-xf+
+  zs/zset-pos+
+  zs/zset-negate
+  ;aggregates
   zset-sum+
   zset-count+
-  zset-item
-  zset+
-  zset-xf+
-  zset-pos+
-  zset-negate
+  ;indexed
+  zs/indexed-zset+
+  zs/indexed-zset-pos+
 
   ;public / aggregates
   zset-count-item

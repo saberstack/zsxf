@@ -15,12 +15,13 @@
             [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
+            [taoensso.telemere :as tel]
             [org.zsxf.zset :as zs]
             [clojure.string :as str]
             [taoensso.timbre :as timbre])
-  (:import (clojure.lang Associative IEditableCollection IFn IHashEq ILookup IMapEntry IObj
-                         IPersistentCollection IPersistentMap IPersistentSet IPersistentVector ITransientAssociative ITransientMap ITransientSet
-                         Indexed Keyword MapEntry MapEquivalence SeqIterator)
+  (:import (clojure.lang
+             IFn IObj IHashEq Associative MapEntry IPersistentMap IPersistentSet
+             ITransientSet ITransientMap IEditableCollection SeqIterator)
            (java.io Writer)
            (java.util Map Set)))
 
@@ -120,15 +121,15 @@
         true (ZSet. (m-next-pos m x' w-next) meta-map pos))))
 
   (seq [this]
-    ;(timbre/spy ["seq" (count m)])
     (sequence (map (fn [[x w]] (zsi-out x w))) m))
   (empty [this]
     (ZSet. {} meta-map pos))
   (equiv [this other]
     (.equals this other))
-  (get [this k]
-    ;behaves like get on a Clojure set
-    (when (.valAt m k) k))
+  (get [this x]
+    (when (.contains this x)
+      (let [[x w] (find m x)]
+        (zsi-out x w))))
   (count [this]
     (.count m))
 
@@ -156,7 +157,7 @@
   Set
   (iterator [this]
     (SeqIterator. (.seq this)))
-  (contains [this k]
+  (contains [_this k]
     (.containsKey m k))
   (containsAll [this ks]
     (every? #(.contains this %) ks))
@@ -178,9 +179,10 @@
   (asTransient [this]
     (transient-zset this))
   IFn
-  (invoke [this x] (when (.contains this x)
-                     (let [[x w] (find m x)]
-                       (zsi-out x w)))))
+  (invoke [this x]
+    (when (.contains this x)
+      (let [[x w] (find m x)]
+        (zsi-out x w)))))
 
 (defmacro m-next! [^ITransientMap m x w-next]
   ;need a macro to re-use this code that does mutation;
@@ -197,8 +199,11 @@
   ITransientSet
   (count [_]
     (.count m))
-  (get [_ k]
-    (when (.valAt m k) k))
+  (get [this x]
+    #_(when-let [w (.valAt m x)] (zsi-out x w))
+    (when (.contains this x)
+      (let [[x w] (find m x)]
+        (zsi-out x w))))
   (disjoin [this x]
     ;WARN better to use data instead of disjoin
     ;implemented for compatibility with clojure.set/intersection and others
@@ -366,7 +371,7 @@
                   (comp
                     (map vector)
                     )
-                  (range 10000000))))
+                  (range 1000000))))
 
   (time
     (def nums-v-split (vector-split nums-v 32)))
@@ -459,6 +464,38 @@
   zset-sum-item
 
   )
+
+(defn conj-conj!
+  "conj! that matches the behavior of conj in terms of handling transients."
+  ;TODO measure performance cost
+  ([] (transient []))
+  ([coll] coll)
+  ([^clojure.lang.ITransientCollection coll x]
+   (if (contains? coll x)
+     coll
+     (.conj coll x))))
+
+;; conj! an item with metadata vs regular conj problem showcase
+(comment
+  (let [set-debug (fn [s msg]
+                    (set! *print-meta* true)
+                    (println msg)
+                    (clojure.pprint/pprint
+                      {:item-from-set      (s [:a])
+                       :first-of-set       (first s)
+                       :seq-of-set         (seq s)
+                       :meta-of-first-of-s (meta (first s))})
+                    (println))
+        v1        (with-meta [:a] {:n 0})
+        v2        (with-meta [:a] {:n -42})
+        ;conj! problem
+        s         (-> (transient #{}) (conj! v1) (conj! v2))
+        bad-set   (persistent! s)
+        ;conj-conj! fix
+        s         (-> (transient #{}) (conj-conj! v1) (conj-conj! v2))
+        good-set  (persistent! s)]
+    (set-debug bad-set "bad set")
+    (set-debug good-set "good set, maybe?")))
 
 
 (set! *print-meta* true)

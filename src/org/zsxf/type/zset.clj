@@ -127,9 +127,8 @@
   (equiv [this other]
     (.equals this other))
   (get [this x]
-    (when (.contains this x)
-      (let [[x w] (find m x)]
-        (zsi-out x w))))
+    (let [[x' w] (find m x)]
+      (zsi-out x' w)))
   (count [this]
     (.count m))
 
@@ -165,24 +164,23 @@
     (.count this))
   (isEmpty [this]
     (zero? (.count this)))
-  (^objects toArray [this ^objects dest]
-    (reduce (fn [idx item]
-              (aset dest idx item)
-              (inc idx))
-      0
-      (.seq this))
-    dest)
-  (toArray [this]
-    (.toArray this (object-array (.count this))))
+  ;;(^objects toArray [this ^objects dest]
+  ;;  (reduce (fn [idx item]
+  ;;            (aset dest idx item)
+  ;;            (inc idx))
+  ;;    0
+  ;;    (.seq this))
+  ;;  dest)
+  ;;(toArray [this]
+  ;;  (.toArray this (object-array (.count this))))
 
   IEditableCollection
   (asTransient [this]
     (transient-zset this))
   IFn
   (invoke [this x]
-    (when (.contains this x)
-      (let [[x w] (find m x)]
-        (zsi-out x w)))))
+    (let [[x' w] (find m x)]
+      (zsi-out x' w))))
 
 (defmacro m-next! [^ITransientMap m x w-next]
   ;need a macro to re-use this code that does mutation;
@@ -200,10 +198,8 @@
   (count [_]
     (.count m))
   (get [this x]
-    #_(when-let [w (.valAt m x)] (zsi-out x w))
-    (when (.contains this x)
-      (let [[x w] (find m x)]
-        (zsi-out x w))))
+    (let [[x w] (find m x)]
+      (zsi-out x w)))
   (disjoin [this x]
     ;WARN better to use data instead of disjoin
     ;implemented for compatibility with clojure.set/intersection and others
@@ -234,6 +230,22 @@
    (->ZSet {} nil false))
   ([& args]
    (into (zset) args)))
+
+(comment
+  (get (->
+         (zset)
+         (transient)
+         (conj! (with-meta ["42"] {:zset/w 1 :meta "a"}))
+         (conj! (with-meta ["42"] {:zset/w 1 :meta "b"}))
+         (persistent!))
+    ["42"])
+
+  (get (->
+         (zset)
+         (conj (with-meta ["42"] {:zset/w 1 :meta "a"}))
+         (conj (with-meta ["42"] {:zset/w 1 :meta "b"})))
+    ["42"]))
+
 
 (defn zset>0 []
   (->ZSet {} nil true))

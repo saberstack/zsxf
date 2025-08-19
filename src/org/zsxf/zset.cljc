@@ -154,25 +154,20 @@
 
 (defn zset-pos+
   "Same as zset+ but does not maintain items with negative weight after +"
-  ([]
-   (zset #{}))
-  ([zset-1]
-   (zset-pos+ zset-1 (zset #{})))
-  ([zset-1 zset-2]
-   #_{:pre [(zset? zset-1) (zset? zset-2)]}
-   (ois/optimize-set
-     (reduce
-       (fn [s new-zset-item]
-         (if-let [zset-item (s new-zset-item)]
-           (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
-             (if (or (zero? new-weight) (neg-int? new-weight))
-               (disj s zset-item)
-               (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
-           (if (pos-int? (zset-weight new-zset-item))
-             (conj s new-zset-item)
-             s)))
-       zset-1
-       zset-2))))
+  [zset-1 zset-2]
+  (ois/optimize-set
+    (reduce
+      (fn [s new-zset-item]
+        (if-let [zset-item (s new-zset-item)]
+          (let [new-weight (+' (zset-weight zset-item) (zset-weight new-zset-item))]
+            (if (or (zero? new-weight) (neg-int? new-weight))
+              (disj s zset-item)
+              (conj (disj s zset-item) (assoc-zset-item-weight new-zset-item new-weight))))
+          (if (pos-int? (zset-weight new-zset-item))
+            (conj s new-zset-item)
+            s)))
+      zset-1
+      zset-2)))
 
 (defn zset-negate
   "Change the sign of all the weights in a zset"

@@ -343,6 +343,26 @@
         (transient #{})
         (keys smaller)))))
 
+(defn vector-split
+  "Split vector into parts via subvec"
+  [v n-parts]
+  (if (zero? n-parts)
+    []
+    (let [len       (count v)
+          part-size (quot len n-parts)
+          remainder (rem len n-parts)]
+      (mapv (fn [i]
+              (let [start (+ (* i part-size) (min i remainder))
+                    size  (+ part-size (if (< i remainder) 1 0))]
+                (subvec v start (+ start size))))
+        (range n-parts)))))
+
+(defn vector-unsplit [v]
+  (into [] (comp cat conj) v))
+
+(defn vector-sum [v]
+  (reduce + 0 v))
+
 (defn inheritance-tree [klass]
   (let [f (fn f [c]
             (reduce (fn [m p] (assoc m p (f p))) {}

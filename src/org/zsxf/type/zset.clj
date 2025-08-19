@@ -253,28 +253,6 @@
 (defn zset? [x]
   (instance? ZSet x))
 
-(defn zset+
-  ([] (zset))
-  ([zset1] zset1)
-  ([zset1 zset2]
-   (into
-     zset1
-     (completing
-       (fn [accum item+w]
-         (conj accum item+w)))
-     zset2))
-  ([zset1 zset2 & more]
-   (into
-     zset1
-     (comp
-       cat
-       (completing
-         (fn [accum item+w]
-           (conj accum item+w))))
-     (concat
-       [zset2]
-       more))))
-
 (defn zsi-from-reader [v]
   `(->ZSItem ~@v))
 
@@ -320,32 +298,49 @@
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn zset-negate [a-zset]
+(defn zset+
+  ([] (zset))
+  ([z1] z1)
+  ([z1 z2]
+   (into
+     z1
+     (completing
+       (fn [accum item+w]
+         (conj accum item+w)))
+     z2))
+  ([z1 z2 & more]
+   (into
+     z1
+     (comp
+       cat
+       (completing
+         (fn [accum item+w]
+           (conj accum item+w))))
+     (concat
+       [z2]
+       more))))
+
+(defn zset-xf+
+  "Takes a transducer and returns a function with the same signature as zset+.
+  The transducer is applied to each new zset item from the second zset before adding it to the first zset."
+  [xf]
+  (fn
+    ([] (zset))
+    ([z1] z1)
+    ([z1 z2]
+     (into z1 xf z2))))
+
+(defn zset-negate [z]
   (into
     (zset)
     (map (fn [a-zsi]
            (zsi (zsi-item a-zsi) (* -1 (zsi-weight a-zsi)))))
-    a-zset))
+    z))
 
-(defn vector-split
-  "Split vector into parts via subvec"
-  [v n-parts]
-  (if (zero? n-parts)
-    []
-    (let [len       (count v)
-          part-size (quot len n-parts)
-          remainder (rem len n-parts)]
-      (mapv (fn [i]
-              (let [start (+ (* i part-size) (min i remainder))
-                    size  (+ part-size (if (< i remainder) 1 0))]
-                (subvec v start (+ start size))))
-        (range n-parts)))))
-
-(defn vector-unsplit [v]
-  (into [] (comp cat conj) v))
-
-(defn vector-sum [v]
-  (reduce + 0 v))
+(defn zset-pos+
+  [z1 z2]
+  ;TODO update code to start with a positive-only z1 instead of calling this fn
+  )
 
 ;Usage
 (comment
@@ -371,26 +366,26 @@
                   (comp
                     (map vector)
                     )
-                  (range 1000000))))
+                  (range 10000000))))
 
   (time
-    (def nums-v-split (vector-split nums-v 32)))
+    (def nums-v-split (util/vector-split nums-v 32)))
 
-  (= nums-v (vector-unsplit nums-v-split))
-
-  (time
-    (vector-sum nums-v))
+  (= nums-v (util/vector-unsplit nums-v-split))
 
   (time
-    (vector-sum
-      (pmap vector-sum nums-v-split)))
+    (util/vector-sum nums-v))
+
+  (time
+    (util/vector-sum
+      (pmap util/vector-sum nums-v-split)))
 
   (crit/quick-bench
-    (vector-sum nums-v))
+    (util/vector-sum nums-v))
 
   (crit/quick-bench
-    (vector-sum
-      (pmap vector-sum nums-v-split)))
+    (util/vector-sum
+      (pmap util/vector-sum nums-v-split)))
 
 
   (time
@@ -410,7 +405,7 @@
 
   (crit/quick-bench
     (do
-      (into (zset) nums-v)
+      (def z1 (into (zset) nums-v))
       :done))
 
   (time
@@ -443,15 +438,15 @@
 (comment
   ;wip list from prev zset impl
   ;public fns
-  zs/zset-weight :ok
+  zs/zset-weight :OK
   ;convert value to zset-item
   zs/zset-item
 
-  zs/zset+ :ok
+  zs/zset+ :OK
 
-  zs/zset-xf+
-  zs/zset-pos+
-  zs/zset-negate
+  zs/zset-xf+ :OK
+  zs/zset-pos+ :OK :TODO
+  zs/zset-negate :OK
   ;aggregates
   zset-sum+
   zset-count+

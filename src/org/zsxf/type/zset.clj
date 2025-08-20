@@ -351,7 +351,7 @@
    (into
      z1
      (comp
-       (map assert-zset)
+       ;;(map assert-zset)
        cat
        (completing
          (fn [accum item+w]
@@ -409,7 +409,6 @@
    {})
   ([iz] iz)
   ([iz1 iz2]
-   (timbre/spy iz1)
    (merge-with zset-pos+ iz1 iz2))
   ([iz1 iz2 & more]
    (apply merge-with zset-pos+ iz1 iz2 more)))

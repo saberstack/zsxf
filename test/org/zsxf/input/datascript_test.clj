@@ -2,13 +2,10 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [datascript.core :as d]
-   [net.cgrand.xforms :as xforms]
    [org.zsxf.input.datascript :as ds]
    [org.zsxf.datalog.compiler :refer [static-compile]]
    [org.zsxf.query :as q]
-   [org.zsxf.util :as util]
-   [org.zsxf.xf :as xf]
-   [org.zsxf.zset :as zs]))
+   [org.zsxf.util :as util]))
 
 (defn load-test-db
   [dir]

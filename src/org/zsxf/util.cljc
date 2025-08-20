@@ -343,6 +343,15 @@
         (transient #{})
         (keys smaller)))))
 
+(defn bool->weight
+  "Convert a boolean to a zset weight."
+  [bool]
+  (case bool
+    true 1
+    false -1
+    ;default, should not happen
+    (throw (ex-info "Invalid boolean value" {:value bool}))))
+
 (defn vector-split
   "Split vector into parts via subvec"
   [v n-parts]

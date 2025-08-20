@@ -132,7 +132,8 @@
              (conj s new-zsi)
              s)))
        (fn [accum-final]
-         (ois/optimize-set accum-final)))
+         (ois/optimize-set accum-final)
+         accum-final))
      zset-1
      more)))
 

@@ -1,7 +1,8 @@
 (ns org.zsxf.query
   (:require [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
-            [org.zsxf.zset :as zs]
+   ;[org.zsxf.zset :as zs]
+            [org.zsxf.type.zset :as zs2]
             [org.zsxf.datomic.cdc :as-alias dd.cdc]
             [org.zsxf.query :as-alias q]))
 
@@ -35,14 +36,14 @@
   (if (nil? result)
     ;init
     (cond
-      (map? result-delta) [zs/indexed-zset+ {}]             ;for aggregates, allow negative weights
-      (set? result-delta) [zs/zset-pos+ #{}]                ;regular joins, no negative weight
+      (map? result-delta) [zs2/indexed-zset+ {}]             ;for aggregates, allow negative weights
+      (set? result-delta) [zs2/zset-pos+ #zsp #{}]                ;regular joins, no negative weight
       :else (throw (ex-info "result-delta must be either map or set"
                      {:result-delta result})))
     ;else, existing result
     (cond
-      (and (map? result) (map? result-delta)) [zs/indexed-zset+ result] ;for aggregates, allow negative weights
-      (and (set? result) (set? result-delta)) [zs/zset-pos+ result] ;regular joins no negative weights
+      (and (map? result) (map? result-delta)) [zs2/indexed-zset+ result] ;for aggregates, allow negative weights
+      (and (set? result) (set? result-delta)) [zs2/zset-pos+ result] ;regular joins no negative weights
       :else (throw (ex-info "result and result-delta together must be either maps or sets"
                      {:result result :result-delta result})))))
 
@@ -144,11 +145,11 @@
         (comp
           (map (fn [[tag item :as v]]
                  (if (= item const/zset-sum)
-                   [tag (zs/zset-weight v)]
+                   [tag (zs2/zset-weight v)]
                    v)))
           (map (fn [[tag item :as v]]
                  (if (= item const/zset-count)
-                   [tag (zs/zset-weight v)]
+                   [tag (zs2/zset-weight v)]
                    v))))
         s))))
 

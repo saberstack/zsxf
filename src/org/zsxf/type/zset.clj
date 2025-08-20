@@ -231,9 +231,13 @@
 (defn transient-zset [^ZSet a-zset]
   (TransientZSet. (transient (.-m a-zset)) (.-pos ^ZSet a-zset)))
 
+(defn- create-empty-zset []
+  (->ZSet {} nil false))
+(def create-empty-zset-memo (memoize create-empty-zset))
+
 (defn zset
   ([]
-   (->ZSet {} nil false))
+   (create-empty-zset-memo))
   ([coll]
    (into (zset) coll)))
 
@@ -256,7 +260,6 @@
          (conj (with-meta ["42"] {:zset/w 1 :meta "a"}))
          (conj (with-meta ["42"] {:zset/w 1 :meta "b"})))
     ["42"]))
-
 
 (defn zset-pos
   ([]
@@ -361,7 +364,7 @@
    (into
      z1
      (comp
-       (map assert-pos)
+       ;(map assert-pos)
        cat
        (completing
          (fn [accum item+w]
@@ -381,8 +384,8 @@
 (defn zset-negate [z]
   (into
     (zset)
-    (map (fn [a-zsi]
-           (zsi (zsi-item a-zsi) (* -1 (zsi-weight a-zsi)))))
+    (map (fn [x]
+           (any->zsi-neg x)))
     z))
 
 (defn indexed-zset+
@@ -429,6 +432,18 @@
   Works for zset and zset-pos."
   [z kfn]
   (into {} (index-xf kfn (empty z)) z))
+
+(defn indexed-zset->zset
+  "Convert an indexed zset back into a zset"
+  ([indexed-zset]
+   (indexed-zset->zset indexed-zset (map identity)))
+  ([indexed-zset xf]
+   (into
+     (zset)
+     (comp
+       (mapcat (fn [k+v] (nth k+v 1)))
+       xf)
+     indexed-zset)))
 
 (defn zset-sum+
   [f]

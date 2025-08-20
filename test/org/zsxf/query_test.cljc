@@ -569,7 +569,7 @@
     ;[(get-else $ ?maybe-sequel :movie/title :no-sequel-no-title) ?maybe-sequel-title]
     ])
 
-(defn basic-difference-zsxf [query-state]
+#_(defn basic-difference-zsxf [query-state]
   (comp
     (xf/mapcat-zset-transaction-xf)
     (xf/join-xf
@@ -656,7 +656,7 @@
     ))
 
 
-(defn difference-then-union-zsxf [query-state]
+#_(defn difference-then-union-zsxf [query-state]
   (let [clause-gen-1 (gensym 'difference-xf-1)]
     (comp
       (xf/mapcat-zset-transaction-xf)
@@ -795,7 +795,7 @@
            item-set-to-last
            body))))
 
-(defn outer-join-zsxf [query-state]
+#_(defn outer-join-zsxf [query-state]
   (let [clause-gen-1   (gensym 'clause-gen-1-)
         clause-gen-2   (gensym 'clause-gen-2-)
         clause-gen-3   (gensym 'clause-gen-3-)
@@ -936,7 +936,7 @@
     :where
     [?m :movie/title ?title]])
 
-(defn outer-join-vector-zsxf [query-state]
+#_(defn outer-join-vector-zsxf [query-state]
   (let [clause-gen-1   (gensym 'clause-gen-1-)
         clause-gen-2   (gensym 'clause-gen-2-)
         clause-gen-3   (gensym 'clause-gen-3-)

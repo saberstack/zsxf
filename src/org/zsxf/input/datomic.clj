@@ -8,10 +8,13 @@
             [org.saberstack.performance.intake-monitor :as perf-intake-monitor]
             [org.zsxf.datalog.compiler :as dcc]
             [org.zsxf.type.one-item-set :as ois]
-            [org.zsxf.zset :as zs]))
+            [org.zsxf.type.zset :as zs2]
+            [org.zsxf.util :as util]
+   ;[org.zsxf.zset :as zs]
+            ))
 
 (defn ddatom2->zset-item [ddatom2]
-  (zs/zset-item ddatom2 (zs/bool->weight (nth ddatom2 4))))
+  (zs2/zset-item ddatom2 (util/bool->weight (nth ddatom2 4))))
 
 (defn tx-data->datomic-datoms2->zsets
   ;TODO check if this fn can run after disj-irrelevant-items
@@ -23,7 +26,7 @@
              (let [a' (idents-m a)]
                (dd2/ddatom2 datom a'))))
       (map ddatom2->zset-item)
-      (map ois/set-of-1))
+      (map zs2/hash-zset))
     data))
 
 (defn zsxf-xform

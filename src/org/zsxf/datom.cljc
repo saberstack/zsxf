@@ -4,7 +4,8 @@
    [org.zsxf.util :as util]
    #?(:clj [org.zsxf.type.datascript.datom2 :as td])
    #?(:clj [org.zsxf.type.datomic.datom2 :as dd2])
-   [org.zsxf.zset :as zs])
+   ;[org.zsxf.zset :as zs]
+   [org.zsxf.type.zset :as zs2])
   #?(:clj
      (:import (org.zsxf.type.datascript.datom2 Datom2))))
 
@@ -29,7 +30,7 @@
     (datom2 (datascript.core/datom e a v)))))
 
 (defn ds-datom->datom2->zset-item [datom]
-  (zs/zset-item (datom2 datom) (zs/bool->weight (nth datom 4))))
+  (zs2/zset-item (datom2 datom) (util/bool->weight (nth datom 4))))
 
 (defn datom->eid [datom]
   (when (dl/datom-like? datom)

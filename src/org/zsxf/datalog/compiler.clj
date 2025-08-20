@@ -6,7 +6,8 @@
             [org.zsxf.datom :as d2]
             [org.zsxf.datalog.macro-util :as mu]
             [org.zsxf.type.one-item-vector :as oiv]
-            [org.zsxf.zset :as zs]
+   ;[org.zsxf.zset :as zs]
+            [org.zsxf.type.zset :as zs2]
             [org.zsxf.xf :as xf]
             [org.zsxf.util :as u]
             [clojure.spec.alpha :as s]
@@ -158,12 +159,12 @@
                                 find-vars))]
     (if (empty? aggregate-vars)
       [`(xforms/reduce
-          (zs/zset-xf+
+          (zs2/zset-xf+
             (comp
               (map (xf/same-meta-f ~find-var-juxt))
               (map oiv/optimize-vector))))]
       (let [aggregations (gensym 'aggregations)]
-        [`(xforms/reduce zs/zset+)
+        [`(xforms/reduce zs2/zset+)
          `(xf/group-by-xf
            ~find-var-juxt
            (comp
@@ -172,19 +173,19 @@
                        (condp = aggregate-fn
                          'sum
                          `(xforms/reduce
-                           (zs/zset-sum+ ~(var-to-getter variable-index locators variable)))
+                           (zs2/zset-sum+ ~(var-to-getter variable-index locators variable)))
 
                          'count
-                         `(xforms/reduce zs/zset-count+)))
+                         `(xforms/reduce zs2/zset-count+)))
                      aggregate-vars)])
             (mapcat (fn [~aggregations]
                       [~@(map-indexed
                           (fn [idx {:keys [aggregate-fn variable]}]
                             (condp = aggregate-fn
                               'sum
-                              `(zs/zset-sum-item (nth ~aggregations ~idx) (quote ~variable))
+                              `(zs2/zset-sum-item (nth ~aggregations ~idx) (quote ~variable))
                               'count
-                              `(zs/zset-count-item (nth ~aggregations ~idx) (quote ~variable))))
+                              `(zs2/zset-count-item (nth ~aggregations ~idx) (quote ~variable))))
                           aggregate-vars)]))))]))))
 
 (defmacro static-compile [query]

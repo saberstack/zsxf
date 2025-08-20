@@ -2,11 +2,9 @@
   "Optimizes a set with one item to a more efficient representation.
   This reduces memory usage when there are many sets with one item.
   Raw performance is a non-goal, focusing on memory usage instead."
-  (:refer-clojure :exclude [hash-set set])
   #?(:clj
      (:import (clojure.lang IFn IHashEq IObj IPersistentCollection IPersistentSet Counted SeqIterator Seqable)
               (java.util Set))))
-
 
 #?(:clj
    (deftype OneItemSet [item]

@@ -263,6 +263,8 @@
   (^ZSItem [x weight]
    (->ZSItem x (long weight))))
 
+(def zset-item zsi)
+
 (defn zsi? [x]
   (instance? ZSItem x))
 
@@ -378,6 +380,16 @@
   ([iz1 iz2 & more]
    (apply merge-with zset+ iz1 iz2 more)))
 
+(defn indexed-zset-pos+
+  "Adds two indexed zsets.
+  Same as zset-pos+ but for indexed zset which is a map."
+  ([]
+   {})
+  ([iz] iz)
+  ([iz1 iz2]
+   (merge-with zset-pos+ iz1 iz2))
+  ([iz1 iz2 & more]
+   (apply merge-with zset-pos+ iz1 iz2 more)))
 
 
 (defn- index-xf-pair
@@ -388,25 +400,28 @@
   "Returns a group-by-style transducer.
   Groups input items based on the return value of kfn.
   Each group is gathered into-coll (typically a set)."
-  [kfn]
+  [kfn empty-z]
   (xforms/by-key
     kfn
     identity                                                ;this is (fn [zset-item] zset-item)
     index-xf-pair
     ;turn grouped items into a zset
-    (xforms/into (zset))))
+    (xforms/into empty-z)))
 
 (defn index
   "Convert a zset into a map indexed by a key function"
-  [zset kfn]
-  (into {} (index-xf kfn) zset))
+  [z kfn]
+  (into {} (index-xf kfn (empty z)) z))
 
 ;Usage
 (comment
-  (let [iz (index
-             (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
-             (fn [m] (first (:name m))))]
-    (indexed-zset+ iz iz)))
+  (let [zs (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+        iz (index zs (fn [m] (first (:name m))))]
+    (indexed-zset+ iz iz))
+
+  (let [zsp (zset-pos #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+        iz  (index zsp (fn [m] (first (:name m))))]
+    (indexed-zset-pos+ iz iz)))
 
 (defn zset*
   "Z-Sets multiplication"
@@ -531,7 +546,7 @@
   ;public fns
   zs/zset-weight :OK
   ;convert value to zset-item
-  zs/zset-item
+  zs/zset-item :OK
 
   zs/zset+ :OK
 

@@ -21,7 +21,7 @@
             [clojure.string :as str]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang
-             IFn IObj IHashEq Associative MapEntry IPersistentMap IPersistentSet
+             IFn IObj IHashEq Associative IPersistentCollection MapEntry IPersistentMap IPersistentSet
              ITransientSet ITransientMap IEditableCollection SeqIterator)
            (java.io Writer)
            (java.util Map Set)))
@@ -38,7 +38,7 @@
     const/zset-weight-of-1
     {:zset/w w}))
 
-(defn z-weight [x]
+(defn zset-weight [x]
   (:zset/w (meta x)))
 
 (defn- zsi-out-with-weight [x w]
@@ -54,7 +54,12 @@
        (println)
        x))))
 
-(deftype ZSItem [item ^long weight])
+(deftype ZSItem [item ^long weight]
+  IPersistentCollection
+  (equiv [_ other]
+    (if (instance? ZSItem other)
+      (= item (.-item ^ZSItem other))
+      (= item other))))
 
 (defn zsi-weight [^ZSItem zsi]
   (.-weight zsi))
@@ -232,6 +237,11 @@
   ([coll]
    (into (zset) coll)))
 
+(defn hash-zset
+  "Same signature as clojure.core/hash-set. Creates zset from items."
+  [& items]
+  (zset items))
+
 (comment
   (get (->
          (zset)
@@ -264,9 +274,6 @@
    (->ZSItem x (long weight))))
 
 (def zset-item zsi)
-
-(defn zsi? [x]
-  (instance? ZSItem x))
 
 (defn zset? [x]
   (instance? ZSet x))
@@ -321,14 +328,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn- assert-zset [z]
+  (assert (zset? z)
+    "All sets must be created via (zset) or (zset-pos).")
+  z)
+
+(defn- assert-pos [z]
+  (assert (zset-pos? z)
+    "All zsets must be created via zset-pos, allowing no negative weights.")
+  z)
 
 (defn zset+
   ([] (zset))
   ([z1] z1)
   ([z1 z2 & more]
+   (assert (zset? z1))
    (into
      z1
      (comp
+       (map assert-zset)
        cat
        (completing
          (fn [accum item+w]
@@ -336,16 +354,14 @@
      (into [z2] more))))
 
 (defn zset-pos+
-  ([] (zset))
+  ([] (zset-pos))
   ([z1] z1)
   ([z1 z2 & more]
+   (assert-pos z1)
    (into
      z1
      (comp
-       (map (fn [z]
-              (assert (zset-pos? z)
-                "All zsets must be created via zset-pos, allowing no negative weights.")
-              z))
+       (map assert-pos)
        cat
        (completing
          (fn [accum item+w]
@@ -409,9 +425,27 @@
     (xforms/into empty-z)))
 
 (defn index
-  "Convert a zset into a map indexed by a key function"
+  "Convert a zset into a map indexed by a key function.
+  Works for zset and zset-pos."
   [z kfn]
   (into {} (index-xf kfn (empty z)) z))
+
+(defn zset-sum+
+  [f]
+  (fn
+    ([] 0)
+    ([accum] accum)
+    ([accum item]
+     (let [w (zset-weight item)
+           n (f item)]
+       (+ accum (* w n))))))
+
+(defn zset-count+
+  ([] 0)
+  ([accum] accum)
+  ([accum item]
+   (let [w (zset-weight item)]
+     (+ accum w))))
 
 ;Usage
 (comment
@@ -430,8 +464,8 @@
   ([z1 z2 item1-f item2-f]
    (zset
      (for [item1 z1 item2 z2]
-       (let [w1    (z-weight item1)
-             w2    (z-weight item2)
+       (let [w1    (zset-weight item1)
+             w2    (zset-weight item2)
              w-new (* w1 w2)]
          (zsi
            (pv/vector-of-2
@@ -439,12 +473,65 @@
              (item2-f (vary-meta item2 dissoc :zset/w)))
            w-new))))))
 
+(defn intersect-indexed*
+  "Intersect/join two indexed zsets (indexed zsets are maps)
+  Returns an indexed zset.
+
+  The weight of a common item in the return is the product (via zset*)
+  of the weights of the same item in indexed-zset-1 and indexed-zset-2."
+  ([iz1 iz2]
+   (intersect-indexed* iz1 iz2 identity identity))
+  ([iz1 iz2 zset*-item1-f zset*-item2-f]
+   (let [commons (util/key-intersection iz1 iz2)]
+     (into
+       {}
+       (map (fn [common]
+              (pv/vector-of-2
+                common
+                (zset*
+                  (iz1 common)
+                  (iz2 common)
+                  zset*-item1-f
+                  zset*-item2-f))))
+       commons))))
+
+;Usage
+(comment
+  (let [zs (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+        iz (index zs (fn [m] (first (:name m))))]
+    (intersect-indexed*
+      (indexed-zset+ iz iz)
+      (indexed-zset+ iz iz))))
+
 ;Usage
 (comment
   (zset*
     (zset #{(zsi {:a 41} 2) (zsi {:a 42} 2)})
     (zset #{(zsi {:a 41} 2) (zsi {:a 42} 2)})))
 
+(defn zset-count-item
+  "zset singleton item representing a count"
+  ([n]
+   (zset-item const/zset-count n))
+  ([n tag]
+   (zset-item [tag const/zset-count] n)))
+
+(defn zset-sum-item
+  "zset singleton item representing a sum"
+  ([n]
+   (zset-item const/zset-sum n))
+  ([n tag]
+   (zset-item [tag const/zset-sum] n)))
+
+(comment
+  (=
+    #zs #{(zset-count-item 42 :counter1)}
+    #zs #{(zset-count-item 42 :counter1)})
+  (=
+    (zset+
+      #zs #{(zset-count-item 42 :counter1)}
+      #zs #{(zset-count-item 42 :counter1)})
+    #{^#:zset {:w 84} [:counter1 [:zset/count]]}))
 
 
 ;Usage
@@ -544,62 +631,29 @@
 (comment
   ;wip list from prev zset impl
   ;public fns
-  zs/zset-weight :OK
+  zs/zset-weight :OK zset-weight
   ;convert value to zset-item
-  zs/zset-item :OK
+  zs/zset-item :OK zset-item
 
-  zs/zset+ :OK
+  zs/zset+ :OK zset+
 
-  zs/zset-xf+ :OK
-  zs/zset-pos+ :OK :TODO
-  zs/zset-negate :OK
-  zs/zset* :OK
-  zs/index :OK
+  zs/zset-xf+ :OK zset-xf+
+  zs/zset-pos+ :OK :TODO zset-pos+
+  zs/zset-negate :OK zset-negate
+  zs/zset* :OK zset*
+  zs/index :OK index
+  zs/intersect-indexed* :OK intersect-indexed*
 
   ;aggregates
-  zset-sum+
-  zset-count+
+  zs/zset-sum+ :OK zset-sum+
+  zs/zset-count+ :OK zset-count+
   ;indexed
-  zs/indexed-zset+ :OK
-  zs/indexed-zset-pos+
+  zs/indexed-zset+ :OK indexed-zset+
+  zs/indexed-zset-pos+ :OK indexed-zset-pos+
 
   ;public / aggregates
-  zset-count-item
-  zset-sum-item
-
+  zs/zset-count-item :OK zset-count-item
+  zs/zset-sum-item :OK zset-sum-item
   )
-
-(defn conj-conj!
-  "conj! that matches the behavior of conj in terms of handling transients."
-  ;TODO measure performance cost
-  ([] (transient []))
-  ([coll] coll)
-  ([^clojure.lang.ITransientCollection coll x]
-   (if (contains? coll x)
-     coll
-     (.conj coll x))))
-
-;; conj! an item with metadata vs regular conj problem showcase
-(comment
-  (let [set-debug (fn [s msg]
-                    (set! *print-meta* true)
-                    (println msg)
-                    (clojure.pprint/pprint
-                      {:item-from-set      (s [:a])
-                       :first-of-set       (first s)
-                       :seq-of-set         (seq s)
-                       :meta-of-first-of-s (meta (first s))})
-                    (println))
-        v1        (with-meta [:a] {:n 0})
-        v2        (with-meta [:a] {:n -42})
-        ;conj! problem
-        s         (-> (transient #{}) (conj! v1) (conj! v2))
-        bad-set   (persistent! s)
-        ;conj-conj! fix
-        s         (-> (transient #{}) (conj-conj! v1) (conj-conj! v2))
-        good-set  (persistent! s)]
-    (set-debug bad-set "bad set")
-    (set-debug good-set "good set, maybe?")))
-
 
 (set! *print-meta* true)

@@ -9,6 +9,8 @@
    :first-s (first s)})
 
 (defn meta=
+  "Equality that also compares metadata.
+  Returns true only if all the values are = and their metadata maps are =."
   ([x y]
    (and
      (= x y)
@@ -45,3 +47,19 @@
                           (set-debug zset-regular v-meta-1)
                           (set-debug zset-regular v-meta-2)])]
     (is (true? (apply meta= items)))))
+
+(deftest zset-equal-to-clojure-set
+  (let [s   #{1 2}
+        zs  #zs #{1 2}
+        zsp #zsp #{1 2}]
+    (is (= s zs zsp))
+    (is (= zs s zsp))
+    (is (= zsp zs s))))
+
+(deftest zset-equal-to-clojure-set-with-coll-items
+  (let [s   #{[1] [2]}
+        zs  #zs #{[1] [2]}
+        zsp #zsp #{[1] [2]}]
+    (is (= s zs zsp))
+    (is (= zs s zsp))
+    (is (= zsp zs s))))

@@ -24,7 +24,7 @@
              IFn IObj IHashEq Associative IPersistentCollection MapEntry IPersistentMap IPersistentSet
              ITransientSet ITransientMap IEditableCollection SeqIterator)
            (java.io Writer)
-           (java.util Map Set)))
+           (java.util Set)))
 
 (declare zset)
 (declare zsi)
@@ -170,15 +170,15 @@
     (.count this))
   (isEmpty [this]
     (zero? (.count this)))
-  ;;(^objects toArray [this ^objects dest]
-  ;;  (reduce (fn [idx item]
-  ;;            (aset dest idx item)
-  ;;            (inc idx))
-  ;;    0
-  ;;    (.seq this))
-  ;;  dest)
-  ;;(toArray [this]
-  ;;  (.toArray this (object-array (.count this))))
+  (^objects toArray [this ^objects dest]
+    (reduce (fn [idx item]
+              (aset dest idx item)
+              (inc idx))
+      0
+      (.seq this))
+    dest)
+  (toArray [this]
+    (.toArray this (object-array (.count this))))
 
   IEditableCollection
   (asTransient [this]

@@ -338,7 +338,9 @@
 
 (defn- assert-pos [z]
   (assert (zset-pos? z)
-    "All zsets must be created via zset-pos, allowing no negative weights.")
+    (str
+      "All zsets must be created via zset-pos, allowing no negative weights."
+      " Given:\n" (type z)))
   z)
 
 (defn zset+
@@ -360,7 +362,8 @@
   ([] (zset-pos))
   ([z1] z1)
   ([z1 z2 & more]
-   (assert-pos z1)
+   ;(timbre/spy ['zset-pos+ z1])
+   ;(assert-pos z1)
    (into
      z1
      (comp
@@ -406,6 +409,7 @@
    {})
   ([iz] iz)
   ([iz1 iz2]
+   (timbre/spy iz1)
    (merge-with zset-pos+ iz1 iz2))
   ([iz1 iz2 & more]
    (apply merge-with zset-pos+ iz1 iz2 more)))

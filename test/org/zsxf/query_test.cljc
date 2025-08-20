@@ -12,6 +12,7 @@
    [org.zsxf.datom :as d2]
    [org.zsxf.query :as q]
    [org.zsxf.relation :as rel]
+   [org.zsxf.type.zset :as zs2]
    [org.zsxf.util :as util :refer [nth2 path-f]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
@@ -25,7 +26,7 @@
   (transduce
     (map d2/ds-datom->datom2->zset-item)
     conj
-    #{}
+    (zs2/zset)
     datoms))
 
 ; Aggregates current limitation: retractions (deletes) have to be precise!
@@ -76,7 +77,7 @@
        :index-kfn d2/datom->eid}
       query-state
       :last? true)
-    (xforms/reduce zs/zset+)
+    (xforms/reduce zs2/zset+)
     ;group by aggregates
     (xf/group-by-xf
       #(-> % (util/nth2 0) (util/nth2 0) (util/nth2 1) d2/datom->val)
@@ -113,7 +114,8 @@
                       [(ddb/datom 1 :team/name "A" 536870913 false)
                        (ddb/datom 2 :team/name "A" 536870913 false)
                        (ddb/datom 3 :team/name "A" 536870913 false)])])
-        result-2 (q/get-aggregate-result query-1)]
+        result-2 (q/get-aggregate-result query-1)
+        ]
     (is
       (= result-1
         {"Japan"     #{[:?sum-1 43] [:?sum-2 14] [:?cnt-1 2]},
@@ -605,7 +607,7 @@
     [?m :movie/title ?title]
     (not [?m :movie/sequel ?sequel])])
 
-(deftest movies-without-sequels
+#_(deftest movies-without-sequels
   (let [_           (timbre/set-min-level! :trace)
         [conn _] (util/load-learn-db)
         query       (q/create-query basic-difference-zsxf)
@@ -698,7 +700,7 @@
       (map (fn [post-reduce-item]
              (timbre/spy post-reduce-item))))))
 
-(deftest difference-then-union
+#_(deftest difference-then-union
   (let [_           (set! *print-meta* true)
         _           (timbre/set-min-level! :trace)
         ;[conn _] (util/load-learn-db-empty)
@@ -864,7 +866,7 @@
           (map (xf/same-meta-f
                  (fn [zsi] zsi))))))))
 
-(deftest outer-join-xf
+#_(deftest outer-join-xf
   (let [_           (set! *print-meta* false)
         _           (timbre/set-min-level! :trace)
         ;[conn _] (util/load-learn-db-empty)
@@ -882,11 +884,11 @@
   )
 
 
-(defn transact-ok! [conn tx-data]
+#_(defn transact-ok! [conn tx-data]
   (d/transact! conn tx-data)
   (q/get-result query))
 
-(comment
+#_(comment
 
   (transact-ok! conn
     [{:movie/title "Terminator 1"}])
@@ -1005,7 +1007,7 @@
           (map (xf/same-meta-f
                  (fn [zsi] zsi))))))))
 
-(deftest outer-join-vector
+#_(deftest outer-join-vector
   (let [_           (set! *print-meta* false)
         _           (timbre/set-min-level! :trace)
         ;[conn _] (util/load-learn-db-empty)

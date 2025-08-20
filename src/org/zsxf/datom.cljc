@@ -64,5 +64,5 @@
     []
     (comp
       (map ds-datom->datom2->zset-item)
-      (map hash-set))
+      (map zs2/hash-zset))
     datoms))

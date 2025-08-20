@@ -37,7 +37,7 @@
     ;init
     (cond
       (map? result-delta) [zs2/indexed-zset+ {}]             ;for aggregates, allow negative weights
-      (set? result-delta) [zs2/zset-pos+ #zsp #{}]                ;regular joins, no negative weight
+      (set? result-delta) [zs2/zset-pos+ (zs2/zset-pos)]                ;regular joins, no negative weight
       :else (throw (ex-info "result-delta must be either map or set"
                      {:result-delta result})))
     ;else, existing result
@@ -141,7 +141,7 @@
     (get-result query)
     (fn [new-map-value] (not= #{} new-map-value))
     (fn [s]
-      (into #{}
+      (into (empty s)
         (comp
           (map (fn [[tag item :as v]]
                  (if (= item const/zset-sum)

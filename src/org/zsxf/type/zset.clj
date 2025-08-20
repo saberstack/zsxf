@@ -14,6 +14,7 @@
             [flatland.ordered.map]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
+            [org.zsxf.type.two-item-vector :as pv]
             [org.zsxf.util :as util]
             [taoensso.telemere :as tel]
             [org.zsxf.zset :as zs]
@@ -37,7 +38,7 @@
     const/zset-weight-of-1
     {:zset/w w}))
 
-(defn meta-weight [x]
+(defn z-weight [x]
   (:zset/w (meta x)))
 
 (defn- zsi-out-with-weight [x w]
@@ -228,8 +229,8 @@
 (defn zset
   ([]
    (->ZSet {} nil false))
-  ([& args]
-   (into (zset) args)))
+  ([coll]
+   (into (zset) coll)))
 
 (comment
   (get (->
@@ -247,11 +248,14 @@
     ["42"]))
 
 
-(defn zset>0 []
-  (->ZSet {} nil true))
+(defn zset-pos
+  ([]
+   (->ZSet {} nil true))
+  ([coll]
+   (into (zset-pos) coll)))
 
-(defn zset>0? [^ZSet s]
-  (.-pos s))
+(defn zset-pos? [^ZSet z]
+  (.-pos z))
 
 (defn zsi
   (^ZSItem [x]
@@ -269,7 +273,10 @@
   `(->ZSItem ~@v))
 
 (defn zset-from-reader [s]
-  `(into (zset) ~s))
+  `(zset ~s))
+
+(defn zset-pos-from-reader [s]
+  `(zset-pos ~s))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom printing
@@ -292,11 +299,14 @@
         (pr-on m w))
       (.write w " "))))
 
-(defmethod print-method ZSet [^ZSet zset, ^Writer w]
+(defmethod print-method ZSet [^ZSet z, ^Writer w]
   (binding [*out* w]
-    (let [m (.-m zset)]
-      (print-meta zset w)
-      (.write w "#zs ")
+    (let [m (.-m z)]
+      (print-meta z w)
+      (.write w "#zs")
+      (when (zset-pos? z)
+        (.write w "p"))
+      (.write w " ")
       (pr (into #{}
             (map (fn [^MapEntry v]
                    (zsi-out (nth v 0) (nth v 1))))
@@ -313,13 +323,6 @@
 (defn zset+
   ([] (zset))
   ([z1] z1)
-  ([z1 z2]
-   (into
-     z1
-     (completing
-       (fn [accum item+w]
-         (conj accum item+w)))
-     z2))
   ([z1 z2 & more]
    (into
      z1
@@ -328,9 +331,24 @@
        (completing
          (fn [accum item+w]
            (conj accum item+w))))
-     (concat
-       [z2]
-       more))))
+     (into [z2] more))))
+
+(defn zset-pos+
+  ([] (zset))
+  ([z1] z1)
+  ([z1 z2 & more]
+   (into
+     z1
+     (comp
+       (map (fn [z]
+              (assert (zset-pos? z)
+                "All zsets must be created via zset-pos, allowing no negative weights.")
+              z))
+       cat
+       (completing
+         (fn [accum item+w]
+           (conj accum item+w))))
+     (into [z2] more))))
 
 (defn zset-xf+
   "Takes a transducer and returns a function with the same signature as zset+.
@@ -349,10 +367,70 @@
            (zsi (zsi-item a-zsi) (* -1 (zsi-weight a-zsi)))))
     z))
 
-(defn zset-pos+
-  [z1 z2]
-  ;TODO update code to start with a positive-only z1 instead of calling this fn
-  )
+(defn indexed-zset+
+  "Adds two indexed zsets.
+  Same as zset+ but for indexed zset which is a map."
+  ([]
+   {})
+  ([iz] iz)
+  ([iz1 iz2]
+   (merge-with zset+ iz1 iz2))
+  ([iz1 iz2 & more]
+   (apply merge-with zset+ iz1 iz2 more)))
+
+
+
+(defn- index-xf-pair
+  [k zset-of-grouped-items]
+  (if k {k zset-of-grouped-items} {}))
+
+(defn- index-xf
+  "Returns a group-by-style transducer.
+  Groups input items based on the return value of kfn.
+  Each group is gathered into-coll (typically a set)."
+  [kfn]
+  (xforms/by-key
+    kfn
+    identity                                                ;this is (fn [zset-item] zset-item)
+    index-xf-pair
+    ;turn grouped items into a zset
+    (xforms/into (zset))))
+
+(defn index
+  "Convert a zset into a map indexed by a key function"
+  [zset kfn]
+  (into {} (index-xf kfn) zset))
+
+;Usage
+(comment
+  (let [iz (index
+             (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+             (fn [m] (first (:name m))))]
+    (indexed-zset+ iz iz)))
+
+(defn zset*
+  "Z-Sets multiplication"
+  ([z1 z2]
+   (zset* z1 z2 identity identity))
+  ([z1 z2 item1-f item2-f]
+   (zset
+     (for [item1 z1 item2 z2]
+       (let [w1    (z-weight item1)
+             w2    (z-weight item2)
+             w-new (* w1 w2)]
+         (zsi
+           (pv/vector-of-2
+             (item1-f (vary-meta item1 dissoc :zset/w))
+             (item2-f (vary-meta item2 dissoc :zset/w)))
+           w-new))))))
+
+;Usage
+(comment
+  (zset*
+    (zset #{(zsi {:a 41} 2) (zsi {:a 42} 2)})
+    (zset #{(zsi {:a 41} 2) (zsi {:a 42} 2)})))
+
+
 
 ;Usage
 (comment
@@ -417,12 +495,12 @@
 
   (crit/quick-bench
     (do
-      (def z1 (into (zset) nums-v))
+      (def z1 (zset nums-v))
       :done))
 
   (time
     (do
-      (into (zset) nums-v)
+      (zset nums-v)
       :done))
 
   (first
@@ -432,18 +510,19 @@
         (xforms/reduce
           (completing
             (fn into-zset
-              ([] (zset>0))
+              ([] (zset-pos))
               ([accum item+w]
                (conj accum item+w))))))
       [:a :b :c :d]
       (cycle [-1 1])))
 
-  (mm/measure (into (zset>0) nums-v))
+  (mm/measure (into (zset-pos) nums-v))
 
   (zset+
     #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
     #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
-    #zs #{#zsi [[:c] 2]})
+    ;#zs #{#zsi [[:c] 2]}
+    )
 
   )
 
@@ -459,11 +538,14 @@
   zs/zset-xf+ :OK
   zs/zset-pos+ :OK :TODO
   zs/zset-negate :OK
+  zs/zset* :OK
+  zs/index :OK
+
   ;aggregates
   zset-sum+
   zset-count+
   ;indexed
-  zs/indexed-zset+
+  zs/indexed-zset+ :OK
   zs/indexed-zset-pos+
 
   ;public / aggregates

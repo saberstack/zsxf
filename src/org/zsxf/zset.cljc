@@ -203,7 +203,7 @@
   [k zset-of-grouped-items]
   (if k {k (ois/optimize-set zset-of-grouped-items)} {}))
 
-(defn index-xf
+(defn- index-xf
   "Returns a group-by-style transducer.
   Groups input items based on the return value of kfn.
   Each group is gathered into-coll (typically a set)."

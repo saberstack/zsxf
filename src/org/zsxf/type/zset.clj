@@ -1,5 +1,5 @@
 (ns org.zsxf.type.zset
-  "ZSet internal data structure
+  "ZSet internal data structure as a map:
    {item #_-> weight}
 
    ZSet implementation details
@@ -7,7 +7,7 @@
    - used to convey weight information
    - data stored internally in a map wrapped in a deftype ZSet
    - deftype ZSet implements IPersistentSet
-   - TODO disjoin is inherently incompatible with ZSets
+   - disjoin is inherently incompatible with zsets
       which convey ops via data with positive and negative weights"
   (:require [clj-memory-meter.core :as mm]
             [criterium.core :as crit]
@@ -16,7 +16,6 @@
             [org.zsxf.constant :as const]
             [org.zsxf.type.two-item-vector :as pv]
             [org.zsxf.util :as util]
-            [taoensso.telemere :as tel]
             [org.zsxf.zset :as zs]
             [clojure.string :as str]
             [taoensso.timbre :as timbre])
@@ -106,42 +105,36 @@
     (.without m x)
     (m-next m x w-next)))
 
-(deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
+(def ^:private disjoin-not-supported-msg "zsets do not support disj. Use conj with negative weights.")
+
+ (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   IPersistentSet
-  (disjoin [this x]
-    ;WARN better to use data instead of disjoin
-    ;implemented for compatibility with clojure.set/intersection and others
-    (throw (ex-info "zsets do not support disjoin!" {}))
-    (.cons this (any->zsi-neg x)))
-  (cons [this x]
+  (disjoin [_ x]
+    (throw (ex-info disjoin-not-supported-msg {:arg x})))
+  (cons [_ x]
     (let [w-now  (any->weight x)
           x'     (any->x x)
           w-prev (.valAt m x')
           w-next (calc-next-weight w-now w-prev)]
-      ;;(timbre/spy m)
-      ;;(timbre/spy x')
-      ;;(timbre/spy [w-prev w-next])
-      ;;(println)
       (case pos
         false (ZSet. (m-next m x' w-next) meta-map pos)
         true (ZSet. (m-next-pos m x' w-next) meta-map pos))))
-
-  (seq [this]
+  (seq [_]
     (seq (sequence (map (fn [[x w]] (zsi-out x w))) m)))
-  (empty [this]
+  (empty [_]
     (ZSet. {} meta-map pos))
   (equiv [this other]
     (.equals this other))
-  (get [this x]
+  (get [_ x]
     (let [[x' w] (find m x)]
       (zsi-out x' w)))
-  (count [this]
+  (count [_]
     (.count m))
 
   IObj
-  (meta [this] meta-map)
-  (withMeta [this meta-map]
-    (ZSet. m meta-map pos))
+  (meta [_] meta-map)
+  (withMeta [_ new-meta-map]
+    (ZSet. m new-meta-map pos))
 
   Object
   (toString [this]
@@ -156,16 +149,16 @@
             (every? #(.contains s %) (.seq this)))))))
 
   IHashEq
-  (hasheq [this]
+  (hasheq [_]
     (hash-unordered-coll (or (keys m) {})))
 
   Set
   (iterator [this]
     (SeqIterator. (.seq this)))
-  (contains [_this k]
-    (.containsKey m k))
-  (containsAll [this ks]
-    (every? #(.contains this %) ks))
+  (contains [_this x]
+    (.containsKey m x))
+  (containsAll [this xs]
+    (every? #(.contains this %) xs))
   (size [this]
     (.count this))
   (isEmpty [this]
@@ -184,7 +177,7 @@
   (asTransient [this]
     (transient-zset this))
   IFn
-  (invoke [this x]
+  (invoke [_ x]
     (let [[x' w] (find m x)]
       (zsi-out x' w))))
 
@@ -203,14 +196,11 @@
   ITransientSet
   (count [_]
     (.count m))
-  (get [this x]
+  (get [_this x]
     (let [[x w] (find m x)]
       (zsi-out x w)))
-  (disjoin [this x]
-    ;WARN better to use data instead of disjoin
-    ;implemented for compatibility with clojure.set/intersection and others
-    (throw (ex-info "zsets do not support disjoin!" {}))
-    (.conj this (any->zsi-neg x)))
+  (disjoin [_ x]
+    (throw (ex-info disjoin-not-supported-msg {:arg x})))
   (conj [this x]
     (let [w-now  (any->weight x)
           x'     (any->x x)
@@ -223,8 +213,8 @@
                  (change! ^ITransientMap m .without x')
                  (m-next! m x' w-next))))
       this))
-  (contains [_ k]
-    (boolean (.valAt m k)))
+  (contains [_ x]
+    (boolean (.valAt m x)))
   (persistent [_]
     (ZSet. (.persistent m) nil pos)))
 

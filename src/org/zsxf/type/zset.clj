@@ -90,7 +90,7 @@
 (defn any->zsi-neg ^ZSItem [x]
   (if (instance? ZSItem x)
     (zsi (zsi-item x) (* -1 (zsi-weight x)))
-    (zsi x -1)))
+    (zsi x (or (* -1 (zset-weight x)) -1))))
 
 (defn- m-next ^IPersistentMap [^IPersistentMap m x w-next]
   (case (long w-next)
@@ -105,12 +105,10 @@
     (.without m x)
     (m-next m x w-next)))
 
-(def ^:private disjoin-not-supported-msg "zsets do not support disj. Use conj with negative weights.")
-
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   IPersistentSet
-  (disjoin [_ x]
-    (throw (ex-info disjoin-not-supported-msg {:arg x})))
+  (disjoin [this x]
+    (.cons this (any->zsi-neg x)))
   (cons [_ x]
     (let [w-now  (any->weight x)
           x'     (any->x x)
@@ -199,8 +197,8 @@
   (get [_this x]
     (let [[x w] (find m x)]
       (zsi-out x w)))
-  (disjoin [_ x]
-    (throw (ex-info disjoin-not-supported-msg {:arg x})))
+  (disjoin [this x]
+    (.conj this (any->zsi-neg x)))
   (conj [this x]
     (let [w-now  (any->weight x)
           x'     (any->x x)
@@ -332,20 +330,14 @@
     "All sets must be created via (zset) or (zset-pos).")
   z)
 
+(defn- cast-zset [z]
+  (if (zset? z) z (zset z)))
+
 (defn zset+
   ([] (zset))
-  ([z1] z1)
+  ([z1] (zset z1))
   ([z1 z2 & more]
-   (assert (zset? z1))
-   (into
-     z1
-     (comp
-       ;;(map assert-zset)
-       cat
-       (completing
-         (fn [accum item+w]
-           (conj accum item+w))))
-     (into [z2] more))))
+   (apply clojure.set/union (cast-zset z1) (cast-zset z2) (map cast-zset more))))
 
 (defn- cast-zset-pos [z]
   (if (zset-pos? z) z (zset-pos z)))
@@ -354,15 +346,8 @@
   ([] (zset-pos))
   ([z1] z1)
   ([z1 z2 & more]
-   (let [z1' (cast-zset-pos z1)]
-     (into
-       z1'
-       (comp
-         cat
-         (completing
-           (fn [accum item+w]
-             (conj accum item+w))))
-       (into [z2] more)))))
+   (cast-zset-pos
+     (apply zset+ z1 z2 more))))
 
 (defn zset-xf+
   "Takes a transducer and returns a function with the same signature as zset+.

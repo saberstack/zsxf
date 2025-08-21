@@ -127,7 +127,7 @@
         true (ZSet. (m-next-pos m x' w-next) meta-map pos))))
 
   (seq [this]
-    (sequence (map (fn [[x w]] (zsi-out x w))) m))
+    (seq (sequence (map (fn [[x w]] (zsi-out x w))) m)))
   (empty [this]
     (ZSet. {} meta-map pos))
   (equiv [this other]

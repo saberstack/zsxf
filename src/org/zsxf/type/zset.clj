@@ -107,7 +107,7 @@
 
 (def ^:private disjoin-not-supported-msg "zsets do not support disj. Use conj with negative weights.")
 
- (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
+(deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   IPersistentSet
   (disjoin [_ x]
     (throw (ex-info disjoin-not-supported-msg {:arg x})))
@@ -225,6 +225,12 @@
   (->ZSet {} nil false))
 (def create-empty-zset-memo (memoize create-empty-zset))
 
+
+(defn- create-empty-zset-pos []
+  (->ZSet {} nil true))
+(def create-empty-zset-pos-memo (memoize create-empty-zset-pos))
+
+
 (defn zset
   ([]
    (create-empty-zset-memo))
@@ -253,7 +259,7 @@
 
 (defn zset-pos
   ([]
-   (->ZSet {} nil true))
+   (create-empty-zset-pos-memo))
   ([coll]
    (into (zset-pos) coll)))
 
@@ -326,13 +332,6 @@
     "All sets must be created via (zset) or (zset-pos).")
   z)
 
-(defn- assert-pos [z]
-  (assert (zset-pos? z)
-    (str
-      "All zsets must be created via zset-pos, allowing no negative weights."
-      " Given:\n" (type z)))
-  z)
-
 (defn zset+
   ([] (zset))
   ([z1] z1)
@@ -348,21 +347,22 @@
            (conj accum item+w))))
      (into [z2] more))))
 
+(defn- cast-zset-pos [z]
+  (if (zset-pos? z) z (zset-pos z)))
+
 (defn zset-pos+
   ([] (zset-pos))
   ([z1] z1)
   ([z1 z2 & more]
-   ;(timbre/spy ['zset-pos+ z1])
-   ;(assert-pos z1)
-   (into
-     z1
-     (comp
-       ;(map assert-pos)
-       cat
-       (completing
-         (fn [accum item+w]
-           (conj accum item+w))))
-     (into [z2] more))))
+   (let [z1' (cast-zset-pos z1)]
+     (into
+       z1'
+       (comp
+         cat
+         (completing
+           (fn [accum item+w]
+             (conj accum item+w))))
+       (into [z2] more)))))
 
 (defn zset-xf+
   "Takes a transducer and returns a function with the same signature as zset+.
@@ -395,8 +395,7 @@
 (defn indexed-zset-pos+
   "Adds two indexed zsets.
   Same as zset-pos+ but for indexed zset which is a map."
-  ([]
-   {})
+  ([] {})
   ([iz] iz)
   ([iz1 iz2]
    (merge-with zset-pos+ iz1 iz2))

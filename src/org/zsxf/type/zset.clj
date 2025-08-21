@@ -118,7 +118,7 @@
         false (ZSet. (m-next m x' w-next) meta-map pos)
         true (ZSet. (m-next-pos m x' w-next) meta-map pos))))
   (seq [_]
-    (seq (sequence (map (fn [[x w]] (zsi-out x w))) m)))
+    (not-empty (map (fn [[x w]] (zsi-out x w)) m)))
   (empty [_]
     (ZSet. {} meta-map pos))
   (equiv [this other]

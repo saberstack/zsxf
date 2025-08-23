@@ -1,4 +1,5 @@
-(ns org.zsxf.type.one-item-vector
+(ns org.zsxf.experimental.one-item-vector
+  ;WIP, not for use
   "Memory-optimized vector implementation for single-element vectors.
 
   This namespace provides a specialized `OneItemVector` type that significantly

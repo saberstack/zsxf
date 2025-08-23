@@ -1,4 +1,5 @@
-(ns org.zsxf.type.two-item-vector
+(ns org.zsxf.experimental.two-item-vector
+  ;WIP, not for use
   (:refer-clojure :exclude [vector])
   #?(:clj
      (:import

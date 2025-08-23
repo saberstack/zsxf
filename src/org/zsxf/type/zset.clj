@@ -15,7 +15,6 @@
             [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
             [org.zsxf.type.one-item-set :as ois]
-            [org.zsxf.type.two-item-vector :as pv]
             [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
             [clojure.string :as str]
@@ -114,6 +113,14 @@
         collection)
     (mix-collection-hash (count collection))))
 
+(comment
+
+  (do
+    (time (do (def z2 (zset nums-v)) :done))
+    (time (run! (fn [x] x) z2)))
+
+  )
+
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   Seqable
   (seq [_]
@@ -168,9 +175,9 @@
   (equals [this other]
     (or (identical? this other)
       (and (instance? Set other)
-        (let [^Set s other]
-          (and (= (.size this) (.size s))
-            (every? #(.contains s %) (.seq this)))))))
+        (let [^Set other' other]
+          (and (= (.size this) (.size other'))
+            (every? #(.contains other' %) (keys m)))))))
 
   Set
   (iterator [this]
@@ -284,7 +291,43 @@
   (^ZSItem [x weight]
    (->ZSItem x (long weight))))
 
-(def zset-item zsi)
+(defn assoc-zset-item-weight
+  [zset-item w]
+  (vary-meta zset-item assoc :zset/w w))
+
+(defn has-zset-weight? [x]
+  (:zset/w (meta x)))
+
+(defn zset-item
+  ([x]
+   (if (has-zset-weight? x)
+     x
+     (with-meta x const/zset-weight-of-1)))
+  ([x weight]
+   (if (meta x)
+     ;meta exists, assoc to it
+     (assoc-zset-item-weight x weight)
+     ;optimization:
+     ; reuse metadata map for common weights
+     (if (== 1 weight)
+       (with-meta x const/zset-weight-of-1)
+       (assoc-zset-item-weight x weight)))))
+
+(comment
+
+  (def random-weights-v (vec (repeatedly 100000 #(rand-int 1000))))
+
+  (time
+    (run!
+      (fn [w] (zset-item {} w))
+      random-weights-v))
+
+  (time
+    (run!
+      (fn [w] (with-meta {} {:zset/w w}))
+      random-weights-v))
+
+  )
 
 (defn zset? [x]
   (instance? ZSet x))
@@ -476,7 +519,7 @@
              w2    (zset-weight item2)
              w-new (* w1 w2)]
          (zsi
-           (pv/vector-of-2
+           (vector
              (item1-f (vary-meta item1 dissoc :zset/w))
              (item2-f (vary-meta item2 dissoc :zset/w)))
            w-new))))))
@@ -494,7 +537,7 @@
      (into
        {}
        (map (fn [common]
-              (pv/vector-of-2
+              (vector
                 common
                 (zset*
                   (iz1 common)
@@ -566,7 +609,7 @@
                   (comp
                     (map vector)
                     )
-                  (range 10000000))))
+                  (range 1000000))))
 
   (time
     (def nums-v-split (util/vector-split nums-v 32)))
@@ -608,10 +651,51 @@
       (def z1 (zs/zset nums-v))
       :done))
 
+  (crit/quick-bench
+    (do
+      (doall (seq z1))
+      :done))
+
+  (time
+    (do (doall (seq z1)) :done))
+
   (time
     (do
       (def z2 (zset nums-v))
       :done))
+
+  (time
+    (do (doall (seq z2)) :done))
+
+  (crit/quick-bench
+    (do
+      (doall (seq z2))
+      :done))
+
+  (time
+    (do
+      (def s1 (set nums-v))
+      :done))
+
+  (time
+    (run!
+      (fn [x] x)
+      s1))
+
+  (time
+    (do
+      (def s1' (transduce (map identity) conj #{} nums-v))
+      :done))
+
+  (time
+    (run!
+      (fn [x] x)
+      s1'))
+
+  (time
+    (run!
+      (fn [x] x)
+      z1))
 
   (first
     (sequence
@@ -626,15 +710,15 @@
       [:a :b :c :d]
       (cycle [-1 1])))
 
-  (mm/measure (into (zset-pos) nums-v))
+  (mm/measure (into (zset-pos) nums-v)))
 
-  (zset+
-    #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
-    #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
-    ;#zs #{#zsi [[:c] 2]}
-    )
-
+(zset+
+  #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
+  #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
+  ;#zs #{#zsi [[:c] 2]}
   )
+
+
 
 (comment
   ;wip list from prev zset impl

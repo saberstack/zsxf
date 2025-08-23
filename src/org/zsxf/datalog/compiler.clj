@@ -5,7 +5,6 @@
             [org.zsxf.datalog.parser.spec :as parser-spec]
             [org.zsxf.datom :as d2]
             [org.zsxf.datalog.macro-util :as mu]
-            [org.zsxf.type.one-item-vector :as oiv]
    ;[org.zsxf.zset :as zs]
             [org.zsxf.type.zset :as zs2]
             [org.zsxf.xf :as xf]
@@ -161,8 +160,7 @@
       [`(xforms/reduce
           (zs2/zset-xf+
             (comp
-              (map (xf/same-meta-f ~find-var-juxt))
-              (map oiv/optimize-vector))))]
+              (map (xf/same-meta-f ~find-var-juxt)))))]
       (let [aggregations (gensym 'aggregations)]
         [`(xforms/reduce zs2/zset+)
          `(xf/group-by-xf

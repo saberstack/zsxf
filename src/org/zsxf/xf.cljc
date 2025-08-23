@@ -20,9 +20,8 @@
      ... etc."
   (:require [net.cgrand.xforms :as xforms]
             [org.zsxf.type.datom-like :as dl]
-            [org.zsxf.type.two-item-vector :as pv]
             [org.zsxf.type.zset :as zs2]
-            ;;[org.zsxf.zset :as zs]
+   ;;[org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]
@@ -263,7 +262,7 @@
       (ss.xforms/map-when not-no-op?
         (fn join-xf-intersect-heavy [params]
           ;return
-          (pv/vector-of-2
+          (vector
             ;add :where clauses as metadata to the joined relations (a zset)
             (zs2/indexed-zset->zset
               (let [f1 (with-clause-f clause-1)

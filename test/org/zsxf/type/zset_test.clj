@@ -30,6 +30,18 @@
        (meta= y (first more)))
      false)))
 
+(deftest zset*-unit-test-1
+  (let [z          (zs2/zset*
+                     (zs2/zset #{(zs2/zset-item {:a 41} 2) (zs2/zset-item {:a 42} 2)})
+                     (zs2/zset #{(zs2/zset-item {:a 41} 2) (zs2/zset-item {:a 42} 2)}))
+        z-expected #zs #{^#:zset {:w 4} [{:a 41} {:a 42}]
+                         ^#:zset {:w 4} [{:a 41} {:a 41}]
+                         ^#:zset {:w 4} [{:a 42} {:a 42}]
+                         ^#:zset {:w 4} [{:a 42} {:a 41}]}]
+    (= z-expected z)))
+
+
+
 (deftest zset-transient-match-regular
   (let [v              ["42"]
         v-meta-1       (with-meta ["42"] {:zset/w 1 :meta "a"})

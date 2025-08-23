@@ -22,7 +22,7 @@
             [taoensso.timbre :as timbre])
   (:import (clojure.lang
              IFn IObj IHashEq Associative IPersistentCollection MapEntry IPersistentMap IPersistentSet
-             ITransientSet ITransientMap IEditableCollection SeqIterator)
+             ITransientSet ITransientMap IEditableCollection SeqIterator Seqable)
            (java.io Writer)
            (java.util Set)))
 
@@ -106,10 +106,20 @@
     (.without m x)
     (m-next m x w-next)))
 
+(defn- hash-ordered [collection]
+  (-> (reduce (fn [acc e] (unchecked-add-int
+                            (unchecked-multiply-int 31 acc)
+                            (hash e)))
+        1
+        collection)
+    (mix-collection-hash (count collection))))
+
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
-  IPersistentSet
-  (disjoin [this x]
-    (.cons this (any->zsi-neg x)))
+  Seqable
+  (seq [_]
+    (not-empty (map (fn [[x w]] (zsi-out x w)) m)))
+
+  IPersistentCollection
   (cons [_ x]
     (let [w-now  (any->weight x)
           x'     (any->x x)
@@ -118,22 +128,37 @@
       (case pos
         false (ZSet. (m-next m x' w-next) meta-map pos)
         true (ZSet. (m-next-pos m x' w-next) meta-map pos))))
-  (seq [_]
-    (not-empty (map (fn [[x w]] (zsi-out x w)) m)))
   (empty [_]
     (ZSet. {} meta-map pos))
   (equiv [this other]
     (.equals this other))
+  (count [_]
+    (.count m))
+
+  IPersistentSet
+  (disjoin [this x]
+    (.cons this (any->zsi-neg x)))
   (get [_ x]
     (let [[x' w] (find m x)]
       (zsi-out x' w)))
-  (count [_]
-    (.count m))
+
+  IFn
+  (invoke [_ x]
+    (let [[x' w] (find m x)]
+      (zsi-out x' w)))
 
   IObj
   (meta [_] meta-map)
   (withMeta [_ new-meta-map]
     (ZSet. m new-meta-map pos))
+
+  IHashEq
+  (hasheq [_]
+    (hash-ordered (keys m)))
+
+  IEditableCollection
+  (asTransient [this]
+    (transient-zset this))
 
   Object
   (toString [this]
@@ -146,10 +171,6 @@
         (let [^Set s other]
           (and (= (.size this) (.size s))
             (every? #(.contains s %) (.seq this)))))))
-
-  IHashEq
-  (hasheq [_]
-    (hash-unordered-coll (or (keys m) {})))
 
   Set
   (iterator [this]
@@ -170,15 +191,7 @@
       (.seq this))
     dest)
   (toArray [this]
-    (.toArray this (object-array (.count this))))
-
-  IEditableCollection
-  (asTransient [this]
-    (transient-zset this))
-  IFn
-  (invoke [_ x]
-    (let [[x' w] (find m x)]
-      (zsi-out x' w))))
+    (.toArray this (object-array (.count this)))))
 
 (defmacro m-next! [^ITransientMap m x w-next]
   ;need a macro to re-use this code that does mutation;
@@ -583,21 +596,21 @@
       (zs/zset nums-v)
       :done))
 
-  (time
-    (do
-      (zs/zset nums-v)
-      :done))
-
   (mm/measure (zs/zset nums-v))
 
   (crit/quick-bench
     (do
-      (def z1 (zset nums-v))
+      (zset nums-v)
       :done))
 
   (time
     (do
-      (zset nums-v)
+      (def z1 (zs/zset nums-v))
+      :done))
+
+  (time
+    (do
+      (def z2 (zset nums-v))
       :done))
 
   (first

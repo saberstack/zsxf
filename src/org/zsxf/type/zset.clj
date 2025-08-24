@@ -27,7 +27,6 @@
 
 (declare zset)
 (declare zsi)
-(declare zset-item)
 (declare transient-zset)
 
 (defmacro change! [field f & args]
@@ -38,8 +37,11 @@
     const/zset-weight-of-1
     {:zset/w w}))
 
-(defn zset-weight [x]
-  (:zset/w (meta x)))
+(defmacro zset-weight [x]
+  `(:zset/w (meta ~x)))
+
+(defn -zset-weight [x]
+  (zset-weight x))
 
 (defn- zsi-out-with-weight [x w]
   (vary-meta x (fnil conj {}) (w->map w)))
@@ -64,8 +66,25 @@
        ;new
        ~w-now)))
 
+(defmacro meta-vary-meta
+  [meta-map obj f x y]
+  `(with-meta ~obj (~f ~meta-map ~x ~y)))
+
+(defmacro zset-item
+  ([x] `(zset-item ~x 1))
+  ([x w]
+   `(if-let [meta-map# (meta ~x)]
+      ;meta exists, assoc to it
+      (meta-vary-meta meta-map# ~x assoc :zset/w ~w)
+      ;optimization:
+      ; reuse metadata map for common weights
+      (if (== 1 ~w)
+        (with-meta ~x ~const/zset-weight-of-1)
+        (with-meta ~x {:zset/w ~w})))))
+
 (defn any->zsi-neg [x]
-  (zsi x (or (* -1 (zset-weight x)) -1)))
+  (let [w (if-let [w (zset-weight x)] (* -1 w) -1)]
+    (zset-item x w)))
 
 (defmacro m-next-inline ^clojure.lang.IPersistentMap [^clojure.lang.IPersistentMap m x w-next ?w-prev]
   `(if (and (nil? ~?w-prev) (= 1 ~w-next))
@@ -95,16 +114,10 @@
   {:s-value (s value)
    :first-s (first s)})
 
-(defmacro zset-item-inline
-  [x w]
-  `(if (meta ~x)
-     ;meta exists, assoc to it
-     (vary-meta ~x assoc :zset/w ~w)
-     ;optimization:
-     ; reuse metadata map for common weights
-     (if (== 1 ~w)
-       (with-meta ~x ~const/zset-weight-of-1)
-       (vary-meta ~x assoc :zset/w ~w))))
+
+(defn -zset-item
+  ([x] (zset-item x))
+  ([x w] (zset-item x w)))
 
 (defmacro zset-weight-inline [x]
   `(:zset/w (meta ~x)))
@@ -123,7 +136,7 @@
           w-now   (or ?w-now 1)
           ?w-prev (.valAt m x)
           w-next  (calc-next-weight-inline w-now ?w-prev)
-          x'      (zset-item-inline x w-next)]
+          x'      (zset-item x w-next)]
       (case pos
         false (ZSet. (m-next-inline m x' w-next ?w-prev) meta-map pos)
         true (ZSet. (if (neg-int?-inline w-next)
@@ -211,7 +224,7 @@
           w-now   (or ?w-now 1)
           ?w-prev (.valAt m x)
           w-next  (calc-next-weight-inline w-now ?w-prev)
-          x'      (zset-item-inline x w-next)]
+          x'      (zset-item x w-next)]
       (case pos
         false (m-next! m x' w-next ?w-prev)
         true (if (neg-int?-inline w-next)
@@ -279,19 +292,8 @@
   [zset-item w]
   (vary-meta zset-item assoc :zset/w w))
 
-(defn zset-item
-  ([x weight]
-   (if (meta x)
-     ;meta exists, assoc to it
-     (assoc-zset-item-weight x weight)
-     ;optimization:
-     ; reuse metadata map for common weights
-     (if (== 1 weight)
-       (with-meta x const/zset-weight-of-1)
-       (assoc-zset-item-weight x weight))))
-  ([x] (zset-item x 1)))
-
-(def zsi zset-item)
+(defmacro zsi [x]
+  `(zset-item ~x))
 
 (defn zset? [x]
   (instance? ZSet x))
@@ -470,7 +472,7 @@
        (let [w1    (zset-weight item1)
              w2    (zset-weight item2)
              w-new (* w1 w2)]
-         (zsi
+         (zset-item
            (vector
              (item1-f (vary-meta item1 dissoc :zset/w))
              (item2-f (vary-meta item2 dissoc :zset/w)))

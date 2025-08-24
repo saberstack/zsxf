@@ -152,7 +152,7 @@
   (let [{:keys [equal zsets] :as generated} (generate-zsets-with-equal-items)
         _                (reset! *generated generated)
         ;sum manually
-        weight-sum       (apply + (map zs2/zset-weight equal))
+        weight-sum       (apply + (map zs2/-zset-weight equal))
         ;zset+ sum
         zset-summed      (transduce (map -zset) zs2/zset+ zsets)
         ;values found in the previous step must be equal, check here
@@ -171,7 +171,7 @@
     (is (= zset-sum-result' weight-sum))))
 
 (comment
-  (mapv zs2/zset-weight
+  (mapv zs2/-zset-weight
     (:equal @*generated))
 
   (transduce (map identity)

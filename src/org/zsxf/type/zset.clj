@@ -64,6 +64,14 @@
       ;new
       w-now)))
 
+(defmacro calc-next-weight-inline [w-now w-prev]
+  `(long
+     (if (int? ~w-prev)
+       ;w-prev already exists
+       (+ ~w-prev ~w-now)
+       ;new
+       ~w-now)))
+
 (defn any->zsi-neg [x]
   (zsi x (or (* -1 (zset-weight x)) -1)))
 
@@ -77,6 +85,19 @@
       1 (.assoc ^Associative (.without m x) x 1)
       (.assoc ^Associative (.without m x) x w-next))))
 
+(defmacro m-next! [^ITransientMap m ^Object x w-next ?w-prev]
+  ;need a macro to re-use this code that does mutation;
+  ; it doesn't compile with mutable variables outside deftype
+  `(if (and (nil? ~?w-prev) (= 1 ~w-next))
+     (set! ~m (.assoc ^ITransientMap ~m ~x ^Long (long 1)))
+     (case (long ~w-next)
+       ;zero zset weight, remove
+       0 (set! ~m (.without ~m ~x))
+       ;all other cases, add
+       1 (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ^Long (long 1)))
+       ;all other cases, add
+       (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ^Long (long ~w-next))))))
+
 (defn- m-next-pos [^IPersistentMap m x w-next ?w-prev]
   (if (neg-int? w-next)
     (.without m x)
@@ -87,18 +108,31 @@
   {:s-value (s value)
    :first-s (first s)})
 
+(defmacro zset-item-inline
+  [x w]
+  `(if (meta ~x)
+     ;meta exists, assoc to it
+     (vary-meta ~x assoc :zset/w ~w)
+     ;optimization:
+     ; reuse metadata map for common weights
+     (if (== 1 ~w)
+       (with-meta ~x ~const/zset-weight-of-1)
+       (vary-meta ~x assoc :zset/w ~w))))
+
+(defmacro zset-weight-inline [x]
+  `(:zset/w (meta ~x)))
+
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   Seqable
-  (seq [_]
-    (keys m))
+  (seq [_] (keys m))
 
   IPersistentCollection
   (cons [_ x]
-    (let [?w-now  (zset-weight x)
+    (let [?w-now  (zset-weight-inline x)
           w-now   (or ?w-now 1)
           ?w-prev (.valAt m x)
-          w-next  (calc-next-weight w-now ?w-prev)
-          x'      (zset-item x w-next)]
+          w-next  (calc-next-weight-inline w-now ?w-prev)
+          x'      (zset-item-inline x w-next)]
       (case pos
         false (ZSet. (m-next m x' w-next ?w-prev) meta-map pos)
         true (ZSet. (m-next-pos m x' w-next ?w-prev) meta-map pos))))
@@ -167,19 +201,6 @@
   (toArray [this]
     (.toArray this (object-array (.count this)))))
 
-(defmacro m-next! [^ITransientMap m x w-next ?w-prev]
-  ;need a macro to re-use this code that does mutation;
-  ; it doesn't compile with mutable variables outside deftype
-  `(if (and (nil? ~?w-prev) (= 1 ~w-next))
-     (set! ~m (.assoc ^ITransientMap ~m ~x ^Object (long 1)))
-     (case (long ~w-next)
-       ;zero zset weight, remove
-       0 (set! ~m (.without ~m ~x))
-       ;all other cases, add
-       1 (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ^Object (long 1)))
-       ;all other cases, add
-       (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ~w-next)))))
-
 (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
   ITransientSet
   (count [_]
@@ -190,11 +211,11 @@
   (disjoin [this x]
     (.conj this (any->zsi-neg x)))
   (conj [this x]
-    (let [?w-now  (zset-weight x)
+    (let [?w-now  (zset-weight-inline x)
           w-now   (or ?w-now 1)
           ?w-prev (.valAt m x)
-          w-next  (calc-next-weight w-now ?w-prev)
-          x'      (zset-item x w-next)]
+          w-next  (calc-next-weight-inline w-now ?w-prev)
+          x'      (zset-item-inline x w-next)]
       (case pos
         false (m-next! m x' w-next ?w-prev)
         true (if (neg-int? w-next)
@@ -264,16 +285,7 @@
   [zset-item w]
   (vary-meta zset-item assoc :zset/w w))
 
-(defn has-zset-weight? [x]
-  (:zset/w (meta x)))
-
 (defn zset-item
-  ([x]
-   (if (has-zset-weight? x)
-     ;already has weight, return unchanged
-     x
-     ;otherwise, return with weight of 1
-     (with-meta x const/zset-weight-of-1)))
   ([x weight]
    (if (meta x)
      ;meta exists, assoc to it
@@ -282,7 +294,8 @@
      ; reuse metadata map for common weights
      (if (== 1 weight)
        (with-meta x const/zset-weight-of-1)
-       (assoc-zset-item-weight x weight)))))
+       (assoc-zset-item-weight x weight))))
+  ([x] (zset-item x 1)))
 
 (def zsi zset-item)
 
@@ -536,13 +549,25 @@
     #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
     #zs #{#zsi [[:c] 2]})
 
-  (time
-    (def nums-v (into []
-                  (comp
-                    (map vector)
-                    (map zset-item)
-                    )
-                  (range 1000000))))
+  (do
+    (time (def nums-v (into []
+                        (comp
+                          (map vector)
+                          (map zset-item)
+                          )
+                        (range 1000000))))
+
+    (System/gc)
+
+    (time (do (def z1 (zs/zset nums-v)) :done))
+    (Thread/sleep 1000)
+    (time (do (doall (seq z1)) :done))
+
+    (Thread/sleep 1000)
+
+    (time (do (def z2 (zset nums-v)) :done))
+    (Thread/sleep 1000)
+    (time (do (doall (seq z2)) :done)))
 
   (crit/quick-bench
     (do (zs/zset nums-v) :done))
@@ -553,16 +578,6 @@
   (mm/measure (zs/zset nums-v))
 
   (mm/measure (zset nums-v))
-
-  (do
-    (System/gc)
-    (time (do (def z2 (zset nums-v)) :done))
-    (Thread/sleep 1000)
-    (time (do (doall (seq z2)) :done))
-    (Thread/sleep 1000)
-    (time (do (def z1 (zs/zset nums-v)) :done))
-    (Thread/sleep 1000)
-    (time (do (doall (seq z1)) :done)))
 
   (crit/quick-bench
     (do

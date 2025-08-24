@@ -19,6 +19,7 @@
      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
      ... etc."
   (:require [net.cgrand.xforms :as xforms]
+            [org.saberstack.clojure.inline :as inline]
             [org.zsxf.type.datom-like :as dl]
             [org.zsxf.type.zset :as zs2]
    ;;[org.zsxf.zset :as zs]
@@ -146,7 +147,7 @@
 
 (defn with-clause-f [clause]
   (fn [item]
-    (vary-meta item assoc :xf.clause clause)))
+    (inline/vary-meta-xy item assoc :xf.clause clause)))
 
 (defn with-clause
   "If ?clause is not nil, set it as metadata.

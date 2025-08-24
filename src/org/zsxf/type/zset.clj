@@ -15,6 +15,7 @@
             [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
+            [org.saberstack.clojure.inline :as inline]
             [org.zsxf.zset :as zs]
             [clojure.string :as str]
             [clojure.set :as set]
@@ -43,8 +44,28 @@
 (defn -zset-weight [x]
   (zset-weight x))
 
+(defmacro calc-next-weight-inline [w-now w-prev]
+  `(long
+     (if (int? ~w-prev)
+       ;w-prev already exists
+       (+ ~w-prev ~w-now)
+       ;new
+       ~w-now)))
+
+(defmacro zset-item
+  ([x] `(zset-item ~x 1))
+  ([x w]
+   `(if-let [meta-map# (meta ~x)]
+      ;meta exists, assoc to it
+      (inline/meta-vary-meta meta-map# ~x assoc :zset/w ~w)
+      ;optimization:
+      ; reuse metadata map for common weights
+      (if (== 1 ~w)
+        (with-meta ~x ~const/zset-weight-of-1)
+        (with-meta ~x {:zset/w ~w})))))
+
 (defn- zsi-out-with-weight [x w]
-  (vary-meta x (fnil conj {}) (w->map w)))
+  (inline/vary-meta-x x (fnil conj {}) (w->map w)))
 
 (defn zsi-out
   ([x w]
@@ -57,30 +78,6 @@
        (timbre/error "Emitting no weight for" x)
        (println)
        x))))
-
-(defmacro calc-next-weight-inline [w-now w-prev]
-  `(long
-     (if (int? ~w-prev)
-       ;w-prev already exists
-       (+ ~w-prev ~w-now)
-       ;new
-       ~w-now)))
-
-(defmacro meta-vary-meta
-  [meta-map obj f x y]
-  `(with-meta ~obj (~f ~meta-map ~x ~y)))
-
-(defmacro zset-item
-  ([x] `(zset-item ~x 1))
-  ([x w]
-   `(if-let [meta-map# (meta ~x)]
-      ;meta exists, assoc to it
-      (meta-vary-meta meta-map# ~x assoc :zset/w ~w)
-      ;optimization:
-      ; reuse metadata map for common weights
-      (if (== 1 ~w)
-        (with-meta ~x ~const/zset-weight-of-1)
-        (with-meta ~x {:zset/w ~w})))))
 
 (defn any->zsi-neg [x]
   (let [w (if-let [w (zset-weight x)] (* -1 w) -1)]
@@ -288,10 +285,6 @@
 (defn zset-pos? [^ZSet z]
   (.-pos z))
 
-(defn assoc-zset-item-weight
-  [zset-item w]
-  (vary-meta zset-item assoc :zset/w w))
-
 (defmacro zsi [x]
   `(zset-item ~x))
 
@@ -474,8 +467,8 @@
              w-new (* w1 w2)]
          (zset-item
            (vector
-             (item1-f (vary-meta item1 dissoc :zset/w))
-             (item2-f (vary-meta item2 dissoc :zset/w)))
+             (item1-f (inline/vary-meta-x item1 dissoc :zset/w))
+             (item2-f (inline/vary-meta-x item2 dissoc :zset/w)))
            w-new))))))
 
 (defn intersect-indexed*

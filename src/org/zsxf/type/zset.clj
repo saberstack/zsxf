@@ -77,18 +77,6 @@
       ;new
       w-now)))
 
-(defn any->weight ^long [x]
-  (if-let [^ZSItem x (when (instance? ZSItem x) x)]
-    (.-weight x)
-    (or (:zset/w (meta x)) 1)))
-
-(defn any->x ^Object [x]
-  ;TODO should we remove zset weight from metadata
-  ;  due to existing transient behavior ?
-  (if-let [^ZSItem x (when (instance? ZSItem x) x)]
-    (.-item x)
-    x))
-
 (defn any->zsi-neg [x]
   (if (instance? ZSItem x)
     (zsi (zsi-item x) (* -1 (zsi-weight x)))
@@ -170,8 +158,8 @@
     (ZSet. m new-meta-map pos))
 
   IHashEq
-  (hasheq [_]
-    (hash-ordered (keys m)))
+  (hasheq [this]
+    (hash-unordered-coll this))
 
   IEditableCollection
   (asTransient [this]
@@ -222,15 +210,6 @@
        1 (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ^Object (long 1)))
        ;all other cases, add
        (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ~w-next)))))
-
-;problem
-(comment
-  (let [z  (zset)
-        z' (transient z)
-        _ (conj! z' (zset-item [:a] 9))
-        _ (conj! z' (zset-item [:a] 10))
-        z'' (persistent! z')]
-    (seq z'')))
 
 (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
   ITransientSet
@@ -335,22 +314,6 @@
        (assoc-zset-item-weight x weight)))))
 
 (def zsi zset-item)
-
-(comment
-
-  (def random-weights-v (vec (repeatedly 100000 #(rand-int 1000))))
-
-  (time
-    (run!
-      (fn [w] (zset-item {} w))
-      random-weights-v))
-
-  (time
-    (run!
-      (fn [w] (with-meta {} {:zset/w w}))
-      random-weights-v))
-
-  )
 
 (defn zset? [x]
   (instance? ZSet x))
@@ -635,42 +598,15 @@
                     )
                   (range 1000000))))
 
-  (time
-    (def nums-v-split (util/vector-split nums-v 32)))
-
-  (= nums-v (util/vector-unsplit nums-v-split))
-
-  (time
-    (util/vector-sum nums-v))
-
-  (time
-    (util/vector-sum
-      (pmap util/vector-sum nums-v-split)))
+  (crit/quick-bench
+    (do (zs/zset nums-v) :done))
 
   (crit/quick-bench
-    (util/vector-sum nums-v))
-
-  (crit/quick-bench
-    (util/vector-sum
-      (pmap util/vector-sum nums-v-split)))
-
-
-  (time
-    (reduce unchecked-add 0 (eduction (map first) nums-v)))
-
-  (crit/quick-bench
-    (do
-      (zs/zset nums-v)
-      :done))
+    (do (zset nums-v) :done))
 
   (mm/measure (zs/zset nums-v))
 
   (mm/measure (zset nums-v))
-
-  (crit/quick-bench
-    (do
-      (zset nums-v)
-      :done))
 
   (time
     (do
@@ -722,6 +658,27 @@
     (run!
       (fn [x] x)
       z1))
+
+  (time
+    (def nums-v-split (util/vector-split nums-v 32)))
+
+  (= nums-v (util/vector-unsplit nums-v-split))
+
+  (time
+    (util/vector-sum nums-v))
+
+  (time
+    (util/vector-sum
+      (pmap util/vector-sum nums-v-split)))
+
+  (crit/quick-bench
+    (util/vector-sum nums-v))
+
+  (crit/quick-bench
+    (util/vector-sum
+      (pmap util/vector-sum nums-v-split)))
+
+
 
   (first
     (sequence

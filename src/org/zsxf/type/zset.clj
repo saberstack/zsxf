@@ -27,6 +27,7 @@
 
 (declare zset)
 (declare zsi)
+(declare zset-item)
 (declare transient-zset)
 
 (defmacro change! [field f & args]
@@ -45,8 +46,10 @@
 
 (defn zsi-out
   ([x w]
-   (if (util/can-meta? x)
-     (zsi-out-with-weight x w)
+   (cond
+     (zset-weight x) x
+     (util/can-meta? x) (zsi-out-with-weight x w)
+     :else
      (do
        ;TODO decide how to return w in this case if needed
        (timbre/error "Emitting no weight for" x)
@@ -66,8 +69,7 @@
 (defn zsi-item [^ZSItem zsi]
   (.-item zsi))
 
-(defn calc-next-weight
-  ^Object [w-now w-prev]
+(defn calc-next-weight [w-now w-prev]
   (long
     (if (int? w-prev)
       ;w-prev already exists
@@ -87,23 +89,25 @@
     (.-item x)
     x))
 
-(defn any->zsi-neg ^ZSItem [x]
+(defn any->zsi-neg [x]
   (if (instance? ZSItem x)
     (zsi (zsi-item x) (* -1 (zsi-weight x)))
     (zsi x (or (* -1 (zset-weight x)) -1))))
 
-(defn- m-next ^IPersistentMap [^IPersistentMap m x w-next]
-  (case (long w-next)
-    ;zero zset weight, remove
-    0 (.without m x)
-    ;all other cases, add
-    1 (.assoc ^Associative m x 1)
-    (.assoc ^Associative m x w-next)))
+(defn- m-next ^IPersistentMap [^IPersistentMap m x w-next ?w-prev]
+  (if (and (nil? ?w-prev) (= 1 w-next))
+    (.assoc ^Associative m x 1)
+    (case (long w-next)
+      ;zero zset weight, remove
+      0 (.without m x)
+      ;all other cases, add
+      1 (.assoc ^Associative (.without m x) x 1)
+      (-> m (.without x) (.assoc ^Associative x w-next)))))
 
-(defn- m-next-pos [^IPersistentMap m x w-next]
+(defn- m-next-pos [^IPersistentMap m x w-next ?w-prev]
   (if (neg-int? w-next)
     (.without m x)
-    (m-next m x w-next)))
+    (m-next m x w-next ?w-prev)))
 
 (defn- hash-ordered [collection]
   (-> (reduce (fn [acc e] (unchecked-add-int
@@ -121,20 +125,26 @@
 
   )
 
+(defn set-debug [s value]
+  (set! *print-meta* true)
+  {:s-value (s value)
+   :first-s (first s)})
+
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   Seqable
   (seq [_]
-    (not-empty (map (fn [[x w]] (zsi-out x w)) m)))
+    (keys m))
 
   IPersistentCollection
   (cons [_ x]
-    (let [w-now  (any->weight x)
-          x'     (any->x x)
-          w-prev (.valAt m x')
-          w-next (calc-next-weight w-now w-prev)]
+    (let [?w-now  (zset-weight x)
+          w-now   (or ?w-now 1)
+          ?w-prev (.valAt m x)
+          w-next  (calc-next-weight w-now ?w-prev)
+          x'      (zset-item x w-next)]
       (case pos
-        false (ZSet. (m-next m x' w-next) meta-map pos)
-        true (ZSet. (m-next-pos m x' w-next) meta-map pos))))
+        false (ZSet. (m-next m x' w-next ?w-prev) meta-map pos)
+        true (ZSet. (m-next-pos m x' w-next ?w-prev) meta-map pos))))
   (empty [_]
     (ZSet. {} meta-map pos))
   (equiv [this other]
@@ -200,16 +210,27 @@
   (toArray [this]
     (.toArray this (object-array (.count this)))))
 
-(defmacro m-next! [^ITransientMap m x w-next]
+(defmacro m-next! [^ITransientMap m x w-next ?w-prev]
   ;need a macro to re-use this code that does mutation;
   ; it doesn't compile with mutable variables outside deftype
-  `(case (long ~w-next)
-     ;zero zset weight, remove
-     0 (set! ~m (.without ~m ~x))
-     ;all other cases, add
-     1 (set! ~m (.assoc ^ITransientMap ~m ~x ^Object (long 1)))
-     ;all other cases, add
-     (set! ~m (.assoc ^ITransientMap ~m ~x ~w-next))))
+  `(if (and (nil? ~?w-prev) (= 1 ~w-next))
+     (set! ~m (.assoc ^ITransientMap ~m ~x ^Object (long 1)))
+     (case (long ~w-next)
+       ;zero zset weight, remove
+       0 (set! ~m (.without ~m ~x))
+       ;all other cases, add
+       1 (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ^Object (long 1)))
+       ;all other cases, add
+       (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ~w-next)))))
+
+;problem
+(comment
+  (let [z  (zset)
+        z' (transient z)
+        _ (conj! z' (zset-item [:a] 9))
+        _ (conj! z' (zset-item [:a] 10))
+        z'' (persistent! z')]
+    (seq z'')))
 
 (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
   ITransientSet
@@ -221,16 +242,16 @@
   (disjoin [this x]
     (.conj this (any->zsi-neg x)))
   (conj [this x]
-    (let [w-now  (any->weight x)
-          x'     (any->x x)
-          w-prev (.valAt m x')
-          w-next (calc-next-weight w-now w-prev)]
-      (when-not (= w-prev w-next)
-        (case pos
-          false (m-next! m x' w-next)
-          true (if (neg-int? w-next)
-                 (change! ^ITransientMap m .without x')
-                 (m-next! m x' w-next))))
+    (let [?w-now  (zset-weight x)
+          w-now   (or ?w-now 1)
+          ?w-prev (.valAt m x)
+          w-next  (calc-next-weight w-now ?w-prev)
+          x'      (zset-item x w-next)]
+      (case pos
+        false (m-next! m x' w-next ?w-prev)
+        true (if (neg-int? w-next)
+               (change! ^ITransientMap m .without x')
+               (m-next! m x' w-next ?w-prev)))
       this))
   (contains [_ x]
     (boolean (.valAt m x)))
@@ -285,11 +306,11 @@
 (defn zset-pos? [^ZSet z]
   (.-pos z))
 
-(defn zsi
-  (^ZSItem [x]
-   (->ZSItem x 1))
-  (^ZSItem [x weight]
-   (->ZSItem x (long weight))))
+#_(defn zsi
+    (^ZSItem [x]
+     (->ZSItem x 1))
+    (^ZSItem [x weight]
+     (->ZSItem x (long weight))))
 
 (defn assoc-zset-item-weight
   [zset-item w]
@@ -312,6 +333,8 @@
      (if (== 1 weight)
        (with-meta x const/zset-weight-of-1)
        (assoc-zset-item-weight x weight)))))
+
+(def zsi zset-item)
 
 (comment
 
@@ -586,28 +609,29 @@
 
 
 ;Usage
-(comment
-  (->
-    (zset)
-    (conj (zsi :a 2))
-    (conj (zsi :a -1))
-    (conj (zsi :a 1)))
-  (->
-    (zset)
-    (conj :a)
-    (conj :a))
-
-  (->
-    (zset)
-    (conj [:a])
-    (conj [:a])))
-
+;;(comment
+;;  (->
+;;    (zset)
+;;    (conj (zsi :a 2))
+;;    (conj (zsi :a -1))
+;;    (conj (zsi :a 1)))
+;;  (->
+;;    (zset)
+;;    (conj :a)
+;;    (conj :a))
+;;
+;;  (->
+;;    (zset)
+;;    (conj [:a])
+;;    (conj [:a])))
+;;
 ;; Performance compare
 (comment
   (time
     (def nums-v (into []
                   (comp
                     (map vector)
+                    (map zset-item)
                     )
                   (range 1000000))))
 
@@ -640,6 +664,8 @@
       :done))
 
   (mm/measure (zs/zset nums-v))
+
+  (mm/measure (zset nums-v))
 
   (crit/quick-bench
     (do
@@ -712,11 +738,11 @@
 
   (mm/measure (into (zset-pos) nums-v)))
 
-(zset+
-  #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
-  #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
-  ;#zs #{#zsi [[:c] 2]}
-  )
+;;(zset+
+;;  #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
+;;  #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
+;;  ;#zs #{#zsi [[:c] 2]}
+;;  )
 
 
 

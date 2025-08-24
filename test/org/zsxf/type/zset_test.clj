@@ -9,7 +9,8 @@
    [org.zsxf.constant :as const]
    [org.zsxf.util :as util]
    [org.zsxf.zset :as-alias zs]
-   [taoensso.timbre :as timbre]))
+   [taoensso.timbre :as timbre])
+  (:import (clojure.lang ITransientCollection)))
 
 (defn set-debug [s value]
   (set! *print-meta* true)
@@ -69,9 +70,9 @@
     (is (true? (apply meta= items)))))
 
 (deftest zset-equal-to-clojure-set
-  (let [s   #{1 2}
-        zs  #zs #{1 2}
-        zsp #zsp #{1 2}]
+  (let [s   #{[1] [2]}
+        zs  #zs #{[1] [2]}
+        zsp #zsp #{[1] [2]}]
     (is (= s zs zsp))
     (is (= zs s zsp))
     (is (= zsp zs s))))

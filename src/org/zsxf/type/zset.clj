@@ -14,7 +14,6 @@
             [flatland.ordered.map]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
-            [org.zsxf.type.one-item-set :as ois]
             [org.zsxf.util :as util]
             [org.zsxf.zset :as zs]
             [clojure.string :as str]
@@ -96,14 +95,6 @@
   (if (neg-int? w-next)
     (.without m x)
     (m-next m x w-next ?w-prev)))
-
-(defn- hash-ordered [collection]
-  (-> (reduce (fn [acc e] (unchecked-add-int
-                            (unchecked-multiply-int 31 acc)
-                            (hash e)))
-        1
-        collection)
-    (mix-collection-hash (count collection))))
 
 (comment
 
@@ -380,8 +371,7 @@
   ([] (zset))
   ([z1] (zset z1))
   ([z1 z2 & more]
-   (ois/optimize-set
-     (apply clojure.set/union (cast-zset z1) (cast-zset z2) (map cast-zset more)))))
+   (apply clojure.set/union (cast-zset z1) (cast-zset z2) (map cast-zset more))))
 
 (defn- cast-zset-pos [z]
   (if (and (zset? z) (zset-pos? z)) z (zset-pos z)))
@@ -390,9 +380,8 @@
   ([] (zset-pos))
   ([z1] z1)
   ([z1 z2 & more]
-   (ois/optimize-set
-     (cast-zset-pos
-       (apply zset+ z1 z2 more)))))
+   (cast-zset-pos
+     (apply zset+ z1 z2 more))))
 
 (defn zset-xf+
   "Takes a transducer and returns a function with the same signature as zset+.
@@ -435,7 +424,7 @@
 
 (defn- index-xf-pair
   [k zset-of-grouped-items]
-  (if k {k (ois/optimize-set zset-of-grouped-items)} {}))
+  (if k {k zset-of-grouped-items} {}))
 
 (defn- index-xf
   "Returns a group-by-style transducer.

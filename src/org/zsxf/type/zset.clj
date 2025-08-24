@@ -74,7 +74,7 @@
       0 (.without m x)
       ;all other cases, add
       1 (.assoc ^Associative (.without m x) x 1)
-      (-> m (.without x) (.assoc ^Associative x w-next)))))
+      (.assoc ^Associative (.without m x) x w-next))))
 
 (defn- m-next-pos [^IPersistentMap m x w-next ?w-prev]
   (if (neg-int? w-next)

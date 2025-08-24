@@ -44,7 +44,7 @@
 (defn -zset-weight [x]
   (zset-weight x))
 
-(defmacro calc-next-weight-inline [w-now w-prev]
+(defmacro calc-next-weight [w-now w-prev]
   `(long
      (if (int? ~w-prev)
        ;w-prev already exists
@@ -138,7 +138,7 @@
     (let [?w-now  (zset-weight-inline x)
           w-now   (or ?w-now 1)
           ?w-prev (.valAt m x)
-          w-next  (calc-next-weight-inline w-now ?w-prev)
+          w-next  (calc-next-weight w-now ?w-prev)
           x'      (zset-item x w-next)]
       (case pos
         false (ZSet. (m-next-inline m x' w-next ?w-prev) meta-map pos)
@@ -226,7 +226,7 @@
     (let [?w-now  (zset-weight-inline x)
           w-now   (or ?w-now 1)
           ?w-prev (.valAt m x)
-          w-next  (calc-next-weight-inline w-now ?w-prev)
+          w-next  (calc-next-weight w-now ?w-prev)
           x'      (zset-item x w-next)]
       (case pos
         false (m-next! m x' w-next ?w-prev)

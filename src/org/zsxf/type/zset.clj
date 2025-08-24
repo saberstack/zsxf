@@ -261,7 +261,9 @@
 (defn zset-item
   ([x]
    (if (has-zset-weight? x)
+     ;already has weight, return unchanged
      x
+     ;otherwise, return with weight of 1
      (with-meta x const/zset-weight-of-1)))
   ([x weight]
    (if (meta x)
@@ -543,26 +545,13 @@
       #zs #{(zset-count-item 42 :counter1)})
     #{^#:zset {:w 84} [:counter1 [:zset/count]]}))
 
-
-;Usage
-;;(comment
-;;  (->
-;;    (zset)
-;;    (conj (zsi :a 2))
-;;    (conj (zsi :a -1))
-;;    (conj (zsi :a 1)))
-;;  (->
-;;    (zset)
-;;    (conj :a)
-;;    (conj :a))
-;;
-;;  (->
-;;    (zset)
-;;    (conj [:a])
-;;    (conj [:a])))
-;;
 ;; Performance compare
 (comment
+  (zset+
+    #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
+    #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
+    #zs #{#zsi [[:c] 2]})
+
   (time
     (def nums-v (into []
                   (comp
@@ -581,26 +570,20 @@
 
   (mm/measure (zset nums-v))
 
-  (time
-    (do
-      (def z1 (zs/zset nums-v))
-      :done))
+  (do
+    (System/gc)
+    (time (do (def z2 (zset nums-v)) :done))
+    (Thread/sleep 1000)
+    (time (do (doall (seq z2)) :done))
+    (Thread/sleep 1000)
+    (time (do (def z1 (zs/zset nums-v)) :done))
+    (Thread/sleep 1000)
+    (time (do (doall (seq z1)) :done)))
 
   (crit/quick-bench
     (do
       (doall (seq z1))
       :done))
-
-  (time
-    (do (doall (seq z1)) :done))
-
-  (time
-    (do
-      (def z2 (zset nums-v))
-      :done))
-
-  (time
-    (do (doall (seq z2)) :done))
 
   (crit/quick-bench
     (do
@@ -670,16 +653,9 @@
 
   (mm/measure (into (zset-pos) nums-v)))
 
-(zset+
-  #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
-  #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
-  ;#zs #{#zsi [[:c] 2]}
-  )
-
 
 
 (comment
-  ;wip list from prev zset impl
   ;public fns
   zs/zset-weight :OK zset-weight
   ;convert value to zset-item
@@ -688,7 +664,7 @@
   zs/zset+ :OK zset+
 
   zs/zset-xf+ :OK zset-xf+
-  zs/zset-pos+ :OK :TODO zset-pos+
+  zs/zset-pos+ :OK zset-pos+
   zs/zset-negate :OK zset-negate
   zs/zset* :OK zset*
   zs/index :OK index

@@ -64,6 +64,12 @@
         (with-meta ~x ~const/zset-weight-of-1)
         (with-meta ~x {:zset/w ~w})))))
 
+(defmacro zset-item-new
+  "Use when it is known that x is *not* an existing zset item,
+  and x has *no* existing relevant metadata."
+  [x w]
+  `(with-meta ~x {:zset/w ~w}))
+
 (defn- zsi-out-with-weight [x w]
   (inline/vary-meta-x x (fnil conj {}) (w->map w)))
 
@@ -255,7 +261,7 @@
 
 (comment
 
-  (let [xf (comp (map vector) (map zset-item))
+  (let [xf (comp (map vector) (map -zset-item))
         s1 (into (zset) xf (range 0 10000))
         s2 (into (zset) xf (range 5000 15000))
         s3 (into (zset) xf (range 10000 20000))]
@@ -285,8 +291,9 @@
 (defn zset-pos? [^ZSet z]
   (.-pos z))
 
-(defmacro zsi [x]
-  `(zset-item ~x))
+(defmacro zsi
+  ([x] `(zset-item ~x))
+  ([x w] `(zset-item ~x ~w)))
 
 (defn zset? [x]
   (instance? ZSet x))
@@ -461,11 +468,11 @@
    (zset* z1 z2 identity identity))
   ([z1 z2 item1-f item2-f]
    (zset
-     (for [item1 z1 item2 z2]
+     (xforms/for [item1 z1 item2 z2]
        (let [w1    (zset-weight item1)
              w2    (zset-weight item2)
              w-new (* w1 w2)]
-         (zset-item
+         (zset-item-new
            (vector
              (item1-f (inline/vary-meta-x item1 dissoc :zset/w))
              (item2-f (inline/vary-meta-x item2 dissoc :zset/w)))

@@ -14,7 +14,7 @@
             ))
 
 (defn ddatom2->zset-item->zset [ddatom2]
-  (zs2/hash-zset (zs2/zset-item ddatom2 (util/bool->weight (nth ddatom2 4)))))
+  (zs2/hash-zset (zs2/zset-item-new ddatom2 (util/bool->weight (nth ddatom2 4)))))
 
 (defn tx-data->datomic-datoms2->zsets
   ;TODO check if this fn can run after disj-irrelevant-items

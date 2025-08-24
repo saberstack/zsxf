@@ -180,7 +180,7 @@
   ([zset-1 zset-2 item-1-f item-2-f]
    #_{:pre [(zset? zset-1) (zset? zset-2)]}
    (set
-     (xforms/for [item-1 zset-1 item-2 zset-2]
+     (for [item-1 zset-1 item-2 zset-2]
        (let [weight-1   (zset-weight item-1)
              weight-2   (zset-weight item-2)
              new-weight (*' weight-1 weight-2)]

@@ -468,7 +468,7 @@
    (zset* z1 z2 identity identity))
   ([z1 z2 item1-f item2-f]
    (zset
-     (xforms/for [item1 z1 item2 z2]
+     (for [item1 z1 item2 z2]
        (let [w1    (zset-weight item1)
              w2    (zset-weight item2)
              w-new (* w1 w2)]

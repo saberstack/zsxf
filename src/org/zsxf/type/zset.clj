@@ -405,7 +405,7 @@
   [k zset-of-grouped-items]
   (if k {k zset-of-grouped-items} {}))
 
-(defn- index-xf
+(defn index-xf
   "Returns a group-by-style transducer.
   Groups input items based on the return value of kfn.
   Each group is gathered into-coll (typically a set)."
@@ -417,23 +417,21 @@
     ;turn grouped items into a zset
     (xforms/into empty-z)))
 
-(defn index
+(defmacro index
   "Convert a zset into a map indexed by a key function.
   Works for zset and zset-pos."
   [z kfn]
-  (into {} (index-xf kfn (empty z)) z))
+  `(into {} (index-xf ~kfn (zset)) ~z))
 
-(defn indexed-zset->zset
+(defmacro indexed-zset->zset
   "Convert an indexed zset back into a zset"
-  ([indexed-zset]
-   (indexed-zset->zset indexed-zset (map identity)))
-  ([indexed-zset xf]
-   (into
+  [indexed-zset xf]
+  `(into
      (zset)
      (comp
-       (mapcat (fn [k+v] (nth k+v 1)))
-       xf)
-     indexed-zset)))
+       (mapcat (fn [k+v#] (nth k+v# 1)))
+       ~xf)
+     ~indexed-zset))
 
 (defn zset-sum+
   [f]
@@ -478,27 +476,27 @@
              (item2-f (inline/vary-meta-x item2 dissoc :zset/w)))
            w-new))))))
 
-(defn intersect-indexed*
+(defmacro intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)
   Returns an indexed zset.
 
   The weight of a common item in the return is the product (via zset*)
   of the weights of the same item in indexed-zset-1 and indexed-zset-2."
   ([iz1 iz2]
-   (intersect-indexed* iz1 iz2 identity identity))
+   `(intersect-indexed* ~iz1 ~iz2 identity identity))
   ([iz1 iz2 zset*-item1-f zset*-item2-f]
-   (let [commons (util/key-intersection iz1 iz2)]
-     (into
-       {}
-       (map (fn [common]
-              (vector
-                common
-                (zset*
-                  (iz1 common)
-                  (iz2 common)
-                  zset*-item1-f
-                  zset*-item2-f))))
-       commons))))
+   `(let [commons# (util/key-intersection ~iz1 ~iz2)]
+      (into
+        {}
+        (map (fn [common#]
+               (vector
+                 common#
+                 (zset*
+                   (~iz1 common#)
+                   (~iz2 common#)
+                   ~zset*-item1-f
+                   ~zset*-item2-f))))
+        commons#))))
 
 ;Usage
 (comment

@@ -1,13 +1,13 @@
 (ns org.zsxf.relation
   (:require [org.zsxf.xf :as-alias xf]))
 
-(defmacro relation? [x]
-  `(boolean
+(defn relation? [x]
+  (boolean
     (and
-      (indexed? ~x)
-      (= (count ~x) 2)
-      (:xf.clause (meta (first ~x)))
-      (:xf.clause (meta (second ~x))))))
+      (indexed? x)
+      (= (count x) 2)
+      (:xf.clause (meta (first x)))
+      (:xf.clause (meta (second x))))))
 
 (defn index-clauses [rel1+rel2-v]
   rel1+rel2-v

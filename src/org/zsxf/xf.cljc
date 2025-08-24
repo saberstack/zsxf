@@ -104,28 +104,28 @@
       (f data)
       (meta data))))
 
-(defmacro detect-join-type [zsi path-f clause]
-  `(cond
-     (and
-       (dl/datom-like? ~zsi)
-       (nil? (:xf.clause (meta ~zsi)))) :datom
-     (and
-       (dl/datom-like? ~zsi)
-       (not (nil? (:xf.clause (meta ~zsi))))) :datom-as-relation
-     (rel/relation? ~zsi) :relation
-     :else
-     (throw (ex-info "invalid input zset-item" {:zset-item           ~zsi
-                                                :path-f-of-zset-item (~path-f ~zsi)
-                                                :clause              ~clause}))))
+(defn detect-join-type [zsi path-f clause]
+  (cond
+    (and
+      (dl/datom-like? zsi)
+      (nil? (:xf.clause (meta zsi)))) :datom
+    (and
+      (dl/datom-like? zsi)
+      (not (nil? (:xf.clause (meta zsi))))) :datom-as-relation
+    (rel/relation? zsi) :relation
+    :else
+    (throw (ex-info "invalid input zset-item" {:zset-item           zsi
+                                               :path-f-of-zset-item (path-f zsi)
+                                               :clause              clause}))))
 
-(defmacro can-join?
+(defn can-join?
   [zset-item path-f clause]
-  `(let [jt#             (detect-join-type ~zset-item ~path-f ~clause)
-         item-can-join?# (case jt#
-                           :datom true
-                           :datom-as-relation (= ~clause (:xf.clause (meta (~path-f ~zset-item))))
-                           :relation (= ~clause (:xf.clause (meta (~path-f ~zset-item)))))]
-     item-can-join?#))
+  (let [jt             (detect-join-type zset-item path-f clause)
+        item-can-join? (case jt
+                         :datom true
+                         :datom-as-relation (= clause (:xf.clause (meta (path-f zset-item))))
+                         :relation (= clause (:xf.clause (meta (path-f zset-item)))))]
+    item-can-join?))
 
 ;; can join debug
 #_(when (false? item-can-join?)
@@ -162,7 +162,7 @@
   Otherwise, return the item unchanged."
   [item ?clause]
   (if (not (nil? ?clause))
-    (inline/vary-meta-xy item assoc :xf.clause ?clause)
+    (vary-meta item assoc :xf.clause ?clause)
     item))
 
 (defrecord params-join-xf-1 [index-state-1-prev index-state-2-prev delta-1 delta-2 zset])
@@ -173,7 +173,7 @@
 (defn ->no-op
   "Marks x as a no-op. x must support IMeta"
   [x]
-  (inline/vary-meta-xy x assoc ::xf/no-op true))
+  (vary-meta x assoc ::xf/no-op true))
 
 (defn where-xf
   [{pred :pred path :path} & {:keys [last?]}]

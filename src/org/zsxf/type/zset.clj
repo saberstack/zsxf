@@ -89,7 +89,7 @@
   (let [w (if-let [w (zset-weight x)] (* -1 w) -1)]
     (zset-item x w)))
 
-(defmacro m-next-inline ^clojure.lang.IPersistentMap [^clojure.lang.IPersistentMap m x w-next ?w-prev]
+(defmacro m-next ^clojure.lang.IPersistentMap [^clojure.lang.IPersistentMap m x w-next ?w-prev]
   `(if (and (nil? ~?w-prev) (= 1 ~w-next))
      (.assoc ~m ~x ^Long (long 1))
      (case (long ~w-next)
@@ -117,13 +117,9 @@
   {:s-value (s value)
    :first-s (first s)})
 
-
 (defn -zset-item
   ([x] (zset-item x))
   ([x w] (zset-item x w)))
-
-(defmacro zset-weight-inline [x]
-  `(:zset/w (meta ~x)))
 
 (defmacro neg-int?-inline
   "Return true if x is a negative fixed precision integer"
@@ -135,16 +131,16 @@
 
   IPersistentCollection
   (cons [_ x]
-    (let [?w-now  (zset-weight-inline x)
+    (let [?w-now  (zset-weight x)
           w-now   (or ?w-now 1)
           ?w-prev (.valAt m x)
           w-next  (calc-next-weight w-now ?w-prev)
           x'      (zset-item x w-next)]
       (case pos
-        false (ZSet. (m-next-inline m x' w-next ?w-prev) meta-map pos)
+        false (ZSet. (m-next m x' w-next ?w-prev) meta-map pos)
         true (ZSet. (if (inline/neg-int? w-next)
                       (.without m x')
-                      (m-next-inline m x' w-next ?w-prev))
+                      (m-next m x' w-next ?w-prev))
                meta-map pos))))
   (empty [_]
     (ZSet. {} meta-map pos))
@@ -223,7 +219,7 @@
   (disjoin [this x]
     (.conj this (any->zsi-neg x)))
   (conj [this x]
-    (let [?w-now  (zset-weight-inline x)
+    (let [?w-now  (zset-weight x)
           w-now   (or ?w-now 1)
           ?w-prev (.valAt m x)
           w-next  (calc-next-weight w-now ?w-prev)

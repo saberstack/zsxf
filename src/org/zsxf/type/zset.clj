@@ -56,14 +56,6 @@
        (println)
        x))))
 
-(defn calc-next-weight [w-now w-prev]
-  (long
-    (if (int? w-prev)
-      ;w-prev already exists
-      (+ w-prev w-now)
-      ;new
-      w-now)))
-
 (defmacro calc-next-weight-inline [w-now w-prev]
   `(long
      (if (int? ~w-prev)
@@ -75,15 +67,15 @@
 (defn any->zsi-neg [x]
   (zsi x (or (* -1 (zset-weight x)) -1)))
 
-(defn- m-next ^IPersistentMap [^IPersistentMap m x w-next ?w-prev]
-  (if (and (nil? ?w-prev) (= 1 w-next))
-    (.assoc ^Associative m x 1)
-    (case (long w-next)
-      ;zero zset weight, remove
-      0 (.without m x)
-      ;all other cases, add
-      1 (.assoc ^Associative (.without m x) x 1)
-      (.assoc ^Associative (.without m x) x w-next))))
+(defmacro m-next-inline ^IPersistentMap [^IPersistentMap m x w-next ?w-prev]
+  `(if (and (nil? ~?w-prev) (= 1 ~w-next))
+     (.assoc ~m ~x ^Long (long 1))
+     (case (long ~w-next)
+       ;zero zset weight, remove
+       0 (.without ~m ~x)
+       ;all other cases, add
+       1 (.assoc ^Associative (.without ~m ~x) ~x 1)
+       (.assoc ^Associative (.without ~m ~x) ~x ~w-next))))
 
 (defmacro m-next! [^ITransientMap m ^Object x w-next ?w-prev]
   ;need a macro to re-use this code that does mutation;
@@ -97,11 +89,6 @@
        1 (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ^Long (long 1)))
        ;all other cases, add
        (set! ~m (.assoc ^ITransientMap (.without ~m ~x) ~x ^Long (long ~w-next))))))
-
-(defn- m-next-pos [^IPersistentMap m x w-next ?w-prev]
-  (if (neg-int? w-next)
-    (.without m x)
-    (m-next m x w-next ?w-prev)))
 
 (defn set-debug [s value]
   (set! *print-meta* true)
@@ -122,6 +109,10 @@
 (defmacro zset-weight-inline [x]
   `(:zset/w (meta ~x)))
 
+(defmacro neg-int?-inline
+  "Return true if x is a negative fixed precision integer"
+  [x] `(and (int? ~x) (neg? ~x)))
+
 (deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
   Seqable
   (seq [_] (keys m))
@@ -134,8 +125,11 @@
           w-next  (calc-next-weight-inline w-now ?w-prev)
           x'      (zset-item-inline x w-next)]
       (case pos
-        false (ZSet. (m-next m x' w-next ?w-prev) meta-map pos)
-        true (ZSet. (m-next-pos m x' w-next ?w-prev) meta-map pos))))
+        false (ZSet. (m-next-inline m x' w-next ?w-prev) meta-map pos)
+        true (ZSet. (if (neg-int?-inline w-next)
+                      (.without m x')
+                      (m-next-inline m x' w-next ?w-prev))
+               meta-map pos))))
   (empty [_]
     (ZSet. {} meta-map pos))
   (equiv [this other]

@@ -55,19 +55,6 @@
        (println)
        x))))
 
-(deftype ZSItem [item ^long weight]
-  IPersistentCollection
-  (equiv [_ other]
-    (if (instance? ZSItem other)
-      (= item (.-item ^ZSItem other))
-      (= item other))))
-
-(defn zsi-weight [^ZSItem zsi]
-  (.-weight zsi))
-
-(defn zsi-item [^ZSItem zsi]
-  (.-item zsi))
-
 (defn calc-next-weight [w-now w-prev]
   (long
     (if (int? w-prev)
@@ -77,9 +64,7 @@
       w-now)))
 
 (defn any->zsi-neg [x]
-  (if (instance? ZSItem x)
-    (zsi (zsi-item x) (* -1 (zsi-weight x)))
-    (zsi x (or (* -1 (zset-weight x)) -1))))
+  (zsi x (or (* -1 (zset-weight x)) -1)))
 
 (defn- m-next ^IPersistentMap [^IPersistentMap m x w-next ?w-prev]
   (if (and (nil? ?w-prev) (= 1 w-next))
@@ -95,14 +80,6 @@
   (if (neg-int? w-next)
     (.without m x)
     (m-next m x w-next ?w-prev)))
-
-(comment
-
-  (do
-    (time (do (def z2 (zset nums-v)) :done))
-    (time (run! (fn [x] x) z2)))
-
-  )
 
 (defn set-debug [s value]
   (set! *print-meta* true)
@@ -235,11 +212,9 @@
   (->ZSet {} nil false))
 (def create-empty-zset-memo (memoize create-empty-zset))
 
-
 (defn- create-empty-zset-pos []
   (->ZSet {} nil true))
 (def create-empty-zset-pos-memo (memoize create-empty-zset-pos))
-
 
 (defn zset
   ([]
@@ -276,12 +251,6 @@
 (defn zset-pos? [^ZSet z]
   (.-pos z))
 
-#_(defn zsi
-    (^ZSItem [x]
-     (->ZSItem x 1))
-    (^ZSItem [x weight]
-     (->ZSItem x (long weight))))
-
 (defn assoc-zset-item-weight
   [zset-item w]
   (vary-meta zset-item assoc :zset/w w))
@@ -310,7 +279,7 @@
   (instance? ZSet x))
 
 (defn zsi-from-reader [v]
-  `(->ZSItem ~@v))
+  `(zset-item ~@v))
 
 (defn zset-from-reader [s]
   `(zset ~s))
@@ -351,15 +320,10 @@
             (map (fn [^MapEntry v]
                    (zsi-out (nth v 0) (nth v 1))))
             m)))))
-
-(defmethod print-method ZSItem [^ZSItem obj, ^Writer w]
-  (binding [*out* w]
-    (.write w "#zsi ")
-    (pr [(.-item ^ZSItem obj) (.-weight ^ZSItem obj)])))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- assert-zset [z]
+(defn- ssert-zset [z]
   (assert (zset? z)
     "All sets must be created via (zset) or (zset-pos).")
   z)
@@ -687,7 +651,9 @@
     (util/vector-sum
       (pmap util/vector-sum nums-v-split)))
 
-
+  (do
+    (time (do (def z2 (zset nums-v)) :done))
+    (time (run! (fn [x] x) z2)))
 
   (first
     (sequence
@@ -704,11 +670,11 @@
 
   (mm/measure (into (zset-pos) nums-v)))
 
-;;(zset+
-;;  #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
-;;  #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
-;;  ;#zs #{#zsi [[:c] 2]}
-;;  )
+(zset+
+  #zs #{#zsi [[:c] -1] #zsi [[:a] 42] #zsi [[:b] 4]}
+  #zs #{#zsi [[:a] -42] #zsi [[:b] -4]}
+  ;#zs #{#zsi [[:c] 2]}
+  )
 
 
 

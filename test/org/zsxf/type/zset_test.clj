@@ -150,7 +150,7 @@
         ;sum manually
         weight-sum       (apply + (map zs2/zset-weight equal))
         ;zset+ sum
-        zset-summed      (transduce (map zs2/zset) zs2/zset+ zsets)
+        zset-summed      (transduce (map zs2/-zset) zs2/zset+ zsets)
         ;values found in the previous step must be equal, check here
         one-value        (into #{} equal)
         _                (is (= 1 (count one-value)))

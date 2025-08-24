@@ -20,7 +20,7 @@
             [clojure.set :as set]
             [taoensso.timbre :as timbre])
   (:import (clojure.lang
-             IFn IObj IHashEq Associative IPersistentCollection MapEntry IPersistentMap IPersistentSet
+             IFn IObj IHashEq Associative IPersistentCollection MapEntry IPersistentSet
              ITransientSet ITransientMap IEditableCollection SeqIterator Seqable)
            (java.io Writer)
            (java.util Set)))
@@ -67,7 +67,7 @@
 (defn any->zsi-neg [x]
   (zsi x (or (* -1 (zset-weight x)) -1)))
 
-(defmacro m-next-inline ^IPersistentMap [^IPersistentMap m x w-next ?w-prev]
+(defmacro m-next-inline ^clojure.lang.IPersistentMap [^clojure.lang.IPersistentMap m x w-next ?w-prev]
   `(if (and (nil? ~?w-prev) (= 1 ~w-next))
      (.assoc ~m ~x ^Long (long 1))
      (case (long ~w-next)
@@ -113,7 +113,7 @@
   "Return true if x is a negative fixed precision integer"
   [x] `(and (int? ~x) (neg? ~x)))
 
-(deftype ZSet [^IPersistentMap m ^IPersistentMap meta-map ^boolean pos]
+(deftype ZSet [^clojure.lang.IPersistentMap m ^clojure.lang.IPersistentMap meta-map ^boolean pos]
   Seqable
   (seq [_] (keys m))
 
@@ -195,6 +195,8 @@
   (toArray [this]
     (.toArray this (object-array (.count this)))))
 
+(def ^{:static true} zset-empty (->ZSet {} nil false))
+
 (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
   ITransientSet
   (count [_]
@@ -212,7 +214,7 @@
           x'      (zset-item-inline x w-next)]
       (case pos
         false (m-next! m x' w-next ?w-prev)
-        true (if (neg-int? w-next)
+        true (if (neg-int?-inline w-next)
                (change! ^ITransientMap m .without x')
                (m-next! m x' w-next ?w-prev)))
       this))
@@ -232,11 +234,13 @@
   (->ZSet {} nil true))
 (def create-empty-zset-pos-memo (memoize create-empty-zset-pos))
 
-(defn zset
-  ([]
-   (create-empty-zset-memo))
-  ([coll]
-   (into (zset) coll)))
+(defmacro zset
+  ([] `~zset-empty)
+  ([coll] `(into zset-empty ~coll)))
+
+(defn -zset
+  ([] (zset))
+  ([coll] (zset coll)))
 
 (defn hash-zset
   "Same signature as clojure.core/hash-set. Creates zset from items."
@@ -244,6 +248,28 @@
    (conj (zset) item))
   ([item & items]
    (zset (conj items item))))
+
+(defn hash-zset-2 [item]
+  (persistent!
+    (conj! (TransientZSet. (transient {}) true) item)))
+
+(defn hash-zset-inline [item]
+  `(conj (zset) ~item))
+
+(comment
+  (let [item (zset-item [42])]
+    (crit/quick-bench
+      (hash-zset item)))
+
+  (let [item (zset-item [42])]
+    (crit/quick-bench
+      (hash-zset-2 item)))
+
+  (let [item (zset-item [42])]
+    (crit/quick-bench
+      (hash-zset-inline item)))
+
+  )
 
 (comment
 

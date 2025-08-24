@@ -367,11 +367,31 @@
 (defn- cast-zset [z]
   (if (zset? z) z (zset z)))
 
+(defn- bubble-max-key
+  "Move a maximal element of coll according to fn k (which returns a
+  number) to the front of coll."
+  [k coll]
+  (let [max (apply max-key k coll)]
+    (cons max (remove #(identical? max %) coll))))
+
+(defn union
+  "Return a set that is the union of the input sets"
+  {:added "1.0"}
+  ([] #{})
+  ([s1] s1)
+  ([s1 s2]
+   (if (< (count s1) (count s2))
+     (into s2 conj s1)
+     (into s1 conj s2)))
+  ([s1 s2 & sets]
+   (let [bubbled-sets (bubble-max-key count (conj sets s2 s1))]
+     (into (first bubbled-sets) (mapcat conj) (rest bubbled-sets)))))
+
 (defn zset+
   ([] (zset))
   ([z1] (zset z1))
   ([z1 z2 & more]
-   (apply clojure.set/union (cast-zset z1) (cast-zset z2) (map cast-zset more))))
+   (apply union (cast-zset z1) (cast-zset z2) (map cast-zset more))))
 
 (defn- cast-zset-pos [z]
   (if (and (zset? z) (zset-pos? z)) z (zset-pos z)))

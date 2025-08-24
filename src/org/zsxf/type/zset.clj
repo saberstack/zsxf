@@ -238,38 +238,10 @@
   ([] `~zset-empty)
   ([coll] `(into zset-empty ~coll)))
 
-(defn -zset
-  ([] (zset))
-  ([coll] (zset coll)))
-
-(defn hash-zset
-  "Same signature as clojure.core/hash-set. Creates zset from items."
-  ([item]
-   (conj (zset) item))
-  ([item & items]
-   (zset (conj items item))))
-
-(defn hash-zset-2 [item]
-  (persistent!
-    (conj! (TransientZSet. (transient {}) true) item)))
-
-(defn hash-zset-inline [item]
+(defmacro hash-zset
+  "Creates zset from items (via macro for performance)."
+  [item]
   `(conj (zset) ~item))
-
-(comment
-  (let [item (zset-item [42])]
-    (crit/quick-bench
-      (hash-zset item)))
-
-  (let [item (zset-item [42])]
-    (crit/quick-bench
-      (hash-zset-2 item)))
-
-  (let [item (zset-item [42])]
-    (crit/quick-bench
-      (hash-zset-inline item)))
-
-  )
 
 (comment
 

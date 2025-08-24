@@ -13,8 +13,8 @@
    ;[org.zsxf.zset :as zs]
             ))
 
-(defn ddatom2->zset-item [ddatom2]
-  (zs2/zset-item ddatom2 (util/bool->weight (nth ddatom2 4))))
+(defn ddatom2->zset-item->zset [ddatom2]
+  (zs2/hash-zset (zs2/zset-item ddatom2 (util/bool->weight (nth ddatom2 4)))))
 
 (defn tx-data->datomic-datoms2->zsets
   ;TODO check if this fn can run after disj-irrelevant-items
@@ -25,8 +25,7 @@
       (map (fn [[_e a _v _t _tf :as datom]]
              (let [a' (idents-m a)]
                (dd2/ddatom2 datom a'))))
-      (map ddatom2->zset-item)
-      (map zs2/hash-zset))
+      (map ddatom2->zset-item->zset))
     data))
 
 (defn zsxf-xform

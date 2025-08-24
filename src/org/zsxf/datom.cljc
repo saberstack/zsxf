@@ -63,6 +63,6 @@
   (into
     []
     (comp
-      (map ds-datom->datom2->zset-item)
-      (map zs2/hash-zset))
+      (map (fn [d]
+             (zs2/hash-zset (ds-datom->datom2->zset-item d)))))
     datoms))

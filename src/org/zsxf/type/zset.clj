@@ -240,8 +240,10 @@
 
 (defn hash-zset
   "Same signature as clojure.core/hash-set. Creates zset from items."
-  [& items]
-  (zset items))
+  ([item]
+   (conj (zset) item))
+  ([item & items]
+   (zset (conj items item))))
 
 (comment
 

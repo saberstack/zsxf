@@ -30,13 +30,12 @@
 (declare zsi)
 (declare transient-zset)
 
+(defmacro dissoc-zset-item-weight
+  [zset-item]
+  `(inline/vary-meta-x ~zset-item dissoc :zset/w))
+
 (defmacro change! [field f & args]
   `(set! ~field (~f ~field ~@args)))
-
-(defn- w->map [w]
-  (if (== 1 w)
-    const/zset-weight-of-1
-    {:zset/w w}))
 
 (defmacro zset-weight [x]
   `(:zset/w (meta ~x)))
@@ -61,7 +60,7 @@
       ;optimization:
       ; reuse metadata map for common weights
       (if (== 1 ~w)
-        (with-meta ~x ~const/zset-weight-of-1)
+        (with-meta ~x (const/zset-weight-of-1))
         (with-meta ~x {:zset/w ~w})))))
 
 (defmacro zset-item-new
@@ -69,21 +68,6 @@
   and x has *no* existing relevant metadata."
   [x w]
   `(with-meta ~x {:zset/w ~w}))
-
-(defn- zsi-out-with-weight [x w]
-  (inline/vary-meta-x x (fnil conj {}) (w->map w)))
-
-(defn zsi-out
-  ([x w]
-   (cond
-     (zset-weight x) x
-     (util/can-meta? x) (zsi-out-with-weight x w)
-     :else
-     (do
-       ;TODO decide how to return w in this case if needed
-       (timbre/error "Emitting no weight for" x)
-       (println)
-       x))))
 
 (defn any->zsi-neg [x]
   (let [w (if-let [w (zset-weight x)] (* -1 w) -1)]
@@ -153,13 +137,11 @@
   (disjoin [this x]
     (.cons this (any->zsi-neg x)))
   (get [_ x]
-    (let [[x' w] (find m x)]
-      (zsi-out x' w)))
+    (inline/find-key m x))
 
   IFn
   (invoke [_ x]
-    (let [[x' w] (find m x)]
-      (zsi-out x' w)))
+    (inline/find-key m x))
 
   IObj
   (meta [_] meta-map)
@@ -214,8 +196,7 @@
   (count [_]
     (.count m))
   (get [_this x]
-    (let [[x w] (find m x)]
-      (zsi-out x w)))
+    (nth (find m x) 0))
   (disjoin [this x]
     (.conj this (any->zsi-neg x)))
   (conj [this x]
@@ -334,7 +315,7 @@
       (.write w " ")
       (pr (into #{}
             (map (fn [^MapEntry v]
-                   (zsi-out (nth v 0) (nth v 1))))
+                   (.key v)))
             m)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing
@@ -467,9 +448,8 @@
              w2    (zset-weight item2)
              w-new (* w1 w2)]
          (zset-item-new
-           (vector
-             (item1-f (inline/vary-meta-x item1 dissoc :zset/w))
-             (item2-f (inline/vary-meta-x item2 dissoc :zset/w)))
+           [(item1-f (dissoc-zset-item-weight item1))
+            (item2-f (dissoc-zset-item-weight item2))]
            w-new))))))
 
 (defmacro intersect-indexed*
@@ -543,7 +523,7 @@
     (time (def nums-v (into []
                         (comp
                           (map vector)
-                          (map zset-item)
+                          (map -zset-item)
                           )
                         (range 1000000))))
 

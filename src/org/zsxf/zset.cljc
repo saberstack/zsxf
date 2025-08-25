@@ -62,7 +62,7 @@
   ([x]
    (if (has-zset-weight? x)
      x
-     (with-meta x const/zset-weight-of-1)))
+     (with-meta x (const/zset-weight-of-1))))
   ([x weight]
    (if (meta x)
      ;meta exists, assoc to it
@@ -70,7 +70,7 @@
      ;optimization:
      ; reuse metadata map for common weights
      (if (== 1 weight)
-       (with-meta x const/zset-weight-of-1)
+       (with-meta x (const/zset-weight-of-1))
        (assoc-zset-item-weight x weight)))))
 
 (defn zset-count-item

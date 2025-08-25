@@ -17,3 +17,7 @@
   "Return true if x is a negative fixed precision integer"
   [x]
   `(and (int? ~x) (neg? ~x)))
+
+(defmacro find-key
+  [^clojure.lang.Associative m ^Object x]
+  `(.key (.entryAt ~m ~x)))

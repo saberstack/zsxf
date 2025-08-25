@@ -1,5 +1,6 @@
 (ns org.saberstack.clojure.core
-  "Experimental. Subject to change.")
+  "Experimental. Subject to change."
+  (:refer-clojure :exclude [time]))
 
 (defn conj-conj!
   "conj! that matches the behavior of conj in terms of handling transients."
@@ -10,6 +11,15 @@
    (if (contains? coll x)
      coll
      (.conj coll x))))
+
+(defmacro time
+  "Like clojure.core/time but accepts many arguments."
+  {:added "1.0"}
+  [& exprs]
+  `(let [start# (. System (nanoTime))
+         ret#   (do ~@exprs)]
+     (prn (str "Elapsed time: " (/ (double (- (. System (nanoTime)) start#)) 1000000.0) " msecs"))
+     ret#))
 
 ;; https://clojure.atlassian.net/issues/CLJ-1615
 ;; https://clojurians.slack.com/archives/C03S1KBA2/p1744219939763269

@@ -332,7 +332,7 @@
       :where
       [?e :hn.item/text ?txt]
       [?e :hn.item/by ?username]
-      [(clojure.string/includes? ?txt "clojure")]]
+      [(clojure.string/includes? ?txt "Clojure")]]
     (dd/db (hn-conn))))
 
 (defn get-all-users-who-mention-clojure-zsxf []

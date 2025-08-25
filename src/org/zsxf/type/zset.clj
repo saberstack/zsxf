@@ -105,10 +105,6 @@
   ([x] (zset-item x))
   ([x w] (zset-item x w)))
 
-(defmacro neg-int?-inline
-  "Return true if x is a negative fixed precision integer"
-  [x] `(and (int? ~x) (neg? ~x)))
-
 (deftype ZSet [^clojure.lang.IPersistentMap m ^clojure.lang.IPersistentMap meta-map ^boolean pos]
   Seqable
   (seq [_] (keys m))

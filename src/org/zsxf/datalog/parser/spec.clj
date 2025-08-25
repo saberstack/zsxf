@@ -1,7 +1,8 @@
 (ns org.zsxf.datalog.parser.spec
   (:require
    #_[clojure.spec.gen.alpha :as gen]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [clojure.string]))
 
 
 (s/def ::placeholder #{'_})
@@ -22,7 +23,7 @@
 
 (s/def ::pattern (s/tuple ::pattern-el ::pattern-el ::pattern-el))
 
-(s/def ::pred-operator #{'= 'not= '> '>= '< '<= 'clojure.core/distinct?})
+(s/def ::pred-operator #{'= 'not= '> '>= '< '<= 'clojure.core/distinct? 'clojure.string/includes?})
 (s/def ::pred-operand (s/or :variable ::variable :constant ::constant))
 
 (s/def ::predicate (s/tuple (s/cat :pred-operator ::pred-operator :pred-operands (s/+ ::pred-operand))))

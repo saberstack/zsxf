@@ -1,5 +1,7 @@
 (ns org.zsxf.datalog.fn
-  #?(:cljs (:require [goog.array :as garray]))
+  (:require
+   #?(:cljs [goog.array :as garray])
+   [clojure.string :as str])
   #?(:clj (:import (clojure.lang Numbers Util))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -124,18 +126,22 @@
        (greater-equal y (first more)))
      false)))
 
+(defn string-includes? [s substr]
+  (str/includes? s substr))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End section
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def query-fns
-  {'=                      `=
-   '==                     `==
-   'not=                   `not=
-   '!=                     `not=
-   '<                      `less
-   '>                      `greater
-   '<=                     `less-equal
-   '>=                     `greater-equal
-   'clojure.core/distinct? `distinct?
-   'distinct?              `distinct?})
+  {'=                        `=
+   '==                       `==
+   'not=                     `not=
+   '!=                       `not=
+   '<                        `less
+   '>                        `greater
+   '<=                       `less-equal
+   '>=                       `greater-equal
+   'clojure.core/distinct?   `distinct?
+   'distinct?                `distinct?
+   'clojure.string/includes? `string-includes?})

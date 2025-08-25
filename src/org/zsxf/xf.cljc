@@ -482,8 +482,8 @@
   "Receives a transaction represented by a vectors of zsets.
   Returns zsets one by one"
   []
-  cat                                                       ;this is (mapcat (fn [tx-v] tx-v))
-  )
+  ;this is (mapcat (fn [tx-v] tx-v))
+  `cat)
 
 (defn disj-irrelevant-items [zset & preds]
   (into

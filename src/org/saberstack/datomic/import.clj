@@ -303,7 +303,28 @@
             ]
           (dd/db conn))))))
 
+(defn get-all-clojure-mentions []
+  (dd/q
+    '[:find (count ?e)
+      :in $
+      :where
+      [?e :hn.item/text ?txt]
+      [(clojure.string/includes? ?txt "clojure")]]
+    (dd/db (hn-conn))))
+
 (defonce *query (atom nil))
+
+(defn get-all-clojure-mentions-zsxf []
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/static-compile
+                  '[:find (count ?e)
+                    :where
+                    [?e :hn.item/text ?txt]
+                    [(clojure.string/includes? ?txt "clojure")]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! *query query)
+    :pending))
 
 (defn get-all-item-ids-via-zsxf []
   (let [conn  (hn-conn)
@@ -376,11 +397,17 @@
          :basis            [last-t-processed latest-t]})
       (medley/assoc-some
         :sync-total-seconds (when (and start initial-sync-end)
-                           (util/nano-to-sec
-                             (- initial-sync-end start)))))))
+                              (util/nano-to-sec
+                                (- initial-sync-end start)))))
+    ))
 
 (defonce all-hn-zsets (atom []))
 (defonce all-hn-zsets-time (atom nil))
+
+(defn reset-state []
+  (ss.loop/stop-all)
+  (reset! *query nil)
+  (System/gc))
 
 (comment
 

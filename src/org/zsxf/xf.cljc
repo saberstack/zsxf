@@ -176,13 +176,15 @@
   (vary-meta x assoc ::xf/no-op true))
 
 (defn where-xf
-  [{pred :pred path :path} & {:keys [last? return-zset-item-xf]}]
+  [{pred :pred path :path}
+   & {:keys [last? return-zset-item-xf]}]
   (comp
-    ;receives a zset, unpacks zset into individual items
-    cat
+    cat                                                     ;receives a zset, unpacks zset into individual items
     (map (fn [zsi]
            (if (pred (path zsi))
-             (into (zs2/zset) return-zset-item-xf [zsi])
+             (if return-zset-item-xf
+               (into (zs2/zset) return-zset-item-xf [zsi])
+               (zs2/hash-zset zsi))
              (zs2/zset))))))
 
 (defn- return-empty-when-last [last? zsi]

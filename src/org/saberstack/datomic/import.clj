@@ -318,10 +318,32 @@
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile
-                  '[:find (count ?e)
+                  '[:find ?e
                     :where
                     [?e :hn.item/text ?txt]
                     [(clojure.string/includes? ?txt "clojure")]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! *query query)
+    :pending))
+
+(defn get-all-users-who-mention-clojure-datomic []
+  (dd/q
+    '[:find ?username
+      :where
+      [?e :hn.item/text ?txt]
+      [?e :hn.item/by ?username]
+      [(clojure.string/includes? ?txt "clojure")]]
+    (dd/db (hn-conn))))
+
+(defn get-all-users-who-mention-clojure-zsxf []
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/compile
+                  '[:find ?username
+                    :where
+                    [?e :hn.item/by ?username]
+                    [?e :hn.item/text ?txt]
+                    [(clojure.string/includes? ?txt "Clojure")]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! *query query)
     :pending))
@@ -416,6 +438,8 @@
   (get-all-users-via-zsxf-single-clause)
 
   (get-all-item-ids-via-zsxf)
+
+  (get-all-clojure-mentions-zsxf)
 
   (time
     (do

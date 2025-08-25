@@ -1,4 +1,5 @@
 (ns org.zsxf.datalog.compiler
+  (:refer-clojure :exclude [compile])
   (:require [medley.core :as medley]
             [org.zsxf.datalog.parser :as parser]
             [org.zsxf.datalog.fn :as dfn]
@@ -186,7 +187,7 @@
                               `(zs2/zset-count-item (nth ~aggregations ~idx) (quote ~variable))))
                           aggregate-vars)]))))]))))
 
-(defmacro static-compile [query]
+(defmacro compile [query]
  (let [query (pre-parse-query query)]
   (condp = (s/conform ::parser-spec/query query)
     ::s/invalid
@@ -292,7 +293,7 @@
   IMPORTANT: Use only with trusted sources.
   runtime-compile can execute arbitrary code."
   [query]
-  (eval `(static-compile ~query)))
+  (eval `(compile ~query)))
 
 (comment
   ;Runtime compilation of a query

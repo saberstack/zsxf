@@ -55,7 +55,7 @@
 (comment
   ;WIP parameterized query example
   (let [query-all (q/create-query
-                    (dcc/static-compile
+                    (dcc/compile
                       '[:find ?d
                         :where
                         [?e :cell/data ?d]

@@ -7,7 +7,7 @@
             [clojure.set :as set]
             [datascript.core :as d]
             [org.zsxf.query :as q]
-            [org.zsxf.datalog.compiler :refer [static-compile]]
+            [org.zsxf.datalog.compiler :refer [compile]]
             [org.zsxf.input.datascript :as ds]
             [taoensso.timbre :as timbre]))
 ;; SQLite database connection
@@ -162,7 +162,7 @@
                    (populate-datascript-db {:min-year 1980 :max-year 1985
                                             :exclude-attrs #{:team/name}}))
           zquery (q/create-query
-                  (static-compile '[:find ?team (sum ?home-runs)
+                  (compile '[:find ?team (sum ?home-runs)
                                     :where
                                     [?t :team/name ?team]
                                     [?s :season/team ?t]
@@ -205,7 +205,7 @@
           ;; The queries differ only by :with semantics,
           ;; because we haven't implemented them yet.
           zquery (q/create-query
-                  (static-compile '[:find ?team ?player (sum ?home-runs)
+                  (compile '[:find ?team ?player (sum ?home-runs)
                                     :where
                                     [?t :team/name ?team]
                                     [?p :player/name ?player]

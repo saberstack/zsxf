@@ -2,7 +2,7 @@
   (:require [clj-memory-meter.core :as mm]
             [medley.core :as medley]
             [org.zsxf.test-data.movielens-etl :as etl]
-            [org.zsxf.datalog.compiler :refer [static-compile]]
+            [org.zsxf.datalog.compiler :refer [compile]]
             [org.zsxf.input.datascript :as ds]
             [org.zsxf.query :as q]
             [datascript.core :as d]
@@ -12,7 +12,7 @@
 ;; Note: goes OOM on both datascript and on zsxf
 ;; The graph branches out very fast, so any algorithm would need to be clever here.
 #_(def danny-4 (q/create-query
-                 (static-compile '[:find ?a3-name ?m3-name ?a2-name ?m2-name ?a1-name ?m1-name ?a0-name ?m0-name ?danny-name
+                 (compile '[:find ?a3-name ?m3-name ?a2-name ?m2-name ?a1-name ?m1-name ?a0-name ?m0-name ?danny-name
                                    :where
                                    [?danny :actor/name "Danny Glover"]
                                    [?m0 :movie/cast ?danny]
@@ -48,7 +48,7 @@
 
 ;; What movies has Danny appeared in?
 #_(def danny-0 (q/create-query
-                 (static-compile [:find ?m0-name ?danny-name
+                 (compile [:find ?m0-name ?danny-name
                                   :where
                                   [?danny :actor/name "Danny Glover"]
                                   [?m0 :movie/cast ?danny]
@@ -58,7 +58,7 @@
 
 (def danny-0
   (q/create-query
-    (static-compile
+    (compile
       '[:find ?m0-name
         :where
         [?danny :actor/name "Danny Glover"]
@@ -87,7 +87,7 @@
 ;; Simple join of all cast in the DB
 (def all-cast
   (q/create-query
-    (static-compile
+    (compile
       '[:find ?title ?name
         :where
         [?m :movie/title ?title]
@@ -116,7 +116,7 @@
   (ds/unlisten-all! conn)
 
   (let [iron-man-lg (q/create-query
-                      (static-compile
+                      (compile
                         '[:find ?a-name
                           :where
                           ;[?m0 :movie/cast ?danny]
@@ -126,7 +126,7 @@
                           [?actor :actor/name ?a-name]])
                       )
         iron-man-sm (q/create-query
-                      (static-compile
+                      (compile
                         '[:find ?a-name
                           :where
                           ;[?m0 :movie/cast ?danny]
@@ -137,7 +137,7 @@
                       )
 
         iron-man-3  (q/create-query
-                      (static-compile
+                      (compile
                         '[:find ?a-name
                           :where
                           ;[?m0 :movie/cast ?danny]

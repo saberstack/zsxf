@@ -317,7 +317,7 @@
 (defn get-all-clojure-mentions-zsxf []
   (let [conn  (hn-conn)
         query (q/create-query
-                (dcc/static-compile
+                (dcc/compile
                   '[:find (count ?e)
                     :where
                     [?e :hn.item/text ?txt]
@@ -329,7 +329,7 @@
 (defn get-all-item-ids-via-zsxf []
   (let [conn  (hn-conn)
         query (q/create-query
-                (dcc/static-compile
+                (dcc/compile
                   '[:find ?item-id
                     :where
                     [_ :hn.item/id ?item-id]]))
@@ -340,7 +340,7 @@
 (defn get-all-users-via-zsxf []
   (let [conn  (hn-conn)
         query (q/create-query
-                (dcc/static-compile
+                (dcc/compile
                   '[:find ?username
                     :where
                     [?e :hn.item/url ?url]
@@ -352,7 +352,7 @@
 (defn get-all-users-via-zsxf-single-clause []
   (let [conn  (hn-conn)
         query (q/create-query
-                (dcc/static-compile
+                (dcc/compile
                   '[:find ?username
                     :where
                     [?e :hn.item/by ?username]]))
@@ -362,7 +362,7 @@
 
 (defn get-all-users-via-zsxf-from-coll [coll]
   (let [query (q/create-query
-                (dcc/static-compile
+                (dcc/compile
                   '[:find ?username
                     :where
                     [?e :hn.item/url ?url]

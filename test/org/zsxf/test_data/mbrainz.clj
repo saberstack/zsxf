@@ -357,7 +357,7 @@
 
 (defn query-count-artists-by-country-2-zsxf [q conn]
   (let [query (q/create-query
-                (dcc/static-compile
+                (dcc/compile
                   '[:find ?country-name (count ?a)
                     :where
                     [?c :country/name-alpha-2 ?country-name]

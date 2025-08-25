@@ -1186,7 +1186,7 @@
                                                @conn))
         result-ds                 (result-ds-f conn)
         query                     (q/create-query
-                                    (dcc/static-compile
+                                    (dcc/compile
                                       '[:find ?title ?year (count ?m)
                                         :where
                                         [?m :movie/year ?year]
@@ -1206,7 +1206,7 @@
 
 ;TODO WIP
 #_(deftest simple-window-test
-    (let [query-1 (dcc/static-compile
+    (let [query-1 (dcc/compile
                     '[:find ?e
                       :where
                       [?e :tx/amount ?tx-amount]

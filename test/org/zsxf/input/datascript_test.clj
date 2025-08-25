@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [datascript.core :as d]
    [org.zsxf.input.datascript :as ds]
-   [org.zsxf.datalog.compiler :refer [static-compile]]
+   [org.zsxf.datalog.compiler :refer [compile]]
    [org.zsxf.query :as q]
    [org.zsxf.util :as util]))
 
@@ -19,7 +19,7 @@
   [dir query result]
    `(let [conn#           (load-test-db ~dir)
           query#           (q/create-query
-                            (static-compile [~@query]))]
+                            (compile [~@query]))]
       (ds/init-query-with-conn query# conn#)
       (is (= (q/get-result query#)
              (d/q (quote ~query) @conn#)
@@ -29,7 +29,7 @@
   [dir query]
    `(let [conn#           (load-test-db ~dir)
           query#           (q/create-query
-                            (static-compile [~@query]))]
+                            (compile [~@query]))]
       (ds/init-query-with-conn query# conn#)
       (is (= (q/get-result query#)
              (d/q (quote ~query) @conn#)))))
@@ -133,7 +133,7 @@
             [?s :season/year ?year]
             [?s :season/hits ?hits]
             [?s :season/home-runs ?home-runs]]
-        query (q/create-query (static-compile [:find ?name (count ?year) (sum ?hits) (sum ?home-runs)
+        query (q/create-query (compile [:find ?name (count ?year) (sum ?hits) (sum ?home-runs)
                                                :where
                                                [?p :player/name ?name]
                                                [?s :season/player ?p]

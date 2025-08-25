@@ -69,7 +69,7 @@
 
 (defn poc-query []
   (let [query (q/create-query
-                (dcc/static-compile
+                (dcc/compile
                   '[:find ?artist-name
                     :where
                     [?c :country/name-alpha-2 "BG"]

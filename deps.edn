@@ -1,5 +1,5 @@
 {:paths   ["src" "resources"]
- :deps    {org.clojure/clojure        {:mvn/version "1.12.1"}
+ :deps    {org.clojure/clojure        {:mvn/version "1.12.2"}
            org.clojure/clojurescript  {:mvn/version "1.12.42"}
            org.clojure/core.async     {:mvn/version "1.9.808-alpha1"}
            saberstack/loop            {:git/url "https://github.com/saberstack/loop"

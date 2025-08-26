@@ -1,14 +1,13 @@
 (ns org.zsxf.util
-  (:require [clojure.core.async :as a]
-            [datascript.core :as d]
-            [taoensso.timbre :as timbre]
-            [clojure.string :as str]
+  (:require #?(:clj [clojure.core.async :as a])
+            #?(:clj [datascript.core :as d])
             #?(:clj [babashka.fs :as fs])
             #?(:clj [charred.api :as charred])
             #?(:clj [clojure.edn :as edn])
             #?(:clj [clojure.java.io :as io])
             #?(:clj [taoensso.nippy :as nippy])
-            #?(:clj [taoensso.encore :as enc]))
+            #?(:clj [taoensso.encore :as enc])
+            [taoensso.timbre :as timbre])
   #?(:clj
      (:import (clojure.lang IObj)
               (java.io PushbackReader)

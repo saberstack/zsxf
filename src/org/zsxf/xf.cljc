@@ -21,7 +21,9 @@
   (:require [net.cgrand.xforms :as xforms]
             [org.saberstack.clojure.inline :as inline]
             [org.zsxf.type.datom-like :as dl]
-            [org.zsxf.type.zset :as zs2]
+   ;[org.zsxf.type.zset :as zs2]
+            #?(:clj [org.zsxf.type.zset :as zset])
+            #?(:cljs [org.zsxf.zset :as zset])
    ;;[org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
@@ -183,12 +185,12 @@
     (map (fn [zsi]
            (if (pred (path zsi))
              (if return-zset-item-xf
-               (into (zs2/zset) return-zset-item-xf [zsi])
-               (zs2/hash-zset zsi))
-             (zs2/zset))))))
+               (into (zset/zset) return-zset-item-xf [zsi])
+               (zset/hash-zset zsi))
+             (zset/zset))))))
 
 (defn- return-empty-when-last [last? zsi]
-  (if last? (zs2/zset) (zs2/hash-zset zsi)))
+  (if last? (zset/zset) (zset/hash-zset zsi)))
 
 (defn join-xf
   "Receives:
@@ -239,12 +241,12 @@
              (let [delta-1 (if (and
                                  (can-join? zsi path-f-1 clause-1)
                                  (pred-1 (path-f-1 zsi)))
-                             (zs2/index (zs2/hash-zset zsi) (comp index-kfn-1 path-f-1))
+                             (zset/index (zset/hash-zset zsi) (comp index-kfn-1 path-f-1))
                              {})
                    delta-2 (if (and
                                  (can-join? zsi path-f-2 clause-2)
                                  (pred-2 (path-f-2 zsi)))
-                             (zs2/index (zs2/hash-zset zsi) (comp index-kfn-2 path-f-2))
+                             (zset/index (zset/hash-zset zsi) (comp index-kfn-2 path-f-2))
                              {})
                    ;If last?, we return an empty zset.
                    ; The current zset-item has been "offered" to all transducers and is not needed anymore.
@@ -266,8 +268,8 @@
             (swap! query-state
               (fn update-indices [state]
                 (-> state
-                  (update uuid-1 zs2/indexed-zset-pos+ delta-1)
-                  (update uuid-2 zs2/indexed-zset-pos+ delta-2))))
+                  (update uuid-1 zset/indexed-zset-pos+ delta-1)
+                  (update uuid-2 zset/indexed-zset-pos+ delta-2))))
             ;return
             (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
       (ss.xforms/map-when not-no-op?
@@ -275,17 +277,17 @@
           ;return
           (vector
             ;add :where clauses as metadata to the joined relations (a zset)
-            (zs2/indexed-zset->zset
+            (zset/indexed-zset->zset
               (let [f1 (with-clause-f clause-1)
                     f2 (with-clause-f clause-2)]
-                (zs2/indexed-zset+
-                  (zs2/indexed-zset+
+                (zset/indexed-zset+
+                  (zset/indexed-zset+
                     ;ΔA ⋈ B
-                    (zs2/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2)
+                    (zset/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2)
                     ;A ⋈ ΔB
-                    (zs2/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2))
+                    (zset/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2))
                   ;ΔA ⋈ ΔB
-                  (zs2/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2)))
+                  (zset/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2)))
               ;transducer to transform zset items during conversion indexed-zset -> zset
               return-zset-item-xf)
             ;original zset-item wrapped in a zset
@@ -395,12 +397,12 @@
              (let [delta-1 (if (and
                                  (can-join? zsi path-f-1 clause-1)
                                  (pred-1 (path-f-1 zsi)))
-                             (zs2/hash-zset zsi)
+                             (zset/hash-zset zsi)
                              {})
                    delta-2 (if (and
                                  (can-join? zsi path-f-2 clause-2)
                                  (pred-2 (path-f-2 zsi)))
-                             (zs2/hash-zset zsi)
+                             (zset/hash-zset zsi)
                              {})
                    zset    (return-empty-when-last last? zsi)]
                ;return
@@ -420,8 +422,8 @@
                    (swap! query-state
                      (fn [state]
                        (-> state
-                         (update uuid-1 (fn [z] (zs2/zset-pos+ (or z (zs2/zset-pos)) delta-1)))
-                         (update uuid-2 (fn [z] (zs2/zset-pos+ (or z (zs2/zset-pos)) delta-2))))))
+                         (update uuid-1 (fn [z] (zset/zset-pos+ (or z (zset/zset-pos)) delta-1)))
+                         (update uuid-2 (fn [z] (zset/zset-pos+ (or z (zset/zset-pos)) delta-2))))))
                    ;return
                    [sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]])))
           (map (fn [[sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]]]
@@ -430,14 +432,14 @@
                    ;return
                    (vector
                      (into
-                       (zs2/zset)
+                       (zset/zset)
                        (comp cat return-zset-item-xf)
                        [;ΔA ⋈ B
-                        (zs2/zset* delta-1 sub-state-2-prev f1 f2)
+                        (zset/zset* delta-1 sub-state-2-prev f1 f2)
                         ;A ⋈ ΔB
-                        (zs2/zset* sub-state-1-prev delta-2 f1 f2)
+                        (zset/zset* sub-state-1-prev delta-2 f1 f2)
                         ;ΔA ⋈ ΔB
-                        (zs2/zset* delta-1 delta-2 f1 f2)])
+                        (zset/zset* delta-1 delta-2 f1 f2)])
                      ;original zset-item wrapped in a zset
                      zset))))
           (mapcat (fn [[cartesian-xf-delta zset]]
@@ -447,11 +449,11 @@
 (defn group-by-xf
   [group-by-path xform]
   (comp
-    (map (fn [zset] (zs2/index zset group-by-path)))
+    (map (fn [zset] (zset/index zset group-by-path)))
     (map (fn [indexed-zset]
            (update-vals indexed-zset
              (fn [indexed-zset-item]
-               (into (zs2/zset) xform indexed-zset-item)))))))
+               (into (zset/zset) xform indexed-zset-item)))))))
 
 (defn group-by-aggregate-config
   "config-m is a map of
@@ -468,15 +470,15 @@
       (into {}
         (map (fn [[[_variable aggregate-kwd :as config-map-k] config-path-f]]
                (condp = aggregate-kwd
-                 :cnt [config-map-k (xforms/reduce zs2/zset-count+)]
-                 :sum [config-map-k (xforms/reduce (zs2/zset-sum+ config-path-f))])))
+                 :cnt [config-map-k (xforms/reduce zset/zset-count+)]
+                 :sum [config-map-k (xforms/reduce (zset/zset-sum+ config-path-f))])))
         config-m))
     (mapcat (fn [m]
               (into []
                 (map (fn [[[variable aggregate-kwd] aggregate-result-n]]
                        (condp = aggregate-kwd
-                         :cnt (zs2/zset-count-item aggregate-result-n variable)
-                         :sum (zs2/zset-sum-item aggregate-result-n variable))))
+                         :cnt (zset/zset-count-item aggregate-result-n variable)
+                         :sum (zset/zset-sum-item aggregate-result-n variable))))
                 m)))))
 
 

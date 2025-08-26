@@ -9,10 +9,7 @@
    - deftype ZSet implements IPersistentSet
    - disjoin is inherently incompatible with zsets
       which convey ops via data with positive and negative weights"
-  (:require [clj-memory-meter.core :as mm]
-            [criterium.core :as crit]
-            [flatland.ordered.map]
-            [net.cgrand.xforms :as xforms]
+  (:require [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
             [org.saberstack.clojure.inline :as inline]
@@ -223,9 +220,9 @@
   (->ZSet {} nil true))
 (def create-empty-zset-pos-memo (memoize create-empty-zset-pos))
 
-(defmacro zset
-  ([] `~zset-empty)
-  ([coll] `(into zset-empty ~coll)))
+(defn zset
+  ([] zset-empty)
+  ([coll] (into zset-empty coll)))
 
 (defmacro hash-zset
   "Creates zset from items (via macro for performance)."
@@ -336,6 +333,16 @@
      (apply zset+ z1 z2 more))))
 
 (defn zset-xf+
+  "Takes a transducer and returns a function with the same signature as zset+.
+  The transducer is applied to each new zset item from the second zset before adding it to the first zset."
+  [xf]
+  (fn
+    ([] (zset))
+    ([z1] z1)
+    ([z1 z2]
+     (into z1 xf z2))))
+
+(defn zset-xxx
   "Takes a transducer and returns a function with the same signature as zset+.
   The transducer is applied to each new zset item from the second zset before adding it to the first zset."
   [xf]

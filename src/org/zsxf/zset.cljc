@@ -27,6 +27,9 @@
   [x]
   (:zset/w (meta x)))
 
+(defn zset-pos []
+  #{})
+
 (defn update-zset-item-weight
   [zset-item f]
   (vary-meta zset-item update :zset/w f))

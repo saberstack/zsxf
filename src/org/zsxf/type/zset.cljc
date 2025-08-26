@@ -17,13 +17,13 @@
             [clojure.string :as str]
             [clojure.set :as set]
             [taoensso.timbre :as timbre])
-  (:import (clojure.lang
-             IFn IObj IHashEq Associative IPersistentCollection MapEntry IPersistentSet
-             ITransientSet ITransientMap IEditableCollection SeqIterator Seqable)
-           (java.io Writer)
-           (java.util Set)))
+  #?(:clj
+     (:import (clojure.lang
+                IFn IObj IHashEq Associative IPersistentCollection MapEntry IPersistentSet
+                ITransientSet ITransientMap IEditableCollection SeqIterator Seqable)
+              (java.io Writer)
+              (java.util Set))))
 
-(declare zset)
 (declare zsi)
 (declare transient-zset)
 
@@ -102,132 +102,140 @@
   ([x] (zset-item x))
   ([x w] (zset-item x w)))
 
-(deftype ZSet [^clojure.lang.IPersistentMap m ^clojure.lang.IPersistentMap meta-map ^boolean pos]
-  Seqable
-  (seq [_] (keys m))
+#?(:clj
+   (deftype ZSet [^clojure.lang.IPersistentMap m ^clojure.lang.IPersistentMap meta-map ^boolean pos]
+     Seqable
+     (seq [_] (keys m))
 
-  IPersistentCollection
-  (cons [_ x]
-    (let [?w-now  (zset-weight x)
-          w-now   (or ?w-now 1)
-          ?w-prev (.valAt m x)
-          w-next  (calc-next-weight w-now ?w-prev)
-          x'      (zset-item x w-next)]
-      (case pos
-        false (ZSet. (m-next m x' w-next ?w-prev) meta-map pos)
-        true (ZSet. (if (inline/neg-int? w-next)
-                      (.without m x')
-                      (m-next m x' w-next ?w-prev))
-               meta-map pos))))
-  (empty [_]
-    (ZSet. {} meta-map pos))
-  (equiv [this other]
-    (.equals this other))
-  (count [_]
-    (.count m))
+     IPersistentCollection
+     (cons [_ x]
+       (let [?w-now  (zset-weight x)
+             w-now   (or ?w-now 1)
+             ?w-prev (.valAt m x)
+             w-next  (calc-next-weight w-now ?w-prev)
+             x'      (zset-item x w-next)]
+         (case pos
+           false (ZSet. (m-next m x' w-next ?w-prev) meta-map pos)
+           true (ZSet. (if (inline/neg-int? w-next)
+                         (.without m x')
+                         (m-next m x' w-next ?w-prev))
+                  meta-map pos))))
+     (empty [_]
+       (ZSet. {} meta-map pos))
+     (equiv [this other]
+       (.equals this other))
+     (count [_]
+       (.count m))
 
-  IPersistentSet
-  (disjoin [this x]
-    (.cons this (any->zsi-neg x)))
-  (get [_ x]
-    (inline/find-key m x))
+     IPersistentSet
+     (disjoin [this x]
+       (.cons this (any->zsi-neg x)))
+     (get [_ x]
+       (inline/find-key m x))
 
-  IFn
-  (invoke [_ x]
-    (inline/find-key m x))
+     IFn
+     (invoke [_ x]
+       (inline/find-key m x))
 
-  IObj
-  (meta [_] meta-map)
-  (withMeta [_ new-meta-map]
-    (ZSet. m new-meta-map pos))
+     IObj
+     (meta [_] meta-map)
+     (withMeta [_ new-meta-map]
+       (ZSet. m new-meta-map pos))
 
-  IHashEq
-  (hasheq [this]
-    (hash-unordered-coll this))
+     IHashEq
+     (hasheq [this]
+       (hash-unordered-coll this))
 
-  IEditableCollection
-  (asTransient [this]
-    (transient-zset this))
+     IEditableCollection
+     (asTransient [this]
+       (transient-zset this))
 
-  Object
-  (toString [this]
-    (str "#zs #{" (str/join " " (map str this)) "}"))
-  (hashCode [this]
-    (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
-  (equals [this other]
-    (or (identical? this other)
-      (and (instance? Set other)
-        (let [^Set other' other]
-          (and (= (.size this) (.size other'))
-            (every? #(.contains other' %) (keys m)))))))
+     Object
+     (toString [this]
+       (str "#zs #{" (str/join " " (map str this)) "}"))
+     (hashCode [this]
+       (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
+     (equals [this other]
+       (or (identical? this other)
+         (and (instance? Set other)
+           (let [^Set other' other]
+             (and (= (.size this) (.size other'))
+               (every? #(.contains other' %) (keys m)))))))
 
-  Set
-  (iterator [this]
-    (SeqIterator. (.seq this)))
-  (contains [_this x]
-    (.containsKey m x))
-  (containsAll [this xs]
-    (every? #(.contains this %) xs))
-  (size [this]
-    (.count this))
-  (isEmpty [this]
-    (zero? (.count this)))
-  (^objects toArray [this ^objects dest]
-    (reduce (fn [idx item]
-              (aset dest idx item)
-              (inc idx))
-      0
-      (.seq this))
-    dest)
-  (toArray [this]
-    (.toArray this (object-array (.count this)))))
+     Set
+     (iterator [this]
+       (SeqIterator. (.seq this)))
+     (contains [_this x]
+       (.containsKey m x))
+     (containsAll [this xs]
+       (every? #(.contains this %) xs))
+     (size [this]
+       (.count this))
+     (isEmpty [this]
+       (zero? (.count this)))
+     (^objects toArray [this ^objects dest]
+       (reduce (fn [idx item]
+                 (aset dest idx item)
+                 (inc idx))
+         0
+         (.seq this))
+       dest)
+     (toArray [this]
+       (.toArray this (object-array (.count this))))))
 
-(def ^{:static true} zset-empty (->ZSet {} nil false))
+#?(:clj
+   (def ^{:static true} zset-empty (->ZSet {} nil false)))
 
-(deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
-  ITransientSet
-  (count [_]
-    (.count m))
-  (get [_this x]
-    (nth (find m x) 0))
-  (disjoin [this x]
-    (.conj this (any->zsi-neg x)))
-  (conj [this x]
-    (let [?w-now  (zset-weight x)
-          w-now   (or ?w-now 1)
-          ?w-prev (.valAt m x)
-          w-next  (calc-next-weight w-now ?w-prev)
-          x'      (zset-item x w-next)]
-      (case pos
-        false (m-next! m x' w-next ?w-prev)
-        true (if (inline/neg-int? w-next)
-               (change! ^ITransientMap m .without x')
-               (m-next! m x' w-next ?w-prev)))
-      this))
-  (contains [_ x]
-    (boolean (.valAt m x)))
-  (persistent [_]
-    (ZSet. (.persistent m) nil pos)))
+#?(:clj
+   (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
+     ITransientSet
+     (count [_]
+       (.count m))
+     (get [_this x]
+       (nth (find m x) 0))
+     (disjoin [this x]
+       (.conj this (any->zsi-neg x)))
+     (conj [this x]
+       (let [?w-now  (zset-weight x)
+             w-now   (or ?w-now 1)
+             ?w-prev (.valAt m x)
+             w-next  (calc-next-weight w-now ?w-prev)
+             x'      (zset-item x w-next)]
+         (case pos
+           false (m-next! m x' w-next ?w-prev)
+           true (if (inline/neg-int? w-next)
+                  (change! ^ITransientMap m .without x')
+                  (m-next! m x' w-next ?w-prev)))
+         this))
+     (contains [_ x]
+       (boolean (.valAt m x)))
+     (persistent [_]
+       (ZSet. (.persistent m) nil pos))))
 
-(defn transient-zset [^ZSet a-zset]
-  (TransientZSet. (transient (.-m a-zset)) (.-pos ^ZSet a-zset)))
+#?(:clj
+   (defn transient-zset [^ZSet a-zset]
+     (TransientZSet. (transient (.-m a-zset)) (.-pos ^ZSet a-zset))))
 
-(defn- create-empty-zset []
-  (->ZSet {} nil false))
-(def create-empty-zset-memo (memoize create-empty-zset))
+#?(:clj
+   (defn- create-empty-zset []
+     (->ZSet {} nil false)))
+#?(:clj
+   (def create-empty-zset-memo (memoize create-empty-zset)))
 
-(defn- create-empty-zset-pos []
-  (->ZSet {} nil true))
-(def create-empty-zset-pos-memo (memoize create-empty-zset-pos))
+#?(:clj
+   (defn- create-empty-zset-pos []
+     (->ZSet {} nil true)))
+#?(:clj
+   (def create-empty-zset-pos-memo (memoize create-empty-zset-pos)))
 
 (defn zset
-  ([] zset-empty)
-  ([coll] (into zset-empty coll)))
+  ([] #?(:clj zset-empty :cljs (zs/zset)))
+  ([coll] (into #?(:clj zset-empty :cljs (zs/zset)) coll)))
 
-(defmacro hash-zset
-  "Creates zset from items (via macro for performance)."
+(defn hash-zset
+  "Creates zset from items"
   [item]
-  `(conj (zset) ~item))
+  (conj (zset) item))
 
 (comment
 
@@ -254,7 +262,7 @@
 
 (defn zset-pos
   ([]
-   (create-empty-zset-pos-memo))
+   #?(:clj (create-empty-zset-pos-memo) :cljs #{}))
   ([coll]
    (into (zset-pos) coll)))
 
@@ -265,8 +273,9 @@
   ([x] `(zset-item ~x))
   ([x w] `(zset-item ~x ~w)))
 
-(defn zset? [x]
-  (instance? ZSet x))
+#?(:clj
+   (defn zset? [x]
+     (instance? ZSet x)))
 
 (defn zsi-from-reader [v]
   `(zset-item ~@v))
@@ -280,57 +289,64 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn pr-on
-  [x w]
-  (if *print-dup*
-    (print-dup x w)
-    (print-method x w))
-  nil)
+#?(:clj
+   (defn pr-on
+     [x w]
+     (if *print-dup*
+       (print-dup x w)
+       (print-method x w))
+     nil))
 
-(defn- print-meta [o, ^Writer w]
-  (when-let [m (meta o)]
-    (when (and (pos? (count m))
-            (or *print-dup*
-              (and *print-meta* *print-readably*)))
-      (.write w " ^")
-      (if (and (= (count m) 1) (:tag m))
-        (pr-on (:tag m) w)
-        (pr-on m w))
-      (.write w " "))))
+#?(:clj
+   (defn- print-meta [o, ^Writer w]
+     (when-let [m (meta o)]
+       (when (and (pos? (count m))
+               (or *print-dup*
+                 (and *print-meta* *print-readably*)))
+         (.write w " ^")
+         (if (and (= (count m) 1) (:tag m))
+           (pr-on (:tag m) w)
+           (pr-on m w))
+         (.write w " ")))))
 
-(defmethod print-method ZSet [^ZSet z, ^Writer w]
-  (binding [*out* w]
-    (let [m (.-m z)]
-      (print-meta z w)
-      (.write w "#zs")
-      (when (zset-pos? z)
-        (.write w "p"))
-      (.write w " ")
-      (pr (into #{}
-            (map (fn [^MapEntry v]
-                   (.key v)))
-            m)))))
+#?(:clj
+   (defmethod print-method ZSet [^ZSet z, ^Writer w]
+     (binding [*out* w]
+       (let [m (.-m z)]
+         (print-meta z w)
+         (.write w "#zs")
+         (when (zset-pos? z)
+           (.write w "p"))
+         (.write w " ")
+         (pr (into #{}
+               (map (fn [^MapEntry v]
+                      (.key v)))
+               m))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End custom printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- cast-zset [z]
-  (if (zset? z) z (zset z)))
+#?(:clj
+   (defn- cast-zset [z]
+     (if (zset? z) z (zset z))))
 
-(defn zset+
-  ([] (zset))
-  ([z1] (zset z1))
-  ([z1 z2 & more]
-   (apply set/union (cast-zset z1) (cast-zset z2) (map cast-zset more))))
+#?(:clj
+   (defn zset+
+     ([] (zset))
+     ([z1] (zset z1))
+     ([z1 z2 & more]
+      (apply set/union (cast-zset z1) (cast-zset z2) (map cast-zset more)))))
 
-(defn- cast-zset-pos [z]
-  (if (and (zset? z) (zset-pos? z)) z (zset-pos z)))
+#?(:clj
+   (defn- cast-zset-pos [z]
+     (if (and (zset? z) (zset-pos? z)) z (zset-pos z))))
 
-(defn zset-pos+
-  ([] (zset-pos))
-  ([z1] z1)
-  ([z1 z2 & more]
-   (cast-zset-pos
-     (apply zset+ z1 z2 more))))
+#?(:clj
+   (defn zset-pos+
+     ([] (zset-pos))
+     ([z1] z1)
+     ([z1 z2 & more]
+      (cast-zset-pos
+        (apply zset+ z1 z2 more)))))
 
 (defn zset-xf+
   "Takes a transducer and returns a function with the same signature as zset+.
@@ -359,26 +375,28 @@
            (any->zsi-neg x)))
     z))
 
-(defn indexed-zset+
-  "Adds two indexed zsets.
-  Same as zset+ but for indexed zset which is a map."
-  ([]
-   {})
-  ([iz] iz)
-  ([iz1 iz2]
-   (merge-with zset+ iz1 iz2))
-  ([iz1 iz2 & more]
-   (apply merge-with zset+ iz1 iz2 more)))
+#?(:clj
+   (defn indexed-zset+
+     "Adds two indexed zsets.
+     Same as zset+ but for indexed zset which is a map."
+     ([]
+      {})
+     ([iz] iz)
+     ([iz1 iz2]
+      (merge-with zset+ iz1 iz2))
+     ([iz1 iz2 & more]
+      (apply merge-with zset+ iz1 iz2 more))))
 
-(defn indexed-zset-pos+
-  "Adds two indexed zsets.
-  Same as zset-pos+ but for indexed zset which is a map."
-  ([] {})
-  ([iz] iz)
-  ([iz1 iz2]
-   (merge-with zset-pos+ iz1 iz2))
-  ([iz1 iz2 & more]
-   (apply merge-with zset-pos+ iz1 iz2 more)))
+#?(:clj
+   (defn indexed-zset-pos+
+     "Adds two indexed zsets.
+     Same as zset-pos+ but for indexed zset which is a map."
+     ([] {})
+     ([iz] iz)
+     ([iz1 iz2]
+      (merge-with zset-pos+ iz1 iz2))
+     ([iz1 iz2 & more]
+      (apply merge-with zset-pos+ iz1 iz2 more))))
 
 
 (defn- index-xf-pair

@@ -131,10 +131,16 @@
      more)))
 
 (defn zset
+  ([] #{})
   ([coll]
    (zset (map identity) coll))
   ([xf coll]
    (zset+ (comp (map zset-item) xf) #{} coll)))
+
+(defn hash-zset
+  "Creates zset from items"
+  [item]
+  (conj (zset) item))
 
 (defn zset-xf+
   "Takes a transducer and returns a function with the same signature as zset+.

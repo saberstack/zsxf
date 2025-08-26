@@ -9,7 +9,10 @@
    - deftype ZSet implements IPersistentSet
    - disjoin is inherently incompatible with zsets
       which convey ops via data with positive and negative weights"
-  (:require [net.cgrand.xforms :as xforms]
+  (:refer-clojure :exclude [time])
+  (:require [criterium.core :as crit]
+            [org.saberstack.clojure.core :refer [time]]
+            [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
             [org.saberstack.clojure.inline :as inline]
@@ -105,7 +108,12 @@
 #?(:clj
    (deftype ZSet [^clojure.lang.IPersistentMap m ^clojure.lang.IPersistentMap meta-map ^boolean pos]
      Seqable
-     (seq [_] (keys m))
+     (seq [_]
+       ;(keys m)
+       (seq
+         (reduce-kv
+           (fn [accum k _v] (cons k accum))
+           (lazy-seq) m)))
 
      IPersistentCollection
      (cons [_ x]
@@ -186,6 +194,13 @@
 #?(:clj
    (def ^{:static true} zset-empty (->ZSet {} nil false)))
 
+(comment
+  (def z (into (zset) (map vector (range 10000))))
+
+  (crit/quick-bench
+    (do (doall (seq z)) :done))
+
+  )
 #?(:clj
    (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
      ITransientSet

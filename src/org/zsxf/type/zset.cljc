@@ -108,12 +108,7 @@
 #?(:clj
    (deftype ZSet [^clojure.lang.IPersistentMap m ^clojure.lang.IPersistentMap meta-map ^boolean pos]
      Seqable
-     (seq [_]
-       ;(keys m)
-       (seq
-         (reduce-kv
-           (fn [accum k _v] (cons k accum))
-           (lazy-seq) m)))
+     (seq [_] (keys m))
 
      IPersistentCollection
      (cons [_ x]
@@ -162,7 +157,7 @@
      (toString [this]
        (str "#zs #{" (str/join " " (map str this)) "}"))
      (hashCode [this]
-       (reduce + (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
+       (reduce unchecked-add (keep #(when (some? %) (.hashCode ^Object %)) (.seq this))))
      (equals [this other]
        (or (identical? this other)
          (and (instance? Set other)

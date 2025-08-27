@@ -9,9 +9,7 @@
    - deftype ZSet implements IPersistentSet
    - disjoin is inherently incompatible with zsets
       which convey ops via data with positive and negative weights"
-  (:refer-clojure :exclude [time])
   (:require [criterium.core :as crit]
-            [org.saberstack.clojure.core :refer [time]]
             [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
             [org.zsxf.util :as util]

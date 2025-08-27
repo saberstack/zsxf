@@ -7,16 +7,22 @@
             [datomic.api :as dd]
             [medley.core :as medley]
             [net.cgrand.xforms :as xforms]
+            [org.saberstack.io :as ss.io]
             [org.zsxf.datomic.cdc :as dd.cdc]
             [org.zsxf.input.datomic :as idd]
             [org.zsxf.query :as q]
             [org.zsxf.util :as util]
             [org.zsxf.datalog.compiler :as dcc]
             [taoensso.nippy :as nippy]
-            [taoensso.timbre :as timbre]))
-(declare hn-item->tx-data)
+            [taoensso.timbre :as timbre]
+            [tea-time.core :as tt]))
 
+(declare hn-item->tx-data)
 (defonce hn-items (atom []))
+
+;save data to disk at this location
+(def ^:static dir-base-path "./hndl/")
+(def ^:static path-last-imported (str dir-base-path "_datomic-last-imported"))
 
 ;; Load from disk all item files
 ;; The files are named like "items-500-1000.parquet"
@@ -25,11 +31,18 @@
     (peek
       (str/split (str (fs/file-name unix-path)) #"\-"))))
 
-(defn all-item-files []
-  (sort-by id-to-sort-by
-    (eduction
-      (filter (fn [unix-path] (str/starts-with? unix-path "./hndl/items-")))
-      (fs/list-dir "./hndl"))))
+(defn get-last-imported-from-disk! []
+  (ss.io/try-io!
+    (nippy/thaw-from-file
+      path-last-imported)))
+
+(defn write-last-imported [file-name]
+  (ss.io/try-io!
+    (nippy/freeze-to-file
+      path-last-imported
+      (str file-name))))
+
+
 
 (def file-xf
   (comp
@@ -38,20 +51,34 @@
     (map (fn [s] (charred/read-json s :key-fn keyword)))
     (map (fn [m] (hn-item->tx-data m)))))
 
-(defn thaw-item-files [files]
+(defn item-files-to-vector! [files]
   (reset! hn-items [])
   (System/gc)
-  (let [input-ch (util/pipeline-output
-                   ;write to atom, parquet, etc
-                   (map (fn [item] (swap! hn-items conj item)))
-                   ;parallel transform
-                   file-xf)]
-    (a/onto-chan!! input-ch files)))
+  (let [{:keys [input-ch output-ch]}
+        (util/pipeline-output
+          ;write to atom, parquet, etc
+          (map (fn [item] (swap! hn-items conj item)))
+          ;parallel transform
+          file-xf)]
+    (a/onto-chan!! input-ch files)
+    output-ch))
+
+(defn all-item-files [drop-upto-file-name]
+  (into []
+    (comp
+      (filter (fn [unix-path] (str/starts-with? unix-path "./hndl/items-")))
+      (medley/drop-upto #(str/ends-with? % drop-upto-file-name)))
+    (sort-by id-to-sort-by
+      (fs/list-dir "./hndl"))))
 
 (comment
-  (thaw-item-files (take 1 (all-item-files)))
-  (count @hn-items)
-  )
+  (item-files-to-vector!
+    (all-item-files
+      (get-last-imported-from-disk!)))
+
+
+  (write-last-imported-file "items-44641001-44642000")
+  (count @hn-items))
 
 ;; End of section
 
@@ -187,13 +214,13 @@
       (contains? m :time) (assoc :hn.item/time (java.util.Date. ^long (* 1000 (:time m))))
       (contains? m :text) (assoc :hn.item/text (:text m))
       (contains? m :dead) (assoc :hn.item/dead (:dead m))
-      (contains? m :parent) (assoc :hn.item/parent [:hn.item/id (:parent m)])
-      (contains? m :poll) (assoc :hn.item/poll [:hn.item/id (:poll m)])
-      (contains? m :kids) (assoc :hn.item/kids (mapv (fn [id] [:hn.item/id id]) (:kids m)))
+      ;;(contains? m :parent) (assoc :hn.item/parent [:hn.item/id (:parent m)])
+      ;;(contains? m :poll) (assoc :hn.item/poll [:hn.item/id (:poll m)])
+      ;;(contains? m :kids) (assoc :hn.item/kids (mapv (fn [id] [:hn.item/id id]) (:kids m)))
       (contains? m :url) (assoc :hn.item/url (:url m))
       (contains? m :score) (assoc :hn.item/score (:score m))
       (contains? m :title) (assoc :hn.item/title (:title m))
-      (contains? m :parts) (assoc :hn.item/parts (mapv (fn [id] [:hn.item/id id]) (:parts m)))
+      ;;(contains? m :parts) (assoc :hn.item/parts (mapv (fn [id] [:hn.item/id id]) (:parts m)))
       (contains? m :descendants) (assoc :hn.item/descendants (:descendants m)))))
 
 (defn hn-item-tx-data-xf [num-of-chunks chunk-size]
@@ -335,6 +362,7 @@
       [(clojure.string/includes? ?txt "Clojure")]]
     (dd/db (hn-conn))))
 
+
 (defn get-all-users-who-mention-clojure-zsxf []
   (let [conn  (hn-conn)
         query (q/create-query
@@ -343,6 +371,20 @@
                     :where
                     [?e :hn.item/by ?username]
                     [?e :hn.item/text ?txt]
+                    [(clojure.string/includes? ?txt "Clojure")]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! *query query)
+    :pending))
+
+(defn get-all-clojure-mentions-by-raspasov []
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/compile
+                  '[:find ?txt
+                    :where
+                    [?e :hn.item/by ?user]
+                    [?e :hn.item/text ?txt]
+                    [(clojure.string/includes? ?user "raspasov")]
                     [(clojure.string/includes? ?txt "Clojure")]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! *query query)
@@ -485,26 +527,29 @@
 
   (= (q/get-result @*query) *query-result-datomic)
 
-  (xforms/window window-n rf/avg #(rf/avg %1 %2 -1))
-
-  )
+  (xforms/window window-n rf/avg #(rf/avg %1 %2 -1)))
 (set! *warn-on-reflection* true)
 
-(def s "hello")
+(defn files->vector->datomic []
+  (let [files     (all-item-files
+                    (get-last-imported-from-disk!))
+        output-ch (item-files-to-vector! files)]
+    (time (a/<!! output-ch))
+    (timbre/info "files->vector count :::" (count @hn-items))
+    (future
+      (time (import-items-to-datomic! (hn-conn) @hn-items))
+      (write-last-imported (str (peek files))))))
 
+(defn start-datomic-sync-task []
+  (tt/every! 10
+    (bound-fn []
+      (files->vector->datomic))))
 
 (comment
-  )
 
-(comment
-
-  (delete-and-init-datomic!)
+  ;(delete-and-init-datomic!)
 
   (hn-conn)
-
-  (future
-    (time
-      (import-items-to-datomic! (hn-conn) @hn-items)))
 
   (count @import-errors)
 

@@ -310,7 +310,7 @@
       useful for writing to disk, or other side effects.
       Applies the main transducer xf to items from the returned input
       channel, and the output-xf, which can be side-effecting, to the results.
-      Returns the input channel."
+      Returns the input and output channels."
      [output-xf xf]
      (let [input-ch  (a/chan 1)
            output-ch (a/chan 1 (comp output-xf (remove any?)))
@@ -320,12 +320,12 @@
                                   ;because nil is not a valid channel value
                                   (nil? (or x (timbre/info "dropping nil item"))))))]
        (a/pipeline-blocking (available-processors) output-ch xf' input-ch)
-       (a/go
+       #_(a/go
          (time
            (let [_ret (a/<! output-ch)]
              (timbre/info "output-ch closed"))))
        ;return input-ch
-       input-ch)))
+       {:input-ch input-ch :output-ch output-ch})))
 
 (defn key-intersection
   "Taken from clojure.set/intersection but adapted to work for maps.

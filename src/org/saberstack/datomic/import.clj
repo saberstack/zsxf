@@ -251,6 +251,7 @@
     (completing
       (fn [conn chunk]
         (try
+          (timbre/info "transacting..." (count chunk))
           @(dd/transact conn chunk)
           (catch Exception e
             (timbre/error "Error during transaction:" (.getMessage e))
@@ -483,6 +484,8 @@
 
   (get-all-clojure-mentions-zsxf)
 
+  (get-all-clojure-mentions-by-raspasov)
+
   (time
     (do
       (reset! *query-result-datomic (get-all-item-ids-via-datomic))
@@ -536,8 +539,8 @@
         output-ch (item-files-to-vector! files)]
     (time (a/<!! output-ch))
     (timbre/info "files->vector count :::" (count @hn-items))
-    (future
-      (time (import-items-to-datomic! (hn-conn) @hn-items))
+    (time (import-items-to-datomic! (hn-conn) @hn-items))
+    (when (peek files)
       (write-last-imported (str (peek files))))))
 
 (defn start-datomic-sync-task []
@@ -546,6 +549,13 @@
       (files->vector->datomic))))
 
 (comment
+
+
+
+  (tt/reset-tasks!)
+
+  (get-last-imported-from-disk!)
+  ;(write-last-imported "items-44642066-44643065")
 
   ;(delete-and-init-datomic!)
 
@@ -557,3 +567,4 @@
 
   ;(reset! halt-import? true)
   )
+(timbre/set-ns-min-level! :debug)

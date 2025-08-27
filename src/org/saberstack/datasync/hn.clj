@@ -93,7 +93,7 @@
 
 (timbre/set-ns-min-level! :debug)
 
-(defn start-refresh-task []
+(defn start-hn-sync-task []
   (tt/every! 5
     (bound-fn []
       (let [item-id-last-synced (get-last-item-id-from-disk!)
@@ -111,7 +111,7 @@
 (comment
   (tt/reset-tasks!)
   (tt/start!)
-  (start-refresh-task)
+  (start-hn-sync-task)
   (:body (api/max-item!))
 
 
@@ -134,4 +134,4 @@
         (range 1))))
 
   (nippy/thaw-from-file
-    (str dir-base-path "items-45024001-45025000")))
+    (str dir-base-path "items-44642001-44643000")))

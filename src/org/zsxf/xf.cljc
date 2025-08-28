@@ -21,10 +21,8 @@
   (:require [net.cgrand.xforms :as xforms]
             [org.saberstack.clojure.inline :as inline]
             [org.zsxf.type.datom-like :as dl]
-   ;[org.zsxf.type.zset :as zs2]
             #?(:clj [org.zsxf.type.zset :as zset])
             #?(:cljs [org.zsxf.zset :as zset])
-   ;;[org.zsxf.zset :as zs]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]

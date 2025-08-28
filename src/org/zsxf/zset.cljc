@@ -20,6 +20,16 @@
 
 ;How to turn a zset into a proper Clojure collection (maybe in the future, if beneficial)
 ; Follow the example from https://github.com/clj-commons/ordered/blob/master/src/flatland/ordered/set.clj
+(declare zset)
+(declare zset+)
+(declare zset-item)
+
+(defn zset
+  ([] #{})
+  ([coll]
+   (zset (map identity) coll))
+  ([xf coll]
+   (zset+ (comp (map zset-item) xf) #{} coll)))
 
 (defn zset-weight
   "Get the weight of a zset item.
@@ -97,7 +107,7 @@
     (when-not result (timbre/error (s/explain-data ::zs/zset x)))
     result))
 
-(declare zset)
+
 
 (defn zset+
   "Adds two zsets"

@@ -9,8 +9,7 @@
    - deftype ZSet implements IPersistentSet
    - disjoin is inherently incompatible with zsets
       which convey ops via data with positive and negative weights"
-  (:require [criterium.core :as crit]
-            [net.cgrand.xforms :as xforms]
+  (:require [net.cgrand.xforms :as xforms]
             [org.zsxf.constant :as const]
             [org.zsxf.util :as util]
             [org.saberstack.clojure.inline :as inline]
@@ -27,6 +26,27 @@
 
 (declare zsi)
 (declare transient-zset)
+
+(comment
+  (deftype Foo [])
+  (def foo1 (Foo.))
+
+  (set! Foo -call
+    (fn [this x]
+      (println this)
+      (str "hello, " x)))
+
+
+  (def foo2 (Foo.))
+
+  (set! foo2 -call
+    (fn [this x]
+      (println this)
+      (str "hello, " x)))
+
+
+
+  )
 
 (defmacro dissoc-zset-item-weight
   [zset-item]
@@ -187,13 +207,7 @@
 #?(:clj
    (def ^{:static true} zset-empty (->ZSet {} nil false)))
 
-(comment
-  (def z (into (zset) (map vector (range 10000))))
 
-  (crit/quick-bench
-    (do (doall (seq z)) :done))
-
-  )
 #?(:clj
    (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
      ITransientSet
@@ -244,29 +258,6 @@
   "Creates zset from items"
   [item]
   (conj (zset) item))
-
-(comment
-
-  (let [xf (comp (map vector) (map -zset-item))
-        s1 (into (zset) xf (range 0 10000))
-        s2 (into (zset) xf (range 5000 15000))
-        s3 (into (zset) xf (range 10000 20000))]
-    (crit/quick-bench
-      (set/union s1 s2 s3)))
-
-  (get (->
-         (zset)
-         (transient)
-         (conj! (with-meta ["42"] {:zset/w 1 :meta "a"}))
-         (conj! (with-meta ["42"] {:zset/w 1 :meta "b"}))
-         (persistent!))
-    ["42"])
-
-  (get (->
-         (zset)
-         (conj (with-meta ["42"] {:zset/w 1 :meta "a"}))
-         (conj (with-meta ["42"] {:zset/w 1 :meta "b"})))
-    ["42"]))
 
 (defn zset-pos
   ([]
@@ -429,15 +420,15 @@
   [z kfn]
   `(into {} (index-xf ~kfn (zset)) ~z))
 
-(defmacro indexed-zset->zset
+(defn indexed-zset->zset
   "Convert an indexed zset back into a zset"
   [indexed-zset xf]
-  `(into
-     (zset)
-     (comp
-       (mapcat (fn [k+v#] (nth k+v# 1)))
-       ~xf)
-     ~indexed-zset))
+  (into
+    (zset)
+    (comp
+      (mapcat (fn [k+v#] (nth k+v# 1)))
+      xf)
+    indexed-zset))
 
 (defn zset-sum+
   [f]
@@ -455,16 +446,6 @@
   ([accum item]
    (let [w (zset-weight item)]
      (+ accum w))))
-
-;Usage
-(comment
-  (let [zs (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
-        iz (index zs (fn [m] (first (:name m))))]
-    (indexed-zset+ iz iz))
-
-  (let [zsp (zset-pos #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
-        iz  (index zsp (fn [m] (first (:name m))))]
-    (indexed-zset-pos+ iz iz)))
 
 (defn zset*
   "Z-Sets multiplication"
@@ -503,19 +484,6 @@
                    ~zset*-item2-f))))
         commons#))))
 
-;Usage
-(comment
-  (let [zs (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
-        iz (index zs (fn [m] (first (:name m))))]
-    (intersect-indexed*
-      (indexed-zset+ iz iz)
-      (indexed-zset+ iz iz))))
-
-;Usage
-(comment
-  (zset*
-    (zset #{(zsi {:a 41} 2) (zsi {:a 42} 2)})
-    (zset #{(zsi {:a 41} 2) (zsi {:a 42} 2)})))
 
 (defn zset-count-item
   "zset singleton item representing a count"
@@ -651,8 +619,6 @@
 
   (mm/measure (into (zset-pos) nums-v)))
 
-
-
 (comment
   ;public fns
   zs/zset-weight :OK zset-weight
@@ -681,3 +647,27 @@
   )
 
 (set! *print-meta* true)
+
+;Usage
+(comment
+  (let [zs (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+        iz (index zs (fn [m] (first (:name m))))]
+    (indexed-zset+ iz iz))
+
+  (let [zsp (zset-pos #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+        iz  (index zsp (fn [m] (first (:name m))))]
+    (indexed-zset-pos+ iz iz)))
+
+;Usage
+(comment
+  (let [zs (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
+        iz (index zs (fn [m] (first (:name m))))]
+    (intersect-indexed*
+      (indexed-zset+ iz iz)
+      (indexed-zset+ iz iz))))
+
+;Usage
+(comment
+  (zset*
+    (zset #{(zsi {:a 41} 2) (zsi {:a 42} 2)})
+    (zset #{(zsi {:a 41} 2) (zsi {:a 42} 2)})))

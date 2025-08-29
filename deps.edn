@@ -126,7 +126,7 @@
             {org.saberstack/clj-hackernews-api
              {:local/root "/Users/raspasov/projects/saberstack/clj-hackernews-api"}}
             :jvm-opts [
-                       ;"-XX:+UseZGC"
+                       "-XX:+UseZGC"
                        ;"-XX:+UseShenandoahGC"
                        ;"-XX:ShenandoahGCMode=generational"
                        ;"-XX:+AlwaysPreTouch"

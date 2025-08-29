@@ -377,15 +377,28 @@
     (reset! *query query)
     :pending))
 
+
 (defn get-all-clojure-mentions-by-raspasov []
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile
                   '[:find ?txt
                     :where
-                    [?e :hn.item/by ?user]
+                    [?e :hn.item/by "raspasov"]
                     [?e :hn.item/text ?txt]
-                    [(clojure.string/includes? ?user "raspasov")]
+                    [(clojure.string/includes? ?txt "Clojure")]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! *query query)
+    :pending))
+
+(defn get-all-clojure-posts-by-raspasov []
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/compile
+                  '[:find ?txt
+                    :where
+                    [?e :hn.item/by "raspasov"]
+                    [?e :hn.item/title ?txt]
                     [(clojure.string/includes? ?txt "Clojure")]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! *query query)
@@ -548,11 +561,21 @@
     (bound-fn []
       (files->vector->datomic))))
 
+
+(defonce display-task (atom nil))
+
+(defn start-get-result-display []
+  (reset! display-task
+    (tt/every! 5
+      (bound-fn []
+        (clojure.pprint/pprint
+          (q/get-result @*query))))))
+
 (comment
 
+  (start-get-result-display)
 
-
-  (tt/reset-tasks!)
+  (start-datomic-sync-task)
 
   (get-last-imported-from-disk!)
   ;(write-last-imported "items-44642066-44643065")

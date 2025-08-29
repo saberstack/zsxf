@@ -20,7 +20,6 @@
 
 ;How to turn a zset into a proper Clojure collection (maybe in the future, if beneficial)
 ; Follow the example from https://github.com/clj-commons/ordered/blob/master/src/flatland/ordered/set.clj
-(declare zset)
 (declare zset+)
 (declare zset-item)
 
@@ -139,13 +138,6 @@
          accum-final))
      zset-1
      more)))
-
-(defn zset
-  ([] #{})
-  ([coll]
-   (zset (map identity) coll))
-  ([xf coll]
-   (zset+ (comp (map zset-item) xf) #{} coll)))
 
 (defn hash-zset
   "Creates zset from items"

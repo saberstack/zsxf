@@ -23,6 +23,7 @@
             [org.zsxf.type.datom-like :as dl]
             #?(:clj [org.zsxf.type.zset :as zset])
             #?(:cljs [org.zsxf.zset :as zset])
+            [clj-fast.inline]
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]
@@ -105,18 +106,21 @@
       (meta data))))
 
 (defn detect-join-type [zsi path-f clause]
-  (cond
-    (and
-      (dl/datom-like? zsi)
-      (nil? (:xf.clause (meta zsi)))) :datom
-    (and
-      (dl/datom-like? zsi)
-      (not (nil? (:xf.clause (meta zsi))))) :datom-as-relation
-    (rel/relation? zsi) :relation
-    :else
-    (throw (ex-info "invalid input zset-item" {:zset-item           zsi
-                                               :path-f-of-zset-item (path-f zsi)
-                                               :clause              clause}))))
+  (let [xf-clause (:xf.clause (meta zsi))]
+    (cond
+      (and
+        (dl/datom-like? zsi)
+        (nil? xf-clause)) :datom
+      (and
+        (dl/datom-like? zsi)
+        (not (nil? xf-clause))) :datom-as-relation
+      (rel/relation? zsi) :relation
+      :else
+      (throw
+        (ex-info "invalid input zset-item"
+          {:zset-item           zsi
+           :path-f-of-zset-item (path-f zsi)
+           :clause              clause})))))
 
 (defn can-join?
   [zset-item path-f clause]
@@ -136,16 +140,6 @@
     (timbre/info "zset-item meta ::::" (meta (path-f zset-item)))
     (timbre/info "looking for clause:" clause))
 
-(defn can-join2?
-  [zset-item path-f pred clause]
-  (let [jt             (detect-join-type zset-item path-f clause)
-        item-can-join? (case jt
-                         :datom true
-                         :datom-as-relation (= clause (:xf.clause (meta (path-f zset-item))))
-                         :relation (= clause (:xf.clause (meta (path-f zset-item)))))]
-    (and item-can-join?
-      (pred (path-f zset-item)))))
-
 (defn can-join-union?
   "Unions use a simpler can-join?
   Can only join to exact clause matches for the time being"
@@ -157,13 +151,7 @@
   (fn [item]
     (inline/vary-meta-xy item assoc :xf.clause clause)))
 
-(defn with-clause
-  "If ?clause is not nil, set it as metadata.
-  Otherwise, return the item unchanged."
-  [item ?clause]
-  (if (not (nil? ?clause))
-    (vary-meta item assoc :xf.clause ?clause)
-    item))
+(def with-clause-f-memo (clj-fast.inline/memoize-c* 1 with-clause-f))
 
 (defrecord params-join-xf-1 [index-state-1-prev index-state-2-prev delta-1 delta-2 zset])
 
@@ -276,8 +264,8 @@
           (vector
             ;add :where clauses as metadata to the joined relations (a zset)
             (zset/indexed-zset->zset
-              (let [f1 (with-clause-f clause-1)
-                    f2 (with-clause-f clause-2)]
+              (let [f1 (with-clause-f-memo clause-1)
+                    f2 (with-clause-f-memo clause-2)]
                 (zset/indexed-zset+
                   (zset/indexed-zset+
                     ;ΔA ⋈ B
@@ -291,6 +279,14 @@
             ;original zset-item wrapped in a zset
             (:zset params))))
       (ss.xforms/cat-when not-no-op?))))
+
+#_(defn with-clause
+    "If ?clause is not nil, set it as metadata.
+    Otherwise, return the item unchanged."
+    [item ?clause]
+    (if (not (nil? ?clause))
+      (vary-meta item assoc :xf.clause ?clause)
+      item))
 
 #_(defn difference-xf
     ;TODO switch to zset2
@@ -425,8 +421,8 @@
                    ;return
                    [sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]])))
           (map (fn [[sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]]]
-                 (let [f1 (with-clause-f clause-1)
-                       f2 (with-clause-f clause-2)]
+                 (let [f1 (with-clause-f-memo clause-1)
+                       f2 (with-clause-f-memo clause-2)]
                    ;return
                    (vector
                      (into

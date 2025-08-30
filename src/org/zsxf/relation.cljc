@@ -6,13 +6,13 @@
     (and
       (indexed? x)
       (= (count x) 2)
-      (:xf.clause (meta (first x)))
-      (:xf.clause (meta (second x))))))
+      (:xf.clause (meta (nth x 0)))
+      (:xf.clause (meta (nth x 1))))))
 
 (defn index-clauses [rel1+rel2-v]
   rel1+rel2-v
   ;TODO potentially use this to simplify (or eliminate the need for) org.zsxf.xf :path, :pred, etc
-  #_(if (relation? rel1+rel2-v)
+  (if (relation? rel1+rel2-v)
     (let [[rel1 rel2] rel1+rel2-v
           rel-index-1-prev (:rel.index (meta rel1))
           rel-index-2-prev (:rel.index (meta rel2))
@@ -48,4 +48,6 @@
          ^{:xf.clause '[?c :country/continent "Europe"]}
          [1 :country/continent "Europe"]]]
 
-    (find-clause rel '[?p :person/country ?c])))
+    (find-clause rel '[?p :person/country ?c])
+
+    (find-clause rel '[?p :person/name "Alice"])))

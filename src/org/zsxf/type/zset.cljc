@@ -358,16 +358,6 @@
     ([z1 z2]
      (into z1 xf z2))))
 
-(defn zset-xxx
-  "Takes a transducer and returns a function with the same signature as zset+.
-  The transducer is applied to each new zset item from the second zset before adding it to the first zset."
-  [xf]
-  (fn
-    ([] (zset))
-    ([z1] z1)
-    ([z1 z2]
-     (into z1 xf z2))))
-
 (defn zset-negate [z]
   (into
     (zset)

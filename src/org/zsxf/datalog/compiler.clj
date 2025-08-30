@@ -159,7 +159,7 @@
                                 find-vars))]
     (if (empty? aggregate-vars)
       [`(xforms/reduce
-          (zs2/zset-xxx
+          (zs2/zset-xf+
             (comp
               (map (xf/same-meta-f ~find-var-juxt)))))]
       (let [aggregations (gensym 'aggregations)]

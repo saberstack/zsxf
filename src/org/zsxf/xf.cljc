@@ -152,10 +152,16 @@
   (let [item-can-join? (= clause (:xf.clause (meta (path-f zset-item))))]
     item-can-join?))
 
+(defn clause-map [clause]
+  {:xf.clause clause})
+(def clause-map-memo (clj-fast.inline/memoize-c* 1 clause-map))
+
 (defn with-clause-f [clause]
   (fn [item]
-    (inline/vary-meta-xy item assoc :xf.clause clause)))
-
+    (let [item-meta (meta item)]
+      (if (or (nil? item-meta) (= {} item-meta))
+        (with-meta item (clause-map-memo clause))
+        (inline/vary-meta-xy item assoc :xf.clause clause)))))
 (def with-clause-f-memo (clj-fast.inline/memoize-c* 1 with-clause-f))
 
 (defrecord params-join-xf-1 [index-state-1-prev index-state-2-prev delta-1 delta-2 zset])

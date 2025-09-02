@@ -51,7 +51,6 @@
 
 (defn item-files-to-vector! [files]
   (reset! hn-items [])
-  (System/gc)
   (let [{:keys [input-ch output-ch]}
         (util/pipeline-output
           ;write to atom, parquet, etc
@@ -240,7 +239,6 @@
 
 (defn import-items-to-datomic! [conn items]
   (reset! halt-import? false)
-  (reset! import-errors [])
   ;; Transact in chunks to avoid overwhelming the transactor.
   (transduce
     (comp
@@ -362,7 +360,7 @@
     (dd/db (hn-conn))))
 
 
-(defn get-all-users-who-mention-clojure-zsxf []
+(defn get-all-users-who-mention-clojure-zsxf [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile
@@ -372,9 +370,8 @@
                     [?e :hn.item/text ?txt]
                     [(clojure.string/includes? ?txt "Clojure")]]))
         _     (idd/init-query-with-conn query conn)]
-    (reset! *query query)
+    (reset! an-atom query)
     :pending))
-
 
 (defn get-all-clojure-mentions-by-raspasov []
   (let [conn  (hn-conn)
@@ -382,21 +379,24 @@
                 (dcc/compile
                   '[:find ?txt
                     :where
-                    [?e :hn.item/by "raspasov"]
+                    [?e :hn.item/by ?user]
                     [?e :hn.item/text ?txt]
+                    [(clojure.string/includes? ?user "raspasov")]
                     [(clojure.string/includes? ?txt "Clojure")]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! *query query)
     :pending))
 
-(defn get-all-clojure-posts-by-raspasov []
+
+(defn get-all-clojure-mentions-by-raspasov-datomic []
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile
                   '[:find ?txt
                     :where
-                    [?e :hn.item/by "raspasov"]
-                    [?e :hn.item/title ?txt]
+                    [?e :hn.item/by ?user]
+                    [?e :hn.item/text ?txt]
+                    [(clojure.string/includes? ?user "raspasov")]
                     [(clojure.string/includes? ?txt "Clojure")]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! *query query)
@@ -413,7 +413,7 @@
     (reset! *query query)
     :pending))
 
-(defn get-all-users-via-zsxf []
+(defn get-all-users-via-zsxf [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile
@@ -422,7 +422,7 @@
                     [?e :hn.item/url ?url]
                     [?e :hn.item/by ?username]]))
         _     (idd/init-query-with-conn query conn)]
-    (reset! *query query)
+    (reset! an-atom query)
     :pending))
 
 (defn get-all-users-via-zsxf-single-clause []
@@ -485,9 +485,15 @@
   (reset! *query nil)
   (System/gc))
 
+(defonce *query-2 (atom nil))
+
+(defonce *query-3 (atom nil))
+
 (comment
 
-  (get-all-users-via-zsxf)
+  (get-all-users-who-mention-clojure-zsxf *query-3)
+
+  (get-all-users-via-zsxf *query-2)
 
   (get-all-users-via-zsxf-single-clause)
 
@@ -574,6 +580,8 @@
   (start-get-result-display)
 
   (start-datomic-sync-task)
+
+  (tt/reset-tasks!)
 
   (get-last-imported-from-disk!)
   ;(write-last-imported "items-44642066-44643065")

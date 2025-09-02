@@ -121,7 +121,9 @@
            {:jvm-opts ["-agentpath:/Applications/YourKit.app/Contents/Resources/bin/mac/libyjpagent.dylib=listen=192.168.86.250"]}
            :jvm-high-performance
            {:jvm-opts ["-XX:+AlwaysPreTouch"
-                       "-Dclojure.compiler.direct-linking=true"]}
+                       "-XX:+UseZGC"
+                       ;"-Dclojure.compiler.direct-linking=true"
+                       ]}
            :raspasov/local
            {:extra-deps
             {org.saberstack/clj-hackernews-api

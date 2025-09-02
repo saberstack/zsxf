@@ -122,14 +122,19 @@
            :path-f-of-zset-item (path-f zsi)
            :clause              clause})))))
 
-(defn can-join?
+(defn item-can-join?
   [zset-item path-f clause]
-  (let [jt             (detect-join-type zset-item path-f clause)
-        item-can-join? (case jt
+  (let [jt      (detect-join-type zset-item path-f clause)
+        return? (case jt
                          :datom true
                          :datom-as-relation (= clause (:xf.clause (meta (path-f zset-item))))
                          :relation (= clause (:xf.clause (meta (path-f zset-item)))))]
-    item-can-join?))
+    return?))
+
+(defn can-join? [zsi path-f pred clause]
+  (and
+    (item-can-join? zsi path-f clause)
+    (pred (path-f zsi))))
 
 ;; can join debug
 #_(when (false? item-can-join?)
@@ -224,14 +229,10 @@
       ;receives a zset, unpacks zset into individual items
       cat
       (map (fn [zsi]
-             (let [delta-1 (if (and
-                                 (can-join? zsi path-f-1 clause-1)
-                                 (pred-1 (path-f-1 zsi)))
+             (let [delta-1 (if (can-join? zsi path-f-1 pred-1 clause-1)
                              (zset/index (zset/hash-zset zsi) (comp index-kfn-1 path-f-1))
                              {})
-                   delta-2 (if (and
-                                 (can-join? zsi path-f-2 clause-2)
-                                 (pred-2 (path-f-2 zsi)))
+                   delta-2 (if (can-join? zsi path-f-2 pred-2 clause-2)
                              (zset/index (zset/hash-zset zsi) (comp index-kfn-2 path-f-2))
                              {})
                    ;If last?, we return an empty zset.
@@ -298,10 +299,10 @@
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
       (map (fn [zsi]
-             (let [delta-1 (if (and (can-join? zsi path-f-1 clause-1) (pred-1 (path-f-1 zsi)))
+             (let [delta-1 (if (and (item-can-join? zsi path-f-1 clause-1) (pred-1 (path-f-1 zsi)))
                              (zs/zset #{(zs/zset-item (item-f-1 zsi) (zs/zset-weight zsi))})
                              #{})
-                   delta-2 (if (and (can-join? zsi path-f-2 clause-2) (pred-2 (path-f-2 zsi)))
+                   delta-2 (if (and (item-can-join? zsi path-f-2 clause-2) (pred-2 (path-f-2 zsi)))
                              (zs/zset #{(zs/zset-item (item-f-2 zsi) (zs/zset-weight zsi))})
                              #{})
                    zset    (if last? #{} #{zsi})]
@@ -389,12 +390,12 @@
       (mapcat identity)
       (map (fn [zsi]
              (let [delta-1 (if (and
-                                 (can-join? zsi path-f-1 clause-1)
+                                 (item-can-join? zsi path-f-1 clause-1)
                                  (pred-1 (path-f-1 zsi)))
                              (zset/hash-zset zsi)
                              {})
                    delta-2 (if (and
-                                 (can-join? zsi path-f-2 clause-2)
+                                 (item-can-join? zsi path-f-2 clause-2)
                                  (pred-2 (path-f-2 zsi)))
                              (zset/hash-zset zsi)
                              {})

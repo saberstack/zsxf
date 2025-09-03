@@ -103,29 +103,22 @@
       (meta data))))
 
 (defn detect-join-type [zsi path-f clause]
-  (let [xf-clause (:xf.clause (meta zsi))]
-    (cond
-      (and
-        (dl/datom-like? zsi)
-        (nil? xf-clause)) :datom
-      (and
-        (dl/datom-like? zsi)
-        (not (nil? xf-clause))) :datom-as-relation
-      (rel/relation? zsi) :relation
-      :else
-      (throw
-        (ex-info "invalid input zset-item"
-          {:zset-item           zsi
-           :path-f-of-zset-item (path-f zsi)
-           :clause              clause})))))
+  (cond
+    (dl/datom-like? zsi) :datom
+    (rel/relation? zsi) :relation
+    :else
+    (throw
+      (ex-info "invalid input zset-item"
+        {:zset-item           zsi
+         :path-f-of-zset-item (path-f zsi)
+         :clause              clause}))))
 
 (defn item-can-join?
   [zset-item path-f clause]
   (let [jt      (detect-join-type zset-item path-f clause)
         return? (case jt
-                         :datom true
-                         :datom-as-relation (= clause (:xf.clause (meta (path-f zset-item))))
-                         :relation (= clause (:xf.clause (meta (path-f zset-item)))))]
+                  :datom true
+                  :relation (= clause (:xf.clause (meta (path-f zset-item)))))]
     return?))
 
 (defn can-join? [zsi path-f pred clause]
@@ -335,6 +328,7 @@
 
 #_(defn union-xf
     ;TODO switch to zs2
+    ;TODO potentially use :datom-as-relation
     [{clause-1 :clause path-f-1 :path pred-1 :pred item-f-1 :zset-item-f
       :or      {pred-1 any? path-f-1 identity item-f-1 identity}}
      {clause-2 :clause path-f-2 :path pred-2 :pred item-f-2 :zset-item-f

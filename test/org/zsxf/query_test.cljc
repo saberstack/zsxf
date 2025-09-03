@@ -947,6 +947,9 @@
     :where
     [?m :movie/title ?title]])
 
+(defn- clause= [zsi clause]
+  (= clause (:xf.clause (meta zsi))))
+
 #_(defn outer-join-vector-zsxf [query-state]
     (let [clause-gen-1   (gensym 'clause-gen-1-)
           clause-gen-2   (gensym 'clause-gen-2-)
@@ -997,7 +1000,7 @@
            :path        identity
            :pred        (fn [diff-zsi]
                           (and
-                            (xf/clause= diff-zsi clause-union-1) ;strictly clause matches TODO simplify
+                            (clause= diff-zsi clause-union-1) ;strictly clause matches TODO simplify
                             (d2/datom-attr= (first diff-zsi) :movie/title)))
            :zset-item-f (fn [zsi-item-f]
                           (timbre/spy zsi-item-f)
@@ -1009,7 +1012,7 @@
            :path   identity
            :pred   (fn [zsi]
                      (and
-                       (xf/clause= zsi clause-union-1)      ;strictly clause matches TODO simplify
+                       (clause= zsi clause-union-1)      ;strictly clause matches TODO simplify
                        (d2/datom-attr= (first zsi) :movie/title)))})
         (xforms/reduce
           (zs/zset-xf+

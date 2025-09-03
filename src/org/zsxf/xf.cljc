@@ -94,9 +94,6 @@
   ;if both deltas are empty, we can stop processing the current zset item
   `(and (identical? {} (~delta-1+delta-2+zset 0)) (identical? {} (~delta-1+delta-2+zset 1))))
 
-(defn clause= [zsi clause]
-  (= clause (:xf.clause (meta zsi))))
-
 (defn same-meta-f
   "Takes a function f and returns a function which takes data and returns (f data) with the same meta"
   [f]

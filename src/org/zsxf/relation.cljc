@@ -1,5 +1,6 @@
 (ns org.zsxf.relation
-  (:require [org.zsxf.xf :as-alias xf]))
+  (:require [org.zsxf.util :as util]
+            [org.zsxf.xf :as-alias xf]))
 
 (defn relation? [x]
   (boolean
@@ -31,6 +32,16 @@
         (update 1 (fn [x] (vary-meta x #(dissoc % :rel.index))))))
     rel1+rel2-v))
 
+(defn ->relation [r1 r2 clause-1 clause-2]
+  (if (and (util/can-meta? r1) (util/can-meta? r2))
+    [(vary-meta r1 assoc :xf.clause clause-1)
+     (vary-meta r2 assoc :xf.clause clause-2)]
+    (throw (ex-info "Cannot be a relation"
+             {:r1       r1
+              :r2       r2
+              :clause-1 clause-1
+              :clause-2 clause-2}))))
+
 (defn find-clause [rel clause]
   (let [path (get (:rel.index (meta rel)) clause)]
     (when path
@@ -51,3 +62,12 @@
     (find-clause rel '[?p :person/country ?c])
 
     (find-clause rel '[?p :person/name "Alice"])))
+
+(comment
+
+
+  ^{:xf.clause '[?p :person/country ?c]}
+  (let [rel1 (index-clauses
+               [^{:xf.clause '[?p :person/name "Alice"]} [2 :person/name "Alice"]
+                ^{:xf.clause '[?p :person/country ?c]} [2 :person/country 1]])]
+    rel1))

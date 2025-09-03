@@ -417,7 +417,7 @@
   (into
     (zset)
     (comp
-      (mapcat (fn [k+v#] (nth k+v# 1)))
+      (mapcat (fn [k+v] (nth k+v 1)))
       xf)
     indexed-zset))
 

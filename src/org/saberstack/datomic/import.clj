@@ -373,7 +373,7 @@
     (reset! an-atom query)
     :pending))
 
-(defn get-all-clojure-mentions-by-raspasov []
+(defn get-all-clojure-mentions-by-raspasov [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile
@@ -384,7 +384,7 @@
                     [(clojure.string/includes? ?user "raspasov")]
                     [(clojure.string/includes? ?txt "Clojure")]]))
         _     (idd/init-query-with-conn query conn)]
-    (reset! *query query)
+    (reset! an-atom query)
     :pending))
 
 (defn get-all-clojure-mentions-user-count [an-atom]
@@ -399,6 +399,15 @@
         _     (idd/init-query-with-conn query conn)]
     (reset! an-atom query)
     :pending))
+
+(defn get-all-clojure-mentions-user-count-datomic []
+  (dd/q
+    '[:find ?user (count ?e)
+      :where
+      [?e :hn.item/by ?user]
+      [?e :hn.item/text ?txt]
+      [(clojure.string/includes? ?txt "Clojure")]]
+    (dd/db (hn-conn))))
 
 (defn get-all-comments-by-raspasov [an-atom]
   (let [conn  (hn-conn)
@@ -529,6 +538,10 @@
 
   (sync-query! get-all-clojure-mentions-user-count)
 
+  (sync-query! get-all-clojure-mentions-by-raspasov)
+
+  (q/get-result @(@query->atom 'get-all-clojure-mentions-by-raspasov))
+
   (get-all-comments-by-raspasov)
 
   (get-all-users-who-mention-clojure-zsxf *query-3)
@@ -540,8 +553,6 @@
   (get-all-item-ids-via-zsxf)
 
   (get-all-clojure-mentions-zsxf)
-
-  (get-all-clojure-mentions-by-raspasov)
 
   (get-all-comments-by-raspasov *query-4)
 

@@ -373,7 +373,9 @@
     (reset! an-atom query)
     :pending))
 
-(defn get-all-clojure-mentions-by-raspasov [an-atom]
+(defn get-all-clojure-mentions-by-raspasov
+  {:doc "All mentions of \"Clojure\" by a specific user"}
+  [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile
@@ -386,7 +388,9 @@
     (reset! an-atom query)
     :pending))
 
-(defn get-all-clojure-mentions-user-count [an-atom]
+(defn get-all-clojure-mentions-user-count
+  {:doc "Count the comments that mention \"Clojure\", per user"}
+  [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile

@@ -1,4 +1,4 @@
-(ns org.saberstack.demo.live
+(ns org.saberstack.datasync.demo.live
   (:require
    [org.saberstack.datomic.import :as import]
    [org.saberstack.datasync.hn :as hn]

@@ -5,7 +5,7 @@
             [config.core :as config]
             [ring.middleware.defaults :as ring-defaults]
             [ring.middleware.params :as ring-params]
-            [org.saberstack.demo.live :as demo.live]
+            [org.saberstack.datasync.demo.live :as demo.live]
             [taoensso.timbre :as timbre])
   (:import (java.io Closeable)))
 

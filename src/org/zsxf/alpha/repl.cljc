@@ -93,6 +93,6 @@
     :print-stats true)
 
   (set! *print-meta* true)
-  (sample-indices @org.saberstack.datomic.import/*query
+  (sample-indices @org.saberstack.datasync.datomic.import/*query
     :n 50)
   )

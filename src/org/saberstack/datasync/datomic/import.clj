@@ -1,4 +1,4 @@
-(ns org.saberstack.datomic.import
+(ns org.saberstack.datasync.datomic.import
   (:require [babashka.fs :as fs]
             [charred.api :as charred]
             [clj-memory-meter.core :as mm]

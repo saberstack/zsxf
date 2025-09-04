@@ -23,7 +23,7 @@
             [org.zsxf.type.datom-like :as dl]
             #?(:clj [org.zsxf.type.zset :as zset])
             #?(:cljs [org.zsxf.zset :as zset])
-            [clj-fast.inline]
+            #?(:clj [clj-fast.inline])
             [org.zsxf.xf :as-alias xf]
             [org.zsxf.relation :as rel]
             [taoensso.timbre :as timbre]

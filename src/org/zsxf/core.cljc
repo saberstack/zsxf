@@ -12,7 +12,8 @@
      (let [port 7899]
        (timbre/merge-config!
          {:output-fn util/timbre-custom-output-fn})
-       (server/start-server!)
+       (let [server (server/start-server!)]
+         (println "Aleph: started on port" (aleph.netty/port server)))
        (nrepl-server/start-server :port port :bind "0.0.0.0")
        (println "ZSXF: REPL on port" port))))
 

@@ -5,5 +5,6 @@
   `(try
      (do ~@exprs)
      (catch Throwable e#
-       (timbre/warn
-         (ex-info "IO failed" {:code-executed '(do ~@exprs)} e#)))))
+       (let [ex# (ex-info "IO failed" {:code-executed '(do ~@exprs)} e#)]
+         (timbre/warn ex#)
+         (throw ex#)))))

@@ -5,7 +5,9 @@
             [config.core :as config]
             [ring.middleware.defaults :as ring-defaults]
             [ring.middleware.params :as ring-params]
-            [taoensso.timbre :as timbre]))
+            [org.saberstack.demo.live :as demo.live]
+            [taoensso.timbre :as timbre])
+  (:import (java.io Closeable)))
 
 (defonce server-state (atom nil))
 
@@ -39,21 +41,23 @@
   [req]
   (handler-2 req))
 
-(defn start-server! [& {:keys [port socket-address] :or {port 443 socket-address "0.0.0.0"}}]
+(defn start-server! [& {:keys [port socket-address] :or {socket-address "0.0.0.0"}}]
   (reset! server-state
-    (aleph/start-server
-      (-> handler
-        (ring-defaults/wrap-defaults ring-defaults/api-defaults)
-        (ring-defaults/wrap-defaults
-          (assoc-in ring-defaults/api-defaults [:session :cookie-attrs :same-site] :lax))
-        (ring-params/wrap-params))
-      (merge
-        {:port port
-         :http-versions [:http1]}
-        (env-vars->ssl-context config/env)))))
+    (let [ssl-context (env-vars->ssl-context config/env)
+          port (if ssl-context (or port 443) (or port 8042))]
+      (aleph/start-server
+        (-> demo.live/handler
+          (ring-defaults/wrap-defaults ring-defaults/api-defaults)
+          (ring-defaults/wrap-defaults
+            (assoc-in ring-defaults/api-defaults [:session :cookie-attrs :same-site] :lax))
+          (ring-params/wrap-params))
+        (merge
+          {:port          port
+           :http-versions [:http1]}
+          ssl-context)))))
 
 (defn stop-server! []
-  (.close @server-state))
+  (.close ^Closeable @server-state))
 
 (comment
   (do

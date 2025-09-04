@@ -388,6 +388,21 @@
     (reset! an-atom query)
     :pending))
 
+(defn get-all-llm-mentions-by-raspasov
+  {:doc "All mentions of \"LLM\" by a specific user"}
+  [an-atom]
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/compile
+                  '[:find ?txt
+                    :where
+                    [?e :hn.item/by "raspasov"]
+                    [?e :hn.item/text ?txt]
+                    [(clojure.string/includes? ?txt "LLM")]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! an-atom query)
+    :pending))
+
 (defn get-all-clojure-mentions-user-count
   {:doc "Count the comments that mention \"Clojure\", per user"}
   [an-atom]
@@ -544,6 +559,8 @@
 (comment
 
   (sync-query! get-all-clojure-mentions-user-count)
+
+  (sync-query! get-all-llm-mentions-by-raspasov)
 
   (sync-query! get-all-clojure-mentions-by-raspasov)
   (q/get-result @(@query->atom 'get-all-clojure-mentions-by-raspasov))

@@ -29,7 +29,7 @@
      :body   (into []
                (comp (map meta) (map (fn [m] (select-keys m [:doc :name]))))
                [#'import/get-all-clojure-mentions-by-raspasov
-                #'import/get-all-clojure-mentions-user-count])}))
+                #'import/get-all-llm-mentions-by-raspasov])}))
 
 (defn query-result [req a-name]
   (let [allowed-query-names (into #{} (keys @import/query->atom))]

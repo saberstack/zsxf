@@ -31,16 +31,11 @@
                [#'import/get-all-clojure-mentions-by-raspasov
                 #'import/get-all-clojure-mentions-user-count])}))
 
-(defn query-name->fn [a-name]
-  (let [sym (symbol (str 'org.saberstack.datasync.datomic.import) (str a-name))]
-    (condp = sym
-      `import/get-all-clojure-mentions-by-raspasov 'get-all-clojure-mentions-by-raspasov
-      `import/get-all-clojure-mentions-user-count 'get-all-clojure-mentions-user-count)))
-
 (defn query-result [req a-name]
-  (transit-response
-    {:status 200
-     :body   (import/get-result a-name)}))
+  (let [allowed-query-names (into #{} (keys @import/query->atom))]
+    (transit-response
+      {:status 200
+       :body   (import/get-result (allowed-query-names (symbol a-name)))})))
 
 (defn status
   [_req]

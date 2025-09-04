@@ -65,7 +65,11 @@
         uri-as-vector-decoded (mapv ring-codec/url-decode uri-as-vector)]
     (match/match [request-method uri-as-vector-decoded]
       [:get ["queries"]] (queries req)
+      [:post ["queries"]] (queries req)
+
       [:get ["query" a-name "result"]] (query-result req a-name)
+      [:post ["query" a-name "result"]] (query-result req a-name)
+
 
       [:get ["status"]] (status req)
       :else (resp-not-found req))))

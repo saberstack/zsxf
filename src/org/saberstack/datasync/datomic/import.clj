@@ -379,9 +379,8 @@
                 (dcc/compile
                   '[:find ?txt
                     :where
-                    [?e :hn.item/by ?user]
+                    [?e :hn.item/by "raspasov"]
                     [?e :hn.item/text ?txt]
-                    [(clojure.string/includes? ?user "raspasov")]
                     [(clojure.string/includes? ?txt "Clojure")]]))
         _     (idd/init-query-with-conn query conn)]
     (reset! an-atom query)
@@ -534,17 +533,19 @@
        (~query-sym an-atom#))
      :no-op))
 
+(defn get-result [query-name]
+  (q/get-result @(@query->atom (symbol query-name))))
+
 (comment
 
   (sync-query! get-all-clojure-mentions-user-count)
 
   (sync-query! get-all-clojure-mentions-by-raspasov)
-
   (q/get-result @(@query->atom 'get-all-clojure-mentions-by-raspasov))
 
-  (get-all-comments-by-raspasov)
+  (sync-query! get-all-users-who-mention-clojure-zsxf)
 
-  (get-all-users-who-mention-clojure-zsxf *query-3)
+  (get-all-comments-by-raspasov)
 
   (get-all-users-via-zsxf *query-2)
 

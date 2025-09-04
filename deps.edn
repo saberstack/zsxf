@@ -123,7 +123,8 @@
            :jvm-heap-192gb
            {:jvm-opts ["-Xms192g" "-Xmx192g"]}
            :ultra-1/yourkit-agent
-           {:jvm-opts ["-agentpath:/Applications/YourKit.app/Contents/Resources/bin/mac/libyjpagent.dylib=listen=192.168.86.250"]}
+           {:jvm-opts ["-agentpath:/Applications/YourKitEarlyAccess.app/Contents/Resources/bin/mac/libyjpagent.dylib=listen=192.168.86.250"
+                       ]}
            :jvm-high-performance
            {:jvm-opts ["-XX:+AlwaysPreTouch"
                        "-XX:+UseZGC"

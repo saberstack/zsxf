@@ -31,22 +31,16 @@
                [#'import/get-all-clojure-mentions-by-raspasov
                 #'import/get-all-clojure-mentions-user-count])}))
 
-(defonce tmp-sym-1 (atom nil))
-
 (defn query-name->fn [a-name]
-  (timbre/spy a-name)
   (let [sym (symbol (str 'org.saberstack.datasync.datomic.import) (str a-name))]
-    (timbre/info "sym:::" sym)
-    (reset! tmp-sym-1 sym)
     (condp = sym
       `import/get-all-clojure-mentions-by-raspasov 'get-all-clojure-mentions-by-raspasov
       `import/get-all-clojure-mentions-user-count 'get-all-clojure-mentions-user-count)))
 
 (defn query-result [req a-name]
-  (timbre/spy (type a-name))
   (transit-response
     {:status 200
-     :body   {:get-result (str(query-name->fn a-name))}}))
+     :body   (import/get-result a-name)}))
 
 (defn status
   [_req]

@@ -538,7 +538,8 @@
      :no-op))
 
 (defn get-result [query-name]
-  (q/get-result @(@query->atom (symbol query-name))))
+  (when-let [query (@query->atom query-name)]
+    (q/get-result @query)))
 
 (comment
 

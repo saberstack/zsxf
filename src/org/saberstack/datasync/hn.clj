@@ -93,19 +93,22 @@
 
 (timbre/set-ns-min-level! :debug)
 
+(defonce hn-sync-task (atom nil))
+
 (defn start-hn-sync-task []
-  (tt/every! 5
-    (bound-fn []
-      (let [item-id-last-synced (get-last-item-id-from-disk!)
-            item-id-max         (get-hn-max-item-id!)]
-        (if (and
-              (int? item-id-max)
-              (int? item-id-last-synced)
-              (< item-id-last-synced item-id-max))
-          (do
-            (timbre/info [::next [item-id-last-synced item-id-max]])
-            (timbre/info (sync-items! item-id-last-synced item-id-max)))
-          (timbre/info [::wait [item-id-last-synced item-id-max]]))))))
+  (reset! hn-sync-task
+    (tt/every! 5
+      (bound-fn []
+        (let [item-id-last-synced (get-last-item-id-from-disk!)
+              item-id-max         (get-hn-max-item-id!)]
+          (if (and
+                (int? item-id-max)
+                (int? item-id-last-synced)
+                (< item-id-last-synced item-id-max))
+            (do
+              (timbre/info [::next [item-id-last-synced item-id-max]])
+              (timbre/info (sync-items! item-id-last-synced item-id-max)))
+            (timbre/info [::wait [item-id-last-synced item-id-max]])))))))
 
 ;REPL task control
 (comment

@@ -387,6 +387,31 @@
     (reset! *query query)
     :pending))
 
+(defn get-all-clojure-mentions-user-count [an-atom]
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/compile
+                  '[:find ?user (count ?e)
+                    :where
+                    [?e :hn.item/by ?user]
+                    [?e :hn.item/text ?txt]
+                    [(clojure.string/includes? ?txt "Clojure")]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! an-atom query)
+    :pending))
+
+(defn get-all-comments-by-raspasov [an-atom]
+  (let [conn  (hn-conn)
+        query (q/create-query
+                (dcc/compile
+                  '[:find ?txt
+                    :where
+                    [?e :hn.item/by "raspasov"]
+                    [?e :hn.item/text ?txt]]))
+        _     (idd/init-query-with-conn query conn)]
+    (reset! an-atom query)
+    :pending))
+
 
 (defn get-all-clojure-mentions-by-raspasov-datomic []
   (let [conn  (hn-conn)
@@ -489,7 +514,22 @@
 
 (defonce *query-3 (atom nil))
 
+(defonce *query-4 (atom nil))
+
+(defonce query->atom (atom {}))
+
+(defmacro sync-query! [query-sym]
+  `(if (nil? (@query->atom '~query-sym))
+     (let [an-atom# (atom nil)]
+       (swap! query->atom assoc '~query-sym an-atom#)
+       (~query-sym an-atom#))
+     :no-op))
+
 (comment
+
+  (sync-query! get-all-clojure-mentions-user-count)
+
+  (get-all-comments-by-raspasov)
 
   (get-all-users-who-mention-clojure-zsxf *query-3)
 
@@ -502,6 +542,9 @@
   (get-all-clojure-mentions-zsxf)
 
   (get-all-clojure-mentions-by-raspasov)
+
+  (get-all-comments-by-raspasov *query-4)
+
 
   (time
     (do
@@ -560,10 +603,13 @@
     (when (peek files)
       (write-last-imported (str (peek files))))))
 
+(defonce datomic-sync-task (atom nil))
+
 (defn start-datomic-sync-task []
-  (tt/every! 10
-    (bound-fn []
-      (files->vector->datomic))))
+  (reset! datomic-sync-task
+    (tt/every! 10
+      (bound-fn []
+        (files->vector->datomic)))))
 
 
 (defonce display-task (atom nil))

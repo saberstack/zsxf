@@ -545,12 +545,17 @@
 
 (defonce query->atom (atom {}))
 
-(defmacro sync-query! [query-sym]
-  `(if (nil? (@query->atom '~query-sym))
-     (let [an-atom# (atom nil)]
-       (swap! query->atom assoc '~query-sym an-atom#)
-       (~query-sym an-atom#))
-     :no-op))
+(defn test-fn-to-call [x y] (+ x y))
+
+(defn sync-query! [fqs]
+  (println (type fqs))
+  (println fqs)
+  (if (nil? (@query->atom fqs))
+    (let [an-atom (atom nil)
+          -var    (util/fqs->var fqs)]
+      (swap! query->atom assoc fqs an-atom)
+      (-var an-atom))
+    :no-op))
 
 (defn get-result [query-name]
   (when-let [query (@query->atom query-name)]
@@ -562,15 +567,17 @@
 
 (comment
 
-  (sync-query! get-all-clojure-mentions-user-count)
+  (sync-query! 'org.saberstack.datasync.datomic.import/test-fn-to-call)
 
-  (sync-query! get-all-llm-mentions-by-raspasov)
+  (sync-query! 'org.saberstack.datasync.datomic.import/get-all-clojure-mentions-user-count)
 
-  (sync-query! get-all-clojure-mentions-by-raspasov)
+  (sync-query! 'org.saberstack.datasync.datomic.import/get-all-llm-mentions-by-raspasov)
+
+  (sync-query! 'org.saberstack.datasync.datomic.import/get-all-clojure-mentions-by-raspasov)
 
   (q/get-result @(@query->atom 'get-all-clojure-mentions-by-raspasov))
 
-  (sync-query! get-all-users-who-mention-clojure-zsxf)
+  (sync-query! 'org.saberstack.datasync.datomic.import/get-all-users-who-mention-clojure-zsxf)
 
   (get-all-comments-by-raspasov)
 

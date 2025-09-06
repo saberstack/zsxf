@@ -377,6 +377,10 @@
               (sort-by #(.getName ^Class %) (parents c))))]
     {klass (f klass)}))
 
+#?(:clj
+   (defn fqs->var [fqs]
+     (ns-resolve (symbol (namespace fqs)) (symbol (name fqs)))))
+
 (comment
 
   (inheritance-tree (class []))

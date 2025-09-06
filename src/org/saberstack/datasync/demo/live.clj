@@ -1,14 +1,17 @@
 (ns org.saberstack.datasync.demo.live
   (:require
    [clj-commons.byte-streams :as bs]
+   [medley.core :as medley]
    [org.saberstack.datasync.datomic.import :as import]
    [org.saberstack.datasync.hn :as hn]
    [clojure.string :as str]
    [clojure.core.match :as match]
    [org.saberstack.util.transit :as util.transit]
    [org.saberstack.io :as ss.io]
+   [org.zsxf.util :as util]
    [ring.util.codec :as ring-codec]
-   [taoensso.timbre :as timbre]))
+   [taoensso.timbre :as timbre]
+   [tea-time.core :as tt]))
 
 
 (defn transit-response [resp]
@@ -29,11 +32,15 @@
   (transit-response
     {:status 200
      :body   (into []
-               (comp (map meta) (map (fn [m] (select-keys m [:doc :name]))))
+               (comp
+                 (map meta)
+                 (map (fn [m]
+                        {:doc  (:doc m)
+                         :name (symbol (str (ns-name (:ns m))) (str (:name m)))}))
+                 (remove (comp nil? :doc)))
                (into #{}
                  (comp
-                   (map (fn [fn-sym] (symbol (str import-ns) (str fn-sym))))
-                   (map resolve))
+                   (map util/fqs->var))
                  (keys @import/query->atom)))}))
 
 (defn query-result [req a-name]
@@ -98,3 +105,10 @@
 (defn handler
   [req]
   (handler* req))
+
+(defn hn-start-live-sync! []
+  (timbre/info "Starting HN live sync...")
+  (tt/start!)
+  (import/sync-query! 'org.saberstack.datasync.datomic.import/get-all-llm-mentions-by-raspasov)
+  (hn/start-hn-sync-task)
+  (import/start-datomic-sync-task))

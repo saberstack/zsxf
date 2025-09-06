@@ -21,6 +21,28 @@
      (prn (str "Elapsed time: " (/ (double (- (. System (nanoTime)) start#)) 1000000.0) " msecs"))
      ret#))
 
+(defn- add-to-second-position [lst item]
+  (let [[start end] (split-at 1 (if (list? lst) lst [lst]))]
+    (concat start [item] end)))
+
+(defmacro every->
+  [expr & forms]
+  (let [g     (gensym)
+        steps (map
+                (fn [step]
+                  `(if (nil? ~g)
+                     nil
+                     (let [ret# (-> ~g ~step)]
+                       (if (nil? ret#)
+                         (add-to-second-position '~step ~g)
+                         ret#))))
+                forms)]
+    `(let [~g ~expr
+           ~@(interleave (repeat g) (butlast steps))]
+       ~(if (empty? steps)
+          g
+          (last steps)))))
+
 ;; https://clojure.atlassian.net/issues/CLJ-1615
 ;; https://clojurians.slack.com/archives/C03S1KBA2/p1744219939763269
 ;; conj! with-meta problem description:

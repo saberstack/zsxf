@@ -23,13 +23,18 @@
     (update-in [:body] (fnil bs/to-string "{}"))
     (update-in [:body] #(util.transit/transit-to-data %))))
 
+(def import-ns 'org.saberstack.datasync.datomic.import)
+
 (defn queries [req]
   (transit-response
     {:status 200
      :body   (into []
                (comp (map meta) (map (fn [m] (select-keys m [:doc :name]))))
-               [#'import/get-all-clojure-mentions-by-raspasov
-                #'import/get-all-llm-mentions-by-raspasov])}))
+               (into #{}
+                 (comp
+                   (map (fn [fn-sym] (symbol (str import-ns) (str fn-sym))))
+                   (map resolve))
+                 (keys @import/query->atom)))}))
 
 (defn query-result [req a-name]
   (let [allowed-query-names (into #{} (keys @import/query->atom))]

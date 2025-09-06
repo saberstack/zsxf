@@ -567,6 +567,7 @@
   (sync-query! get-all-llm-mentions-by-raspasov)
 
   (sync-query! get-all-clojure-mentions-by-raspasov)
+
   (q/get-result @(@query->atom 'get-all-clojure-mentions-by-raspasov))
 
   (sync-query! get-all-users-who-mention-clojure-zsxf)

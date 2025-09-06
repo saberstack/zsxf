@@ -556,6 +556,10 @@
   (when-let [query (@query->atom query-name)]
     (q/get-result @query)))
 
+(defn items-count []
+  (when-let [conn (hn-conn)]
+    {:items-count (:datoms (dd/db-stats (dd/db conn)))}))
+
 (comment
 
   (sync-query! get-all-clojure-mentions-user-count)

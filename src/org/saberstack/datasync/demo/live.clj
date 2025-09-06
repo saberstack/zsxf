@@ -37,6 +37,11 @@
       {:status 200
        :body   (import/get-result (allowed-query-names (symbol a-name)))})))
 
+(defn items-count [req]
+  (transit-response
+    {:status 200
+     :body   (import/items-count)}))
+
 (defn status
   [_req]
   {:status  200
@@ -66,6 +71,9 @@
     (match/match [request-method uri-as-vector-decoded]
       [:get ["queries"]] (queries req)
       [:post ["queries"]] (queries req)
+
+      [:get ["items" "count"]] (items-count req)
+      [:post ["items" "count"]] (items-count req)
 
       [:get ["query" a-name "result"]] (query-result req a-name)
       [:post ["query" a-name "result"]] (query-result req a-name)

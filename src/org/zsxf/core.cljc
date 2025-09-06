@@ -3,6 +3,7 @@
      (:require
       [nrepl.server :as nrepl-server]
       [org.zsxf.util :as util]
+      [clojure.repl.deps]
       [taoensso.timbre :as timbre]
       [org.saberstack.server.aleph :as server])))
 

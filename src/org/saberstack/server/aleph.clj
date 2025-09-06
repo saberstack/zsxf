@@ -4,9 +4,11 @@
             [aleph.netty]
             [config.core :as config]
             [ring.middleware.cors]
+            [ring.middleware.file]
             [ring.middleware.defaults :as ring-defaults]
             [ring.middleware.params :as ring-params]
             [org.saberstack.datasync.demo.live :as demo.live]
+            [ring.middleware.gzip :as ring-gzip]
             [taoensso.timbre :as timbre])
   (:import (java.io Closeable)))
 
@@ -48,13 +50,15 @@
           port        (if ssl-context (or port 443) (or port 8042))]
       (aleph/start-server
         (-> demo.live/handler
+          (ring.middleware.file/wrap-file "resources/dist")
           (ring-defaults/wrap-defaults ring-defaults/api-defaults)
           (ring.middleware.cors/wrap-cors
             :access-control-allow-origin [#".*"]            ; Allows all origins
             :access-control-allow-methods [:get :post :put :delete :options])
           (ring-defaults/wrap-defaults
             (assoc-in ring-defaults/api-defaults [:session :cookie-attrs :same-site] :lax))
-          (ring-params/wrap-params))
+          (ring-params/wrap-params)
+          (ring-gzip/wrap-gzip))
         (merge
           {:port          port
            :http-versions [:http1]}

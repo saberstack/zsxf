@@ -15,7 +15,7 @@
 
 
 #?(:clj
-   (defn ^Object transit-to-data [transit-data]
+   (defn ^Object transit-to-data [^String transit-data]
      (when-not (nil? transit-data)
        (let [in     (ByteArrayInputStream. (.getBytes transit-data))
              reader (transit/reader in :json)]

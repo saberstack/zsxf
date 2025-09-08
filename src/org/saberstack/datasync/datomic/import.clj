@@ -360,7 +360,9 @@
     (dd/db (hn-conn))))
 
 
-(defn get-all-users-who-mention-clojure-zsxf [an-atom]
+(defn get-all-users-who-mention-clojure-zsxf
+  {:doc "All users who mention \"Clojure\""}
+  [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query
                 (dcc/compile

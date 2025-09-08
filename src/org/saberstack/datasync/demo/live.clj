@@ -110,5 +110,6 @@
   (timbre/info "Starting HN live sync...")
   (tt/start!)
   (import/sync-query! 'org.saberstack.datasync.datomic.import/get-all-llm-mentions-by-raspasov)
+  (import/sync-query! 'org.saberstack.datasync.datomic.import/get-all-users-who-mention-clojure-zsxf)
   (hn/start-hn-sync-task)
   (import/start-datomic-sync-task))

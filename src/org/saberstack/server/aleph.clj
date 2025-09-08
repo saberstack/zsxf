@@ -1,5 +1,6 @@
 (ns org.saberstack.server.aleph
   (:require [aleph.http :as aleph]
+            [babashka.fs :as fs]
             [clj-commons.byte-streams :as bs]
             [aleph.netty]
             [config.core :as config]
@@ -22,27 +23,10 @@
        {:certificate-chain (bs/to-input-stream (slurp tls-cert))
         :private-key       (bs/to-input-stream (slurp tls-private-key))})}))
 
-(defn http-req-dispatch
-  [{:keys [uri request-method] :as req}]
-  {:status  200
-   :headers {"content-type" "text/plain"}
-   :body    "hello"})
-
-(defn resp-error [_req ^Throwable e]
-  {:status 500
-   :body   (str (ex-data e))})
-
-(defn handler-2
-  "Indirections for REPL-friendly development."
-  [req]
-  (timbre/info req)
-  (try
-    (http-req-dispatch req)
-    (catch Throwable e (do (timbre/error e) (resp-error req e)))))
-
-(defn handler
-  [req]
-  (handler-2 req))
+(defn- wrap-file [handler path]
+  (if (fs/exists? path)
+    (ring.middleware.file/wrap-file handler path)
+    handler))
 
 (defn start-server! [& {:keys [port socket-address] :or {socket-address "0.0.0.0"}}]
   (reset! server-state
@@ -50,7 +34,7 @@
           port        (if ssl-context (or port 443) (or port 8042))]
       (aleph/start-server
         (-> demo.live/handler
-          (ring.middleware.file/wrap-file "resources/dist")
+          (wrap-file "resources/dist")
           (ring-defaults/wrap-defaults ring-defaults/api-defaults)
           (ring.middleware.cors/wrap-cors
             :access-control-allow-origin [#".*"]            ; Allows all origins

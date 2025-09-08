@@ -15,12 +15,11 @@
 
 
 (defn transit-response [resp]
-  ;(info transit-response-f)
   (-> resp
     (update-in [:body] #(util.transit/data-to-transit %))
     (update-in [:headers] (fn [headers] (assoc headers "content-type" "application/transit+json")))))
 
-(defn transit-request-f [req]
+#_(defn transit-request-f [req]
   (timbre/spy req)
   (-> req
     (update-in [:body] (fnil bs/to-string "{}"))

@@ -117,7 +117,7 @@
              x'      (zset-item x w-next)]
          (case pos
            false (ZSet. (m-next m x' w-next ?w-prev) meta-map pos)
-           true (ZSet. (if (inline/neg-int? w-next)
+           true (ZSet. (if (neg? w-next)
                          (.without m x')
                          (m-next m x' w-next ?w-prev))
                   meta-map pos))))
@@ -205,7 +205,7 @@
              x'      (zset-item x w-next)]
          (case pos
            false (m-next! m x' w-next ?w-prev)
-           true (if (inline/neg-int? w-next)
+           true (if (neg? w-next)
                   (change! ^ITransientMap m .without x')
                   (m-next! m x' w-next ?w-prev)))
          this))

@@ -14,9 +14,9 @@
             [org.zsxf.util :as util]
             [org.saberstack.clojure.inline :as inline]
             [clojure.core.reducers :as r]
-            [org.zsxf.zset :as zs]
-            [clojure.string :as str]
-            [clojure.set :as set]
+            #?(:cljs [org.zsxf.zset :as zs])
+            #?(:clj [clojure.string :as str])
+            #?(:clj [clojure.set :as set])
             [taoensso.timbre :as timbre])
   #?(:clj
      (:import (clojure.lang
@@ -27,27 +27,6 @@
 
 (declare zsi)
 (declare transient-zset)
-
-(comment
-  (deftype Foo [])
-  (def foo1 (Foo.))
-
-  (set! Foo -call
-    (fn [this x]
-      (println this)
-      (str "hello, " x)))
-
-
-  (def foo2 (Foo.))
-
-  (set! foo2 -call
-    (fn [this x]
-      (println this)
-      (str "hello, " x)))
-
-
-
-  )
 
 (defmacro dissoc-zset-item-weight
   [zset-item]

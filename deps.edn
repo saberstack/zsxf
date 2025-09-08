@@ -26,7 +26,6 @@
                                        :git/url "https://github.com/saberstack/clj-fast"}
            com.taoensso/trove         {:mvn/version "1.0.0"}
            com.taoensso/telemere      {:mvn/version "1.0.1"}}
-
  :aliases {:dev
            {:main-opts   ["-e" "(set! *warn-on-reflection* true)"]
             :extra-paths ["test" "dev"]

@@ -1,6 +1,7 @@
 (ns org.zsxf.core
   #?(:clj
      (:require
+      [aleph.netty]
       [nrepl.server :as nrepl-server]
       [org.saberstack.datasync.demo.live :as demo.live]
       [org.zsxf.util :as util]

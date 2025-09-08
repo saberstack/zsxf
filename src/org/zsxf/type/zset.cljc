@@ -221,12 +221,6 @@
      (TransientZSet. (transient (.-m a-zset)) (.-pos ^ZSet a-zset))))
 
 #?(:clj
-   (defn- create-empty-zset []
-     (->ZSet {} nil false)))
-#?(:clj
-   (def create-empty-zset-memo (memoize create-empty-zset)))
-
-#?(:clj
    (defn- create-empty-zset-pos []
      (->ZSet {} nil true)))
 #?(:clj

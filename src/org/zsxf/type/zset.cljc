@@ -187,6 +187,8 @@
 #?(:clj
    (def ^{:static true} zset-empty (->ZSet {} nil false)))
 
+#?(:clj
+   (def ^{:static true} zset-pos-empty (->ZSet {} nil true)))
 
 #?(:clj
    (deftype TransientZSet [^{:unsynchronized-mutable true :tag ITransientMap} m ^boolean pos]
@@ -241,7 +243,7 @@
 
 (defn zset-pos
   ([]
-   #?(:clj (create-empty-zset-pos-memo) :cljs #{}))
+   #?(:clj zset-pos-empty :cljs (zs/zset)))
   ([coll]
    (into (zset-pos) coll)))
 

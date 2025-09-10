@@ -215,9 +215,7 @@
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
   (let [uuid-1        [clause-1 (random-uuid)]
-        uuid-2        [clause-2 (random-uuid)]
-        clause-1-out' (or clause-1-out clause-1)
-        clause-2-out' (or clause-2-out clause-2)]
+        uuid-2        [clause-2 (random-uuid)]]
     (timbre/info uuid-1)
     (timbre/info uuid-2)
     (timbre/info [clause-1 clause-2])

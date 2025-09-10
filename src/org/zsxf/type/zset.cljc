@@ -416,40 +416,49 @@
 (defn zset*
   "Z-Sets multiplication"
   ([z1 z2]
-   (zset* z1 z2 identity identity))
+   (zset* z1 z2 identity identity identity))
+  ([z1 z2 pair-f]
+   (zset* z1 z2 identity identity pair-f))
   ([z1 z2 item1-f item2-f]
+   (zset* z1 z2 item1-f item2-f identity))
+  ([z1 z2 item1-f item2-f pair-f]
    (zset
      (for [item1 z1 item2 z2]
        (let [w1    (zset-weight item1)
              w2    (zset-weight item2)
              w-new (* w1 w2)]
-         (zset-item-new
-           [(item1-f (dissoc-zset-item-weight item1))
-            (item2-f (dissoc-zset-item-weight item2))]
-           w-new))))))
+         (pair-f
+           (zset-item-new
+             [(item1-f (dissoc-zset-item-weight item1))
+              (item2-f (dissoc-zset-item-weight item2))]
+             w-new)))))))
 
-(defmacro intersect-indexed*
+(defn intersect-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)
   Returns an indexed zset.
 
   The weight of a common item in the return is the product (via zset*)
   of the weights of the same item in indexed-zset-1 and indexed-zset-2."
   ([iz1 iz2]
-   `(intersect-indexed* ~iz1 ~iz2 identity identity))
+   (intersect-indexed* iz1 iz2 identity identity))
+  ([iz1 iz2 pair-f]
+   (intersect-indexed* iz1 iz2 identity identity pair-f))
   ([iz1 iz2 zset*-item1-f zset*-item2-f]
-   `(let [commons# (util/key-intersection ~iz1 ~iz2)]
-      (into
-        {}
-        (map (fn [common#]
-               (vector
-                 common#
-                 (zset*
-                   (~iz1 common#)
-                   (~iz2 common#)
-                   ~zset*-item1-f
-                   ~zset*-item2-f))))
-        commons#))))
-
+   (intersect-indexed* iz1 iz2 zset*-item1-f zset*-item2-f identity))
+  ([iz1 iz2 zset*-item1-f zset*-item2-f pair-f]
+   (let [commons (util/key-intersection iz1 iz2)]
+     (into
+       {}
+       (map (fn [common]
+              (vector
+                common
+                (zset*
+                  (iz1 common)
+                  (iz2 common)
+                  zset*-item1-f
+                  zset*-item2-f
+                  pair-f))))
+       commons))))
 
 (defn zset-count-item
   "zset singleton item representing a count"

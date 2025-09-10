@@ -214,8 +214,8 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1        [clause-1 (random-uuid)]
-        uuid-2        [clause-2 (random-uuid)]]
+  (let [uuid-1 [clause-1 (random-uuid)]
+        uuid-2 [clause-2 (random-uuid)]]
     (timbre/info uuid-1)
     (timbre/info uuid-2)
     (timbre/info [clause-1 clause-2])
@@ -259,14 +259,112 @@
           (vector
             ;add :where clauses as metadata to the joined relations (a zset)
             (zset/indexed-zset->zset
-              (let [f1 (with-clause-f-memo clause-1)
-                    f2 (with-clause-f-memo clause-2)]
+              (let [f1      (with-clause-f-memo clause-1)
+                    f2      (with-clause-f-memo clause-2)
+                    index-f rel/index-clauses]
                 (zset/indexed-zset+
                   (zset/indexed-zset+
                     ;ΔA ⋈ B
-                    (zset/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2)
+                    (zset/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2 index-f)
                     ;A ⋈ ΔB
-                    (zset/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2))
+                    (zset/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2 index-f))
+                  ;ΔA ⋈ ΔB
+                  (zset/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2 index-f)))
+              ;transducer to transform zset items during conversion indexed-zset -> zset
+              return-zset-item-xf)
+            ;original zset-item wrapped in a zset
+            (:zset params))))
+      (ss.xforms/cat-when not-no-op?))))
+
+(defn join-xf2
+  "Receives:
+
+    A single zset (at a time)
+
+     Each zset is expanded (via cat) at the beginning of join-xf into
+     zset-items and joined pairs from previous join-xfs outputs
+     zset-items can be
+     - `datoms`
+     - `joined pairs`, i.e. [:R1 :R2], [[:R1 :R2] :R3] etc.
+
+   Returns (via mapcat):
+
+    Two zsets
+
+    Each zset has one of:
+    - new `joined pair`, i.e. [:R1 R2], or [[:R1 :R2] :R3], etc.
+    - each input zset-item unchanged, unless ?last is true when an empty set is returned.
+      The reason for passing through unchanged zset-items is to allow downstream transducers
+      to (potentially) process them
+
+    Options:
+
+    - :return-zset-item-xf
+      A transducer to transform each item (a datom or a joined pair)
+      before final inclusion for downstream processing.
+      Example:
+      (map (fn [item] ...))
+      (filter (fn [item] ...))"
+  [{clause-1 :clause clause-1-out :clause-out path-f-1 :path pred-1 :pred index-kfn-1 :index-kfn :or {path-f-1 identity}}
+   {clause-2 :clause clause-2-out :clause-out path-f-2 :path pred-2 :pred index-kfn-2 :index-kfn :or {path-f-2 identity}}
+   query-state
+   & {:keys [last? return-zset-item-xf]
+      :or   {last?               false
+             return-zset-item-xf (map identity)}}]
+  (let [uuid-1 [clause-1 (random-uuid)]
+        uuid-2 [clause-2 (random-uuid)]]
+    (timbre/info uuid-1)
+    (timbre/info uuid-2)
+    (timbre/info [clause-1 clause-2])
+    (comp
+      ;receives a zset, unpacks zset into individual items
+      cat
+      (map (fn [zsi]
+             (let [delta-1 (if (can-join? zsi path-f-1 pred-1 clause-1)
+                             (zset/index (zset/hash-zset zsi) (comp index-kfn-1 path-f-1))
+                             {})
+                   delta-2 (if (can-join? zsi path-f-2 pred-2 clause-2)
+                             (zset/index (zset/hash-zset zsi) (comp index-kfn-2 path-f-2))
+                             {})
+                   ;If last?, we return an empty zset.
+                   ; The current zset-item has been "offered" to all transducers and is not needed anymore.
+                   ; (!) Returning it would "pollute" the query result with extra data.
+                   zset    (return-empty-when-last last? zsi)]
+               ;return
+               [delta-1 delta-2 zset])))
+      (map (fn [delta-1+delta-2+zset]
+             (if (stop-current-xf? delta-1+delta-2+zset)
+               (let [zset (delta-1+delta-2+zset 2)]
+                 ;stopping current, mark as no-op, returning zset at the end of xf chain
+                 (->no-op zset))
+               delta-1+delta-2+zset)))
+      (ss.xforms/map-when not-no-op?
+        (fn join-xf-update-state [[delta-1 delta-2 zset]]
+          (let [index-state-1-prev (@query-state uuid-1 {})
+                index-state-2-prev (@query-state uuid-2 {})]
+            ;advance indices
+            (swap! query-state
+              (fn update-indices [state]
+                (-> state
+                  (update uuid-1 zset/indexed-zset-pos+ delta-1)
+                  (update uuid-2 zset/indexed-zset-pos+ delta-2))))
+            ;return
+            (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
+      (ss.xforms/map-when not-no-op?
+        (fn join-xf-intersect-heavy [params]
+          ;return
+          (vector
+            ;add :where clauses as metadata to the joined relations (a zset)
+            (zset/indexed-zset->zset
+              (let [f1      (with-clause-f-memo clause-1)
+                    f2      (with-clause-f-memo clause-2)
+                    index-f rel/index-clauses]
+                (zset/indexed-zset+
+                  (zset/indexed-zset+
+                    ;ΔA ⋈ B
+                    (zset/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2 index-f)
+                    ;A ⋈ ΔB
+                    (zset/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2 index-f))
                   ;ΔA ⋈ ΔB
                   (zset/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2)))
               ;transducer to transform zset items during conversion indexed-zset -> zset

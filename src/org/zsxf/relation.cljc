@@ -11,7 +11,6 @@
       (:xf.clause (meta (nth x 1))))))
 
 (defn index-clauses [rel1+rel2-v]
-  rel1+rel2-v
   ;TODO potentially use this to simplify (or eliminate the need for) org.zsxf.xf :path, :pred, etc
   (if (relation? rel1+rel2-v)
     (let [[rel1 rel2] rel1+rel2-v

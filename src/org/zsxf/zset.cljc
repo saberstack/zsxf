@@ -188,18 +188,22 @@
   "Z-Sets multiplication implemented as per https://www.feldera.com/blog/SQL-on-Zsets#cartesian-products"
   ([zset-1 zset-2]
    (zset* zset-1 zset-2 identity identity))
+  ([zset-1 zset-2 pair-f]
+   (zset* zset-1 zset-2 identity identity pair-f))
   ([zset-1 zset-2 item-1-f item-2-f]
-   #_{:pre [(zset? zset-1) (zset? zset-2)]}
+   (zset* zset-1 zset-2 item-1-f item-2-f identity))
+  ([zset-1 zset-2 item-1-f item-2-f pair-f]
    (set
      (for [item-1 zset-1 item-2 zset-2]
        (let [weight-1   (zset-weight item-1)
              weight-2   (zset-weight item-2)
              new-weight (*' weight-1 weight-2)]
-         (zset-item
-           (vector
-             (item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
-             (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
-           new-weight))))))
+         (pair-f
+           (zset-item
+             (vector
+               (item-1-f (vary-meta item-1 dissoc-meta-weight)) ;remove weight
+               (item-2-f (vary-meta item-2 dissoc-meta-weight))) ;remove weight
+             new-weight)))))))
 
 (defn- index-xf-pair
   [k zset-of-grouped-items]
@@ -283,7 +287,11 @@
   of the weights of the same item in indexed-zset-1 and indexed-zset-2."
   ([z1 z2]
    (zset-indexed* z1 z2 identity identity))
+  ([z1 z2 pair-f]
+   (zset-indexed* z1 z2 identity identity pair-f))
   ([z1 z2 zset*-item-1-f zset*-item-2-f]
+   (zset-indexed* z1 z2 zset*-item-1-f zset*-item-2-f identity))
+  ([z1 z2 zset*-item-1-f zset*-item-2-f pair-f]
    (let [commons (util/key-intersection z1 z2)]
      (into
        {}

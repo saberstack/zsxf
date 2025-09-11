@@ -226,10 +226,10 @@
   [zset kfn]
   (into {} (index-xf kfn) zset))
 
-(defn indexed-zset->zset
+(defn zset-indexed->zset
   "Convert an indexed zset back into a zset"
   ([indexed-zset]
-   (indexed-zset->zset indexed-zset (map identity)))
+   (zset-indexed->zset indexed-zset (map identity)))
   ([indexed-zset xf]
    (into
      #{}
@@ -238,19 +238,19 @@
        xf)
      indexed-zset)))
 
-(defn indexed-zset+
+(defn zset-indexed+
   "Adds two indexed zsets.
   Same as zset+ but for indexed zset which is a map."
   ([]
    {})
-  ([indexed-zset]
-   (indexed-zset+ indexed-zset {}))
-  ([indexed-zset-1 indexed-zset-2]
-   (merge-with zset+ indexed-zset-1 indexed-zset-2))
-  ([indexed-zset-1 indexed-zset-2 & args]
-   (apply merge-with zset+ indexed-zset-1 indexed-zset-2 args)))
+  ([z1]
+   (zset-indexed+ z1 {}))
+  ([z1 z2]
+   (merge-with zset+ z1 z2))
+  ([z1 z2 & args]
+   (apply merge-with zset+ z1 z2 args)))
 
-(defn indexed-zset-pos+
+(defn zset-indexed-pos+
   "Same as zset-pos+ but for indexed zset which is a map."
   [m1 m2]
   (let [[smaller larger] (if (< (count m1) (count m2)) [m1 m2] [m2 m1])]
@@ -275,24 +275,24 @@
       larger
       smaller)))
 
-(defn intersect-indexed*
+(defn zset-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)
   Returns an indexed zset.
 
   The weight of a common item in the return is the product (via zset*)
   of the weights of the same item in indexed-zset-1 and indexed-zset-2."
-  ([indexed-zset-1 indexed-zset-2]
-   (intersect-indexed* indexed-zset-1 indexed-zset-2 identity identity))
-  ([indexed-zset-1 indexed-zset-2 zset*-item-1-f zset*-item-2-f]
-   (let [commons (util/key-intersection indexed-zset-1 indexed-zset-2)]
+  ([z1 z2]
+   (zset-indexed* z1 z2 identity identity))
+  ([z1 z2 zset*-item-1-f zset*-item-2-f]
+   (let [commons (util/key-intersection z1 z2)]
      (into
        {}
        (map (fn [common]
               (vector
                 common
                 (zset*
-                  (indexed-zset-1 common)
-                  (indexed-zset-2 common)
+                  (z1 common)
+                  (z2 common)
                   zset*-item-1-f
                   zset*-item-2-f))))
        commons))))

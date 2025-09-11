@@ -249,8 +249,8 @@
             (swap! query-state
               (fn update-indices [state]
                 (-> state
-                  (update uuid-1 zset/indexed-zset-pos+ delta-1)
-                  (update uuid-2 zset/indexed-zset-pos+ delta-2))))
+                  (update uuid-1 zset/zset-indexed-pos+ delta-1)
+                  (update uuid-2 zset/zset-indexed-pos+ delta-2))))
             ;return
             (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
       (ss.xforms/map-when not-no-op?
@@ -258,18 +258,18 @@
           ;return
           (vector
             ;add :where clauses as metadata to the joined relations (a zset)
-            (zset/indexed-zset->zset
+            (zset/zset-indexed->zset
               (let [f1      (with-clause-f-memo clause-1)
                     f2      (with-clause-f-memo clause-2)
                     index-f rel/index-clauses]
-                (zset/indexed-zset+
-                  (zset/indexed-zset+
+                (zset/zset-indexed+
+                  (zset/zset-indexed+
                     ;ΔA ⋈ B
-                    (zset/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2 index-f)
+                    (zset/zset-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2 index-f)
                     ;A ⋈ ΔB
-                    (zset/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2 index-f))
+                    (zset/zset-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2 index-f))
                   ;ΔA ⋈ ΔB
-                  (zset/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2 index-f)))
+                  (zset/zset-indexed* (:delta-1 params) (:delta-2 params) f1 f2 index-f)))
               ;transducer to transform zset items during conversion indexed-zset -> zset
               return-zset-item-xf)
             ;original zset-item wrapped in a zset
@@ -346,8 +346,8 @@
             (swap! query-state
               (fn update-indices [state]
                 (-> state
-                  (update uuid-1 zset/indexed-zset-pos+ delta-1)
-                  (update uuid-2 zset/indexed-zset-pos+ delta-2))))
+                  (update uuid-1 zset/zset-indexed-pos+ delta-1)
+                  (update uuid-2 zset/zset-indexed-pos+ delta-2))))
             ;return
             (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
       (ss.xforms/map-when not-no-op?
@@ -355,18 +355,18 @@
           ;return
           (vector
             ;add :where clauses as metadata to the joined relations (a zset)
-            (zset/indexed-zset->zset
+            (zset/zset-indexed->zset
               (let [f1      (with-clause-f-memo clause-1)
                     f2      (with-clause-f-memo clause-2)
                     index-f rel/index-clauses]
-                (zset/indexed-zset+
-                  (zset/indexed-zset+
+                (zset/zset-indexed+
+                  (zset/zset-indexed+
                     ;ΔA ⋈ B
-                    (zset/intersect-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2 index-f)
+                    (zset/zset-indexed* (:delta-1 params) (:index-state-2-prev params) f1 f2 index-f)
                     ;A ⋈ ΔB
-                    (zset/intersect-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2 index-f))
+                    (zset/zset-indexed* (:index-state-1-prev params) (:delta-2 params) f1 f2 index-f))
                   ;ΔA ⋈ ΔB
-                  (zset/intersect-indexed* (:delta-1 params) (:delta-2 params) f1 f2)))
+                  (zset/zset-indexed* (:delta-1 params) (:delta-2 params) f1 f2 index-f)))
               ;transducer to transform zset items during conversion indexed-zset -> zset
               return-zset-item-xf)
             ;original zset-item wrapped in a zset

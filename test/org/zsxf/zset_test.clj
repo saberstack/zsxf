@@ -10,7 +10,7 @@
 
 (deftest test-1-indexed-zset-pos+
   (let [indexed-zset
-        (zs/indexed-zset-pos+
+        (zs/zset-indexed-pos+
           {1 (zs/zset [[1]])}
           {1 (zs/zset [[1]])})]
     (is (= indexed-zset {1 #{^#:zset{:w 2} [1]}}))))

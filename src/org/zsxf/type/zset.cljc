@@ -341,25 +341,25 @@
     z))
 
 #?(:clj
-   (defn indexed-zset+
+   (defn zset-indexed+
      "Adds two indexed zsets.
      Same as zset+ but for indexed zset which is a map."
      ([]
       {})
-     ([iz] iz)
-     ([iz1 iz2]
-      (merge-with zset+ iz1 iz2))
-     ([iz1 iz2 & more]
-      (apply merge-with zset+ iz1 iz2 more))))
+     ([z1] z1)
+     ([z1 z2]
+      (merge-with zset+ z1 z2))
+     ([z1 z2 & more]
+      (apply merge-with zset+ z1 z2 more))))
 
 #?(:clj
-   (defn indexed-zset-pos+
+   (defn zset-indexed-pos+
      "Adds two indexed zsets.
      Same as zset-pos+ but for indexed zset which is a map."
      ([] {})
-     ([iz] iz)
-     ([iz1 iz2]
-      (merge-with zset-pos+ iz1 iz2))
+     ([z1] z1)
+     ([z1 z2]
+      (merge-with zset-pos+ z1 z2))
      ([iz1 iz2 & more]
       (apply merge-with zset-pos+ iz1 iz2 more))))
 
@@ -386,15 +386,15 @@
   [z kfn]
   `(into {} (index-xf ~kfn (zset)) ~z))
 
-(defn indexed-zset->zset
+(defn zset-indexed->zset
   "Convert an indexed zset back into a zset"
-  [indexed-zset xf]
+  [z1 xf]
   (into
     (zset)
     (comp
       (mapcat (fn [k+v] (nth k+v 1)))
       xf)
-    indexed-zset))
+    z1))
 
 (defn zset-sum+
   [f]
@@ -433,28 +433,28 @@
               (item2-f (dissoc-zset-item-weight item2))]
              w-new)))))))
 
-(defn intersect-indexed*
+(defn zset-indexed*
   "Intersect/join two indexed zsets (indexed zsets are maps)
   Returns an indexed zset.
 
   The weight of a common item in the return is the product (via zset*)
   of the weights of the same item in indexed-zset-1 and indexed-zset-2."
-  ([iz1 iz2]
-   (intersect-indexed* iz1 iz2 identity identity))
-  ([iz1 iz2 pair-f]
-   (intersect-indexed* iz1 iz2 identity identity pair-f))
-  ([iz1 iz2 zset*-item1-f zset*-item2-f]
-   (intersect-indexed* iz1 iz2 zset*-item1-f zset*-item2-f identity))
-  ([iz1 iz2 zset*-item1-f zset*-item2-f pair-f]
-   (let [commons (util/key-intersection iz1 iz2)]
+  ([z1 z2]
+   (zset-indexed* z1 z2 identity identity))
+  ([z1 z2 pair-f]
+   (zset-indexed* z1 z2 identity identity pair-f))
+  ([z1 z2 zset*-item1-f zset*-item2-f]
+   (zset-indexed* z1 z2 zset*-item1-f zset*-item2-f identity))
+  ([z1 z2 zset*-item1-f zset*-item2-f pair-f]
+   (let [commons (util/key-intersection z1 z2)]
      (into
        {}
        (map (fn [common]
               (vector
                 common
                 (zset*
-                  (iz1 common)
-                  (iz2 common)
+                  (z1 common)
+                  (z2 common)
                   zset*-item1-f
                   zset*-item2-f
                   pair-f))))
@@ -607,14 +607,14 @@
   zs/zset-negate :OK zset-negate
   zs/zset* :OK zset*
   zs/index :OK index
-  zs/intersect-indexed* :OK intersect-indexed*
+  zs/zset-indexed* :OK zset-indexed*
 
   ;aggregates
   zs/zset-sum+ :OK zset-sum+
   zs/zset-count+ :OK zset-count+
   ;indexed
-  zs/indexed-zset+ :OK indexed-zset+
-  zs/indexed-zset-pos+ :OK indexed-zset-pos+
+  zs/zset-indexed+ :OK zset-indexed+
+  zs/zset-indexed-pos+ :OK zset-indexed-pos+
 
   ;public / aggregates
   zs/zset-count-item :OK zset-count-item
@@ -627,19 +627,19 @@
 (comment
   (let [zs (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
         iz (index zs (fn [m] (first (:name m))))]
-    (indexed-zset+ iz iz))
+    (zset-indexed+ iz iz))
 
   (let [zsp (zset-pos #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
         iz  (index zsp (fn [m] (first (:name m))))]
-    (indexed-zset-pos+ iz iz)))
+    (zset-indexed-pos+ iz iz)))
 
 ;Usage
 (comment
   (let [zs (zset #{{:name "Alice"} {:name "Alex"} {:name "Bob"}})
         iz (index zs (fn [m] (first (:name m))))]
-    (intersect-indexed*
-      (indexed-zset+ iz iz)
-      (indexed-zset+ iz iz))))
+    (zset-indexed*
+      (zset-indexed+ iz iz)
+      (zset-indexed+ iz iz))))
 
 ;Usage
 (comment

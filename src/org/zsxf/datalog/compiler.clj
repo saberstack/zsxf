@@ -21,13 +21,13 @@
 (defn clause-pred [e a v]
   (let [preds (cond-> []
                 (number? e)
-                (conj `#(d2/datom-eid= % ~e))
+                (conj `(fn [x#] (d2/datom-eid= x# ~e)))
 
                 (and (keyword? a) (parser/variable? v))
-                (conj `#(d2/datom-attr= % ~a))
+                (conj `(fn [x#] (d2/datom-attr= x# ~a)))
 
                 (and (keyword? a) (not (parser/variable? v)))
-                (conj `#(d2/datom-attr-val= % ~a ~v)))]
+                (conj `(fn [x#] (d2/datom-attr-val= x# ~a ~v))))]
     (condp = (count preds)
       0
       `(constantly true)

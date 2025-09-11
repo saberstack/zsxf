@@ -41,8 +41,8 @@
   (if (nil? result)
     ;init
     (cond
-      (map? result-delta) [zset/zset-indexed+ {}]             ;for aggregates, allow negative weights
-      (set? result-delta) [zset/zset-pos+ (zset/zset-pos)]                ;regular joins, no negative weight
+      (map? result-delta) [zset/zset-indexed+ {}]           ;for aggregates, allow negative weights
+      (set? result-delta) [zset/zset-pos+ (zset/zset-pos)]  ;regular joins, no negative weight
       :else (throw (ex-info "result-delta must be either map or set"
                      {:result-delta result})))
     ;else, existing result

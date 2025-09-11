@@ -221,17 +221,82 @@
 (defn test-xf-index []
   ;WIP
   (let [zsxf-query
-        (q/q2 '[:find ?p
-                :where
-                [?p :person/name "Alice"]
-                [?p :person/country ?cy]
-                [?cy :country/name "USA"]
-                [?cy :country/continent ?ct]
-                [?ct :continent/name "North America"]])]
+        (q/create-query
+          (dcc/compile
+            '[:find ?p
+              :where
+              [?p :person/name ?ne]
+              [?p :person/country ?cy]
+              [?cy :country/name "USA"]
+              [?cy :country/continent ?ct]
+              [?ct :continent/name "North America"]]))]
+    (def zsxf-query zsxf-query)
     (q/input zsxf-query
       [(tx-datoms->datoms2->zset
-         [(ddb/datom 1 :person/name "Alice" 536870913 true)])])
-    (zr/sample-indices zsxf-query)))
+         [(ddb/datom 1 :person/name "Alice" 42 true)
+          (ddb/datom 10 :person/name "Bob" 42 true)
+          (ddb/datom 2 :country/name "USA" 42 true)
+          (ddb/datom 1 :person/country 2 42 true)
+          (ddb/datom 10 :person/country 2 42 true)
+          (ddb/datom 3 :continent/name "North America")
+          (ddb/datom 2 :country/continent 3 42 true)
+          ])])
+    (zr/sample-indices zsxf-query)
+    )
+  )
+
+(comment
+
+  (q/input zsxf-query
+    [(tx-datoms->datoms2->zset
+       [(ddb/datom 2 :country/name "USA" 42 true)])])
+
+  (zr/sample-indices zsxf-query)
+
+  (q/input zsxf-query
+    [(tx-datoms->datoms2->zset
+       [(ddb/datom 1 :person/country 2 42 true)])])
+  )
+
+(defn test-xf-index-different-clause-order []
+  ;WIP
+  (let [zsxf-query-2
+        (q/create-query
+          (dcc/compile
+            '[:find ?p
+              :where
+              [?cy :country/name "USA"]
+              [?p :person/name ?ne]
+              [?p :person/country ?cy]
+              [?cy :country/continent ?ct]
+              [?ct :continent/name "North America"]]))]
+    (def zsxf-query-2 zsxf-query-2)
+    (q/input zsxf-query-2
+      [(tx-datoms->datoms2->zset
+         [(ddb/datom 1 :person/name "Alice" 42 true)
+          (ddb/datom 10 :person/name "Bob" 42 true)
+          (ddb/datom 2 :country/name "USA" 42 true)
+          (ddb/datom 1 :person/country 2 42 true)
+          (ddb/datom 10 :person/country 2 42 true)
+          (ddb/datom 3 :continent/name "North America")
+          (ddb/datom 2 :country/continent 3 42 true)
+          ])])
+    (zr/sample-indices zsxf-query-2)
+    )
+  )
+
+(comment
+
+  (q/input zsxf-query-2
+    [(tx-datoms->datoms2->zset
+       [(ddb/datom 2 :country/name "USA" 42 true)])])
+
+  (zr/sample-indices zsxf-query-2)
+
+  (q/input zsxf-query-2
+    [(tx-datoms->datoms2->zset
+       [(ddb/datom 1 :person/country 2 42 true)])])
+  )
 
 (defn new-join-xf-3
   [query-state]

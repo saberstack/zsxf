@@ -12,6 +12,7 @@
 #?(:clj
    (defn -main
      [& args]
+     (set! *print-namespace-maps* false)
      (let [port 7899]
        (timbre/merge-config!
          {:output-fn util/timbre-custom-output-fn})

@@ -1,5 +1,6 @@
 (ns org.zsxf.query
   (:require [org.zsxf.constant :as const]
+            [org.zsxf.datalog.compiler :as dcc]
             [org.zsxf.util :as util]
             #?(:clj [org.zsxf.type.zset :as zset])
             #?(:cljs [org.zsxf.zset :as zset])
@@ -18,6 +19,10 @@
      ::q/result-history (atom {})
      ::q/id             (random-uuid)
      ::q/keep-history?  keep-history?}))
+
+(defmacro q2 [query]
+  `(create-query
+     (dcc/compile ~query)))
 
 (defn cdc-progress
   [query]

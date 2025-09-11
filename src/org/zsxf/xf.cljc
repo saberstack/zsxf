@@ -19,6 +19,7 @@
      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
      ... etc."
   (:require [net.cgrand.xforms :as xforms]
+            [org.saberstack.clock.monotonic :as clock]
             [org.saberstack.clojure.inline :as inline]
             [org.zsxf.type.datom-like :as dl]
             #?(:clj [org.zsxf.type.zset :as zset])
@@ -214,10 +215,10 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1 [clause-1 (random-uuid)]
-        uuid-2 [clause-2 (random-uuid)]]
-    (timbre/info uuid-1)
-    (timbre/info uuid-2)
+  (let [local-unique-1 [clause-1 (clock/now)]
+        local-unique-2 [clause-2 (clock/now)]]
+    (timbre/info local-unique-1)
+    (timbre/info local-unique-2)
     (timbre/info [clause-1 clause-2])
     (comp
       ;receives a zset, unpacks zset into individual items
@@ -243,14 +244,14 @@
                delta-1+delta-2+zset)))
       (ss.xforms/map-when not-no-op?
         (fn join-xf-update-state [[delta-1 delta-2 zset]]
-          (let [index-state-1-prev (@query-state uuid-1 {})
-                index-state-2-prev (@query-state uuid-2 {})]
+          (let [index-state-1-prev (@query-state local-unique-1 {})
+                index-state-2-prev (@query-state local-unique-2 {})]
             ;advance indices
             (swap! query-state
               (fn update-indices [state]
                 (-> state
-                  (update uuid-1 zset/zset-indexed-pos+ delta-1)
-                  (update uuid-2 zset/zset-indexed-pos+ delta-2))))
+                  (update local-unique-1 zset/zset-indexed-pos+ delta-1)
+                  (update local-unique-2 zset/zset-indexed-pos+ delta-2))))
             ;return
             (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
       (ss.xforms/map-when not-no-op?
@@ -311,10 +312,10 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1 [clause-1 (random-uuid)]
-        uuid-2 [clause-2 (random-uuid)]]
-    (timbre/info uuid-1)
-    (timbre/info uuid-2)
+  (let [local-unique-1 [clause-1 (clock/now)]
+        local-unique-2 [clause-2 (clock/now)]]
+    (timbre/info local-unique-1)
+    (timbre/info local-unique-2)
     (timbre/info [clause-1 clause-2])
     (comp
       ;receives a zset, unpacks zset into individual items
@@ -340,14 +341,14 @@
                delta-1+delta-2+zset)))
       (ss.xforms/map-when not-no-op?
         (fn join-xf-update-state [[delta-1 delta-2 zset]]
-          (let [index-state-1-prev (@query-state uuid-1 {})
-                index-state-2-prev (@query-state uuid-2 {})]
+          (let [index-state-1-prev (@query-state local-unique-1 {})
+                index-state-2-prev (@query-state local-unique-2 {})]
             ;advance indices
             (swap! query-state
               (fn update-indices [state]
                 (-> state
-                  (update uuid-1 zset/zset-indexed-pos+ delta-1)
-                  (update uuid-2 zset/zset-indexed-pos+ delta-2))))
+                  (update local-unique-1 zset/zset-indexed-pos+ delta-1)
+                  (update local-unique-2 zset/zset-indexed-pos+ delta-2))))
             ;return
             (->params-join-xf-1 index-state-1-prev index-state-2-prev delta-1 delta-2 zset))))
       (ss.xforms/map-when not-no-op?
@@ -476,8 +477,8 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [uuid-1 (random-uuid)
-        uuid-2 (random-uuid)]
+  (let [local-unique-1 (clock/now)
+        local-unique-2 (clock/now)]
     (comp
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)
@@ -504,14 +505,14 @@
         any?
         (comp
           (map (fn [[delta-1 delta-2 zset]]
-                 (let [sub-state-1-prev (get @query-state uuid-1 {})
-                       sub-state-2-prev (get @query-state uuid-2 {})]
+                 (let [sub-state-1-prev (get @query-state local-unique-1 {})
+                       sub-state-2-prev (get @query-state local-unique-2 {})]
                    ;advance indices
                    (swap! query-state
                      (fn [state]
                        (-> state
-                         (update uuid-1 (fn [z] (zset/zset-pos+ (or z (zset/zset-pos)) delta-1)))
-                         (update uuid-2 (fn [z] (zset/zset-pos+ (or z (zset/zset-pos)) delta-2))))))
+                         (update local-unique-1 (fn [z] (zset/zset-pos+ (or z (zset/zset-pos)) delta-1)))
+                         (update local-unique-2 (fn [z] (zset/zset-pos+ (or z (zset/zset-pos)) delta-2))))))
                    ;return
                    [sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]])))
           (map (fn [[sub-state-1-prev sub-state-2-prev [delta-1 delta-2 zset]]]

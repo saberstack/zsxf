@@ -17,7 +17,7 @@
                     k
                     "original mm:"
                     (mm/measure v)))
-                (and (vector? k) (uuid? (second k)))))
+                (and (vector? k) (some? (second k)))))
       (if clause
         (filter (fn [[k v]] (= clause k)))
         (map identity))

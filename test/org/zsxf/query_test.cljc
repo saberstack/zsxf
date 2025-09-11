@@ -8,6 +8,7 @@
    [medley.core :as medley]
    [net.cgrand.xforms :as xforms]
    [org.zsxf.datalog.compiler :as dcc]
+   [org.zsxf.alpha.repl :as zr]
    [org.zsxf.input.datascript :as ds]
    [org.zsxf.datom :as d2]
    [org.zsxf.query :as q]
@@ -19,6 +20,7 @@
    #?(:clj [taoensso.nippy :as nippy])
    [taoensso.timbre :as timbre]))
 
+(set! *print-namespace-maps* false)
 
 (defn tx-datoms->datoms2->zset
   "Transforms datoms into a zset of vectors. Each vector represents a datom with a weight."
@@ -218,15 +220,18 @@
 
 (defn test-xf-index []
   ;WIP
-  (dcc/compile
-    ;equivalent query
-    '[:find ?p
-      :where
-      [?p :person/name "Alice"]
-      [?p :person/country ?cy]
-      [?cy :country/name "USA"]
-      [?cy :country/continent ?ct]
-      [?ct :continent/name "North America"]]))
+  (let [zsxf-query
+        (q/q2 '[:find ?p
+                :where
+                [?p :person/name "Alice"]
+                [?p :person/country ?cy]
+                [?cy :country/name "USA"]
+                [?cy :country/continent ?ct]
+                [?ct :continent/name "North America"]])]
+    (q/input zsxf-query
+      [(tx-datoms->datoms2->zset
+         [(ddb/datom 1 :person/name "Alice" 536870913 true)])])
+    (zr/sample-indices zsxf-query)))
 
 (defn new-join-xf-3
   [query-state]
@@ -1024,7 +1029,7 @@
            :path   identity
            :pred   (fn [zsi]
                      (and
-                       (clause= zsi clause-union-1)      ;strictly clause matches TODO simplify
+                       (clause= zsi clause-union-1)         ;strictly clause matches TODO simplify
                        (d2/datom-attr= (first zsi) :movie/title)))})
         (xforms/reduce
           (zs/zset-xf+

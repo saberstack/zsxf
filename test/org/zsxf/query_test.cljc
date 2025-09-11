@@ -216,6 +216,18 @@
 
   )
 
+(defn test-xf-index []
+  ;WIP
+  (dcc/compile
+    ;equivalent query
+    '[:find ?p
+      :where
+      [?p :person/name "Alice"]
+      [?p :person/country ?cy]
+      [?cy :country/name "USA"]
+      [?cy :country/continent ?ct]
+      [?ct :continent/name "North America"]]))
+
 (defn new-join-xf-3
   [query-state]
   (comp

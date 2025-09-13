@@ -244,7 +244,46 @@
     (zr/sample-indices zsxf-query)
     )
   )
+;TODO continue here
+(comment
+  {3 #zsp #{[
+             [
+              [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
 
+              #d2 [2 :country/name "USA"]
+              ]
+             #d2 [2 :country/continent 3]]
+
+            [
+             [
+              [#d2 [10 :person/name "Bob"] #d2 [10 :person/country 2]]
+
+              #d2 [2 :country/name "USA"]]
+
+             #d2 [2 :country/continent 3]]}}
+
+  {3 #zsp #{[
+             [
+              [#d2 [2 :country/name "USA"] #d2 [10 :person/country 2]]
+
+              #d2 [2 :country/continent 3]
+              ]
+             #d2 [10 :person/name "Bob"]]
+            [
+             [
+              [#d2 [2 :country/name "USA"] #d2 [1 :person/country 2]]
+
+              #d2 [2 :country/continent 3]
+              ]
+             #d2 [1 :person/name "Alice"]]}}
+
+  ;; set representation
+  #{
+    #{#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]}
+    #{#d2 [1 :person/country 2] #d2 [2 :country/name "USA"]}
+    #{#d2 [2 :country/name "USA"] #d2 [2 :country/continent 3]}
+    }
+  )
 (comment
 
   (q/input zsxf-query

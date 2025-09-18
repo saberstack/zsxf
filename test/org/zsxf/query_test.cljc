@@ -217,7 +217,11 @@
   (q/get-state query-1)
 
   )
-
+#{
+  #{#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]}
+  #{#d2 [1 :person/country 2] #d2 [2 :country/name "USA"]}
+  #{#d2 [2 :country/name "USA"] #d2 [2 :country/continent 3]}
+  }
 (defn test-xf-index []
   ;WIP
   (let [zsxf-query
@@ -244,6 +248,13 @@
     (zr/sample-indices zsxf-query)
     )
   )
+(comment
+  (q/get-result zsxf-query)
+
+  (q/input zsxf-query
+    [(tx-datoms->datoms2->zset
+       [(ddb/datom 3 :continent/name "North America" 42 true)])]))
+
 ;TODO continue here
 (comment
   {3 #zsp #{[

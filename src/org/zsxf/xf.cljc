@@ -19,7 +19,7 @@
      [[[:R1 :R2] :R3] :R4] ;four relations (still a pair!)
      ... etc."
   (:require [net.cgrand.xforms :as xforms]
-            [org.saberstack.clock.monotonic :as clock]
+            #?(:clj [org.saberstack.clock.monotonic :as clock])
             [org.saberstack.clojure.inline :as inline]
             [org.zsxf.type.datom-like :as dl]
             #?(:clj [org.zsxf.type.zset :as zset])
@@ -145,7 +145,10 @@
 
 (defn clause-map [clause]
   {:xf.clause clause})
-(def clause-map-memo (clj-fast.inline/memoize-c* 1 clause-map))
+#?(:clj
+   (def clause-map-memo (clj-fast.inline/memoize-c* 1 clause-map))
+   :cljs
+   (def clause-map-memo clause-map))
 
 (defn with-clause-f [clause]
   (fn [item]
@@ -153,7 +156,10 @@
       (if (or (nil? item-meta) (= {} item-meta))
         (with-meta item (clause-map-memo clause))
         (inline/vary-meta-xy item assoc :xf.clause clause)))))
-(def with-clause-f-memo (clj-fast.inline/memoize-c* 1 with-clause-f))
+#?(:clj
+   (def with-clause-f-memo (clj-fast.inline/memoize-c* 1 with-clause-f))
+   :cljs
+   (def with-clause-f-memo with-clause-f))
 
 (defrecord params-join-xf-1 [index-state-1-prev index-state-2-prev delta-1 delta-2 zset])
 
@@ -179,6 +185,10 @@
 
 (defn- return-empty-when-last [last? zsi]
   (if last? (zset/zset) (zset/hash-zset zsi)))
+
+(defn unique-query-id []
+  #?(:clj (clock/now)
+     :cljs (random-uuid)))
 
 (defn join-xf
   "Receives:
@@ -215,8 +225,8 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [local-unique-1 [clause-1 (clock/now)]
-        local-unique-2 [clause-2 (clock/now)]]
+  (let [local-unique-1 [clause-1 (unique-query-id)]
+        local-unique-2 [clause-2 (unique-query-id)]]
     (timbre/info local-unique-1)
     (timbre/info local-unique-2)
     (timbre/info [clause-1 clause-2])
@@ -312,8 +322,8 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [local-unique-1 [clause-1 (clock/now)]
-        local-unique-2 [clause-2 (clock/now)]]
+  (let [local-unique-1 [clause-1 (unique-query-id)]
+        local-unique-2 [clause-2 (unique-query-id)]]
     (timbre/info local-unique-1)
     (timbre/info local-unique-2)
     (timbre/info [clause-1 clause-2])
@@ -477,8 +487,8 @@
    & {:keys [last? return-zset-item-xf]
       :or   {last?               false
              return-zset-item-xf (map identity)}}]
-  (let [local-unique-1 (clock/now)
-        local-unique-2 (clock/now)]
+  (let [local-unique-1 (unique-query-id)
+        local-unique-2 (unique-query-id)]
     (comp
       ;receives a zset, unpacks zset into individual items
       (mapcat identity)

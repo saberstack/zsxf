@@ -361,7 +361,12 @@
 
 
 (defn get-all-users-who-mention-clojure-zsxf
-  {:doc "All users who mention \"Clojure\""}
+  {:doc   "All users who mention \"Clojure\""
+   :query '[:find ?username
+            :where
+            [?e :hn.item/by ?username]
+            [?e :hn.item/text ?txt]
+            [(clojure.string/includes? ?txt "Clojure")]]}
   [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query

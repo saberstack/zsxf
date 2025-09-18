@@ -391,7 +391,12 @@
     :pending))
 
 (defn get-all-llm-mentions-by-raspasov
-  {:doc "All mentions of \"LLM\" by a specific user"}
+  {:doc   "All mentions of \"LLM\" by a specific user"
+   :query '[:find ?txt
+            :where
+            [?e :hn.item/by "raspasov"]
+            [?e :hn.item/text ?txt]
+            [(clojure.string/includes? ?txt "LLM")]]}
   [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query
@@ -406,7 +411,12 @@
     :pending))
 
 (defn get-all-clojure-mentions-user-count
-  {:doc "Count the comments that mention \"Clojure\", per user"}
+  {:doc   "Count the comments that mention \"Clojure\", per user"
+   :query '[:find ?user (count ?e)
+            :where
+            [?e :hn.item/by ?user]
+            [?e :hn.item/text ?txt]
+            [(clojure.string/includes? ?txt "Clojure")]]}
   [an-atom]
   (let [conn  (hn-conn)
         query (q/create-query

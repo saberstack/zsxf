@@ -35,6 +35,7 @@
                  (map meta)
                  (map (fn [m]
                         {:doc  (:doc m)
+                         :query (:query m)
                          :name (symbol (str (ns-name (:ns m))) (str (:name m)))}))
                  (remove (comp nil? :doc)))
                (into #{}

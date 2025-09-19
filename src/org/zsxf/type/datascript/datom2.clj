@@ -33,6 +33,9 @@
   Object
   (hashCode [this] (.hashCode datom))
   (toString [this] (.toString datom))
+  (equals [this x]
+    (or (identical? this x)
+      (= this x)))
 
   IHashEq
   (hasheq [this] (.hasheq datom))

@@ -271,7 +271,7 @@
             (zset/zset-indexed->zset
               (let [f1      (with-clause-f-memo clause-1)
                     f2      (with-clause-f-memo clause-2)
-                    index-f rel/index-clauses]
+                    index-f identity]
                 (zset/zset-indexed+
                   (zset/zset-indexed+
                     ;ΔA ⋈ B

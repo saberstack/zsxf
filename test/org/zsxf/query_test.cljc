@@ -17,6 +17,7 @@
    [org.zsxf.util :as util :refer [nth2 path-f]]
    [org.zsxf.xf :as xf]
    [org.zsxf.zset :as zs]
+   [ubergraph.core :as uber]
    #?(:clj [taoensso.nippy :as nippy])
    [taoensso.timbre :as timbre]))
 

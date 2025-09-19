@@ -7,6 +7,14 @@
   (uber/add-undirected-edges* g [[src dest]]))
 
 (comment
+  ;find edges
+  (uber/find-edges
+    (uber/graph
+      [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]])
+    {:dest #d2 [1 :person/country 2]})
+  )
+
+(comment
 
   ;; Vertices of the hypergraph
   (def vertices [:v1 :v2 :v3 :v4])

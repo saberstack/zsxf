@@ -156,10 +156,9 @@
       (if (or (nil? item-meta) (= {} item-meta))
         (with-meta item (clause-map-memo clause))
         (inline/vary-meta-xy item assoc :xf.clause clause)))))
-#?(:clj
-   (def with-clause-f-memo (clj-fast.inline/memoize-c* 1 with-clause-f))
-   :cljs
-   (def with-clause-f-memo with-clause-f))
+(def with-clause-f-memo
+  #?(:clj  (clj-fast.inline/memoize-c* 1 with-clause-f)
+     :cljs with-clause-f))
 
 (defrecord params-join-xf-1 [index-state-1-prev index-state-2-prev delta-1 delta-2 zset])
 
@@ -187,7 +186,7 @@
   (if last? (zset/zset) (zset/hash-zset zsi)))
 
 (defn unique-query-id []
-  #?(:clj (clock/now)
+  #?(:clj  (clock/now)
      :cljs (random-uuid)))
 
 (defn join-xf

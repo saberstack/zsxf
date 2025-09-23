@@ -1,7 +1,18 @@
 (ns org.zsxf.experimental.hypergraph
   (:require [clj-memory-meter.core :as mm]
             [ubergraph.core :as uber]
+            [bifurcan-clj.graph :as g]
+            [tech.v3.dataset :as ds]
             [ubergraph.alg :as uber.alg]))
+
+;TODO Continue here
+;; evaluate matrix hypergraph representations
+;; rows: vertices
+;; columns: hyperedges
+
+(defn init-hypergraph []
+
+  )
 
 (defn add-edge [g [src dest]]
   (uber/add-undirected-edges* g [[src dest]]))
@@ -89,4 +100,29 @@
       #d2 [2 :country/name "USA"]
       ]
      #d2 [2 :country/continent 3]])
+  )
+
+
+(defn bifurcan-graph-init []
+  (=
+    (->
+      (g/graph #(hash (name %)) (fn [a b] (= (name a) (name b))))
+      (g/link :x :y)
+      (g/link :x :y)
+      ;(g/link "y" "x")
+      ;(g/vertices)
+      clojure.datafy/datafy)
+    (->
+      (g/graph #(hash (name %))
+        (fn [a b]
+          (println "called with" a b)
+          (= (name a) (name b))))
+      (g/link :x :y)
+      (g/link :y :x)
+      ;(g/link :x :y)
+      ;(g/link "y" "x")
+      ;(g/vertices)
+      ;clojure.datafy/datafy
+      ))
+
   )

@@ -8,7 +8,7 @@
            datascript/datascript      {:git/url "https://github.com/saberstack/datascript"
                                        :git/sha "c6dd4ac6ec784d4720dd0a5ecabd055e2fda9c95"}
            dev.weavejester/medley     {:mvn/version "1.8.1"}
-           techascent/tech.ml.dataset {:mvn/version "7.061"}
+           techascent/tech.ml.dataset {:mvn/version "7.064"}
            com.taoensso/nippy         {:mvn/version "3.6.0"}
            org.clojure/tools.logging  {:mvn/version "1.3.0"}
            org.slf4j/slf4j-simple     {:mvn/version "2.0.7"}

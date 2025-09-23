@@ -1,5 +1,6 @@
 (ns org.zsxf.experimental.hypergraph
   (:require [clj-memory-meter.core :as mm]
+            [datomic.api :as d]
             [ubergraph.core :as uber]
             [bifurcan-clj.graph :as g]
             [tech.v3.dataset :as ds]
@@ -12,7 +13,18 @@
 
 (defn init-hypergraph []
 
-  )
+
+  (let [query1 '[:where
+                 [?p :person]
+                 [?c :city "NYC"]
+                 [?p :person-lives-in-city ?c]]
+        query2 '[:where
+                 [?p :person]
+                 [?c :city "NYC"]
+                 [?p :person-lives-in-city ?c]
+                 ;new clause
+                 [?p :person-lives-in-district]]]
+    ))
 
 (defn add-edge [g [src dest]]
   (uber/add-undirected-edges* g [[src dest]]))

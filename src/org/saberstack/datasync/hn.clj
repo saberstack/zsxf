@@ -22,7 +22,7 @@
   (ss.io/try-io!
     (-> body (charred/read-json :key-fn keyword) :id long)))
 
-(defn get-parsed-items! [item-ids]
+(defn get-parsed-items! [item-ids start]
   (let [null-pred     #(= "null" %)
         resps         (ss.io/try-io! (into [] (pmap api/item! item-ids)))
         items         (into [] (comp (map :body) (medley/take-upto null-pred)) resps)
@@ -30,8 +30,12 @@
         items'        (if reached-null?
                         (vec (butlast (medley/take-upto null-pred items)))
                         items)
-        first-synced  (body->id (first items'))
-        last-synced   (body->id (peek items'))]
+        [first-synced last-synced]
+        (if-let [body (first items')]
+          [(body->id body) (body->id (peek items'))]
+          ;rare case where the first item's body is "null";
+          ;tldr; HN API is special
+          [start start])]
     {:status-200?   (every? #(= 200 %) (map :status resps))
      :item-ids      item-ids
      :items         items
@@ -65,31 +69,32 @@
 
 (defn sync-items! [prev-end end]
   (reset! halt? false)
-  (transduce
-    (comp
-      (partition-all 1000)
-      (map get-parsed-items!)
-      (map (fn [{:keys [items item-ids status-200? resps first-synced last-synced] :as m}]
-             (if status-200?
-               (do
-                 (when (and (int? first-synced) (int? last-synced))
-                   (items-to-disk! items first-synced last-synced)
-                   (write-last-item-id-to-disk! last-synced)
-                   (timbre/info [::sync-ok [first-synced last-synced]]))
-                 (reset! last-dl [(first item-ids) (peek item-ids)]))
-               ;else
-               (reset! stopped-at resps))
-             ;return
-             m))
-      (halt-when (fn [{:keys [status-200? reached-null? last-synced]}]
-                   (or
-                     (not status-200?)
-                     (nil? last-synced)
-                     (true? reached-null?)
-                     (true? @halt?))))
-      (map (fn [_] :ok)))
-    conj
-    (range (inc prev-end) (inc end))))
+  (let [start (inc prev-end)]
+    (transduce
+      (comp
+        (partition-all 1000)
+        (map (fn [item-ids] (get-parsed-items! item-ids start)))
+        (map (fn [{:keys [items item-ids status-200? resps first-synced last-synced] :as m}]
+               (if status-200?
+                 (do
+                   (when (and (int? first-synced) (int? last-synced))
+                     (items-to-disk! items first-synced last-synced)
+                     (write-last-item-id-to-disk! last-synced)
+                     (timbre/info [::sync-ok [first-synced last-synced]]))
+                   (reset! last-dl [(first item-ids) (peek item-ids)]))
+                 ;else
+                 (reset! stopped-at resps))
+               ;return
+               m))
+        (halt-when (fn [{:keys [status-200? reached-null? last-synced]}]
+                     (or
+                       (not status-200?)
+                       (nil? last-synced)
+                       (true? reached-null?)
+                       (true? @halt?))))
+        (map (fn [_] :ok)))
+      conj
+      (range start (inc end)))))
 
 (timbre/set-ns-min-level! :debug)
 
@@ -121,12 +126,6 @@
   (get-last-item-id-from-disk!)
 
   )
-
-(comment
-  (reset! halt? true)
-  (reset! sleep-ms 20)
-  (future
-    (sync-items! 44642001)))
 
 (comment
   (nippy/freeze-to-file

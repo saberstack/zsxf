@@ -11,9 +11,23 @@
 ;; rows: vertices
 ;; columns: hyperedges
 
+(defn v3-hypergraph []
+  (let [vertices (ds/->dataset {:id [1 2 3] :label ["A" "B" "C"]})
+        hyperedges (ds/->dataset {:edge-id [1 2] :type ["group" "link"]})
+        incidences (ds/->dataset {:vertex-id [1 1 2 3] :edge-id [1 2 2 2]})]
+    ))
+
+(comment
+  (mm/measure
+    (ds/->dataset {:n (reverse (range 1000000))}))
+
+  (mm/measure
+    (ds/->dataset {:n (repeatedly 1000000 (fn [] (rand-int 1000000)))}))
+
+  (mm/measure (vec (range 1000000)))
+  )
+
 (defn init-hypergraph []
-
-
   (let [query1 '[:where
                  [?p :person]
                  [?c :city "NYC"]
@@ -23,7 +37,8 @@
                  [?c :city "NYC"]
                  [?p :person-lives-in-city ?c]
                  ;new clause
-                 [?p :person-lives-in-district]]]
+                 [?p :person-lives-in-district ?d]
+                 [?d :district "Queens"]]]
     ))
 
 (defn add-edge [g [src dest]]

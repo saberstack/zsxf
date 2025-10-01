@@ -1,6 +1,7 @@
 (ns org.zsxf.experimental.hypergraph
   (:require [clj-memory-meter.core :as mm]
             [datomic.api :as d]
+            [taoensso.timbre :as timbre]
             [ubergraph.core :as uber]
             [bifurcan-clj.graph :as g]
             [org.zsxf.type.zset :as zs]
@@ -9,8 +10,7 @@
   (:import (clojure.lang IPersistentMap)
            (org.zsxf.type.zset ZSet)))
 
-;TODO Continue here
-;; can we re-use any ubergraph protocols?
+
 
 (defprotocol IHypergraph
   "Defines the core operations for a hypergraph data structure."
@@ -31,19 +31,25 @@
     (update-in this [:vertices-to-edges] #(if (contains? % v) % (assoc % v #{}))))
 
   (add-hyperedge [this hedge]
-    (let [hedge-set (set hedge)
-          new-edge-id next-edge-id
+    (let [hedge-set           (set hedge)
+          _                   (timbre/spy hedge-set)
+          new-edge-id         next-edge-id
           ;; Ensure all vertices in the new edge exist in the graph
           graph-with-vertices (reduce add-vertex this hedge-set)]
       (if (or (empty? hedge-set)
             (some #(= hedge-set %) (vals edges-to-vertices)))
-        this ; Do not add empty or duplicate edges
+        (do
+          (timbre/spy "do not add...")
+          this)                                             ; Do not add empty or duplicate edges
         (-> graph-with-vertices
           (assoc-in [:edges-to-vertices new-edge-id] hedge-set)
           (update :next-edge-id inc)
           (update :vertices-to-edges (fn [v-map]
                                        (reduce (fn [m v]
-                                                 (update m v #(conj % new-edge-id)))
+                                                 (timbre/spy v)
+                                                 (update m v (fn [x]
+                                                               (timbre/spy
+                                                                 (conj x new-edge-id)))))
                                          v-map
                                          hedge-set)))))))
 
@@ -92,7 +98,7 @@
       (->> neighbor-edges
         (mapcat #(get-vertices-for-edge this %))
         (into #{})
-        (disj v)))) ; Remove the vertex itself from its neighbors
+        (disj v))))                                         ; Remove the vertex itself from its neighbors
 
   (incident? [this v hedge-id]
     (contains? (get-vertices-for-edge this hedge-id) v)))
@@ -109,11 +115,40 @@
   (def g'
     (-> (new-hypergraph)
       (add-vertex :a)
-      (add-hyperedge [:a :b :c]) ; hedge-id 0
-      (add-hyperedge [:c :d])     ; hedge-id 1
-      (add-hyperedge [:b :e :f]) ; hedge-id 2
-      (add-hyperedge [:b :c])))   ; hedge-id 3
-      )
+      (add-hyperedge [:a :b :c])                            ; hedge-id 0
+      (add-hyperedge [:c :d])                               ; hedge-id 1
+      (add-hyperedge [:b :e :f])                            ; hedge-id 2
+      (add-hyperedge [:b :c])))                             ; hedge-id 3
+  )
+
+(comment
+  [[
+    [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
+
+    #d2 [2 :country/name "USA"]
+    ]
+   #d2 [2 :country/continent 3]])
+
+(comment
+
+  (def hg
+    (-> (new-hypergraph)
+      (add-vertex [1 :person/name "Alice"])
+      (add-vertex [1 :person/country 2])
+      (add-vertex [2 :country/name "USA"])
+      (add-hyperedge [[1 :person/name "Alice"]
+                      [1 :person/country 2]
+                      [2 :country/name "USA"]])
+      (add-vertex [10 :person/name "Bob"])
+      (add-vertex [10 :person/country 2])
+      (add-hyperedge [[10 :person/name "Bob"]
+                      [10 :person/country 2]
+                      [2 :country/name "USA"]]))))
+
+;TODO Continue here
+;; can we re-use any ubergraph protocols?
+;; integrate hypergraphs with zsets
+;;
 
 
 (defn init-hypergraph []

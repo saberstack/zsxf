@@ -3,29 +3,118 @@
             [datomic.api :as d]
             [ubergraph.core :as uber]
             [bifurcan-clj.graph :as g]
+            [org.zsxf.type.zset :as zs]
             [tech.v3.dataset :as ds]
-            [ubergraph.alg :as uber.alg]))
+            [ubergraph.alg :as uber.alg])
+  (:import (clojure.lang IPersistentMap)
+           (org.zsxf.type.zset ZSet)))
 
 ;TODO Continue here
-;; evaluate matrix hypergraph representations
-;; rows: vertices
-;; columns: hyperedges
+;; can we re-use any ubergraph protocols?
 
-(defn v3-hypergraph []
-  (let [vertices (ds/->dataset {:id [1 2 3] :label ["A" "B" "C"]})
-        hyperedges (ds/->dataset {:edge-id [1 2] :type ["group" "link"]})
-        incidences (ds/->dataset {:vertex-id [1 1 2 3] :edge-id [1 2 2 2]})]
-    ))
+(defprotocol IHypergraph
+  "Defines the core operations for a hypergraph data structure."
+  (add-vertex [this v] "Adds a vertex to the hypergraph. Returns the new hypergraph.")
+  (add-hyperedge [this hedge] "Adds a hyperedge (a set of vertices) to the hypergraph. Returns the new hypergraph.")
+  (remove-vertex [this v] "Removes a vertex and its appearances in any hyperedges. Returns the new hypergraph.")
+  (remove-hyperedge [this hedge-id] "Removes a hyperedge by its ID. Returns the new hypergraph.")
+  (get-vertices [this] "Returns a set of all vertices in the hypergraph.")
+  (get-hyperedges [this] "Returns a map of all hyperedges (ID -> set of vertices).")
+  (get-edges-for-vertex [this v] "Returns a set of hyperedge IDs containing the given vertex.")
+  (get-vertices-for-edge [this hedge-id] "Returns a set of vertices contained in the given hyperedge.")
+  (get-neighbors [this v] "Returns a set of all vertices that share a hyperedge with the given vertex (excluding itself).")
+  (incident? [this v hedge-id] "Returns true if vertex v is a member of the hyperedge with hedge-id, false otherwise."))
+
+(defrecord Hypergraph [vertices-to-edges edges-to-vertices next-edge-id]
+  IHypergraph
+  (add-vertex [this v]
+    (update-in this [:vertices-to-edges] #(if (contains? % v) % (assoc % v #{}))))
+
+  (add-hyperedge [this hedge]
+    (let [hedge-set (set hedge)
+          new-edge-id next-edge-id
+          ;; Ensure all vertices in the new edge exist in the graph
+          graph-with-vertices (reduce add-vertex this hedge-set)]
+      (if (or (empty? hedge-set)
+            (some #(= hedge-set %) (vals edges-to-vertices)))
+        this ; Do not add empty or duplicate edges
+        (-> graph-with-vertices
+          (assoc-in [:edges-to-vertices new-edge-id] hedge-set)
+          (update :next-edge-id inc)
+          (update :vertices-to-edges (fn [v-map]
+                                       (reduce (fn [m v]
+                                                 (update m v #(conj % new-edge-id)))
+                                         v-map
+                                         hedge-set)))))))
+
+  (remove-vertex [this v]
+    (if-not (contains? vertices-to-edges v)
+      this
+      (let [edges-to-update (get vertices-to-edges v)]
+        (-> (reduce (fn [graph edge-id]
+                      (let [updated-edge (disj (get-in graph [:edges-to-vertices edge-id]) v)]
+                        (if (empty? updated-edge)
+                          (update graph :edges-to-vertices dissoc edge-id)
+                          (assoc-in graph [:edges-to-vertices edge-id] updated-edge))))
+              this
+              edges-to-update)
+          (update :vertices-to-edges dissoc v)))))
+
+  (remove-hyperedge [this hedge-id]
+    (if-not (contains? edges-to-vertices hedge-id)
+      this
+      (let [vertices-in-edge (get edges-to-vertices hedge-id)]
+        (-> this
+          (update :edges-to-vertices dissoc hedge-id)
+          (update :vertices-to-edges (fn [v-map]
+                                       (reduce (fn [m v]
+                                                 (let [updated-edges (disj (get m v) hedge-id)]
+                                                   (if (empty? updated-edges)
+                                                     (dissoc m v)
+                                                     (assoc m v updated-edges))))
+                                         v-map
+                                         vertices-in-edge)))))))
+
+  (get-vertices [this]
+    (set (keys vertices-to-edges)))
+
+  (get-hyperedges [this]
+    edges-to-vertices)
+
+  (get-edges-for-vertex [this v]
+    (get vertices-to-edges v #{}))
+
+  (get-vertices-for-edge [this hedge-id]
+    (get edges-to-vertices hedge-id #{}))
+
+  (get-neighbors [this v]
+    (let [neighbor-edges (get-edges-for-vertex this v)]
+      (->> neighbor-edges
+        (mapcat #(get-vertices-for-edge this %))
+        (into #{})
+        (disj v)))) ; Remove the vertex itself from its neighbors
+
+  (incident? [this v hedge-id]
+    (contains? (get-vertices-for-edge this hedge-id) v)))
+
+;; Public constructor function
+(defn new-hypergraph
+  "Creates a new, empty hypergraph."
+  []
+  (->Hypergraph {} {} 0))
 
 (comment
-  (mm/measure
-    (ds/->dataset {:n (reverse (range 1000000))}))
 
-  (mm/measure
-    (ds/->dataset {:n (repeatedly 1000000 (fn [] (rand-int 1000000)))}))
+  ;; Add vertices and edges
+  (def g'
+    (-> (new-hypergraph)
+      (add-vertex :a)
+      (add-hyperedge [:a :b :c]) ; hedge-id 0
+      (add-hyperedge [:c :d])     ; hedge-id 1
+      (add-hyperedge [:b :e :f]) ; hedge-id 2
+      (add-hyperedge [:b :c])))   ; hedge-id 3
+      )
 
-  (mm/measure (vec (range 1000000)))
-  )
 
 (defn init-hypergraph []
   (let [query1 '[:where
@@ -40,116 +129,3 @@
                  [?p :person-lives-in-district ?d]
                  [?d :district "Queens"]]]
     ))
-
-(defn add-edge [g [src dest]]
-  (uber/add-undirected-edges* g [[src dest]]))
-
-(comment
-  ;find edges
-  (uber/find-edges
-    (uber/graph
-      [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]])
-    {:dest #d2 [1 :person/country 2]})
-  )
-
-(comment
-
-  ;; Vertices of the hypergraph
-  (def vertices [:v1 :v2 :v3 :v4])
-
-  ;; Hyperedges of the hypergraph
-  (def hyperedges {:e1 [:v1 :v2 :v3]
-                   :e2 [:v2 :v3 :v4]})
-
-  ;; Build the bipartite graph representation
-  (def g
-    (apply uber/build-graph
-      (uber/graph)
-      (for [[edge-name edge-vertices] hyperedges
-            vertex edge-vertices]
-        [vertex edge-name])))
-
-  (uber/nodes g)
-  (mapv (juxt :src :dest)
-    (uber/edges g))
-  )
-(comment
-  (let [g1 (uber/graph [:a :b] [:c :d])]
-    (uber/pprint g1)))
-
-(defn init-graph []
-  (=
-    (uber/graph
-      [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
-      [#d2 [1 :person/country 2] #d2 [2 :country/name "USA"]])
-    (uber/graph
-      [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
-      [#d2 [2 :country/name "USA"] #d2 [1 :person/country 2]]))
-
-  (mm/measure
-    (uber/graph
-      [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
-      [#d2 [2 :country/name "USA"] #d2 [1 :person/country 2]]
-      [#d2 [2 :country/name "USA"] #d2 [2 :country/continent 3]]))
-
-  (let [{:keys [nodes undirected-edges] :as g}
-        (uber/graph
-          [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
-          [#d2 [2 :country/name "USA"] #d2 [1 :person/country 2]])
-        [[datom']] nodes
-        [[datom'']] undirected-edges
-        _  (uber/pprint g)
-        g' (uber/add-undirected-edges* g [[#d2 [2 :country/name "USA"] #d2 [2 :country/continent 3]]])]
-    (uber/pprint g')
-
-    (= g'
-      (uber/graph
-        [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
-        [#d2 [2 :country/name "USA"] #d2 [1 :person/country 2]]
-        [#d2 [2 :country/name "USA"] #d2 [2 :country/continent 3]]))
-
-    )
-
-  (let [g  (uber/graph
-             [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
-             [#d2 [2 :country/name "USA"] #d2 [1 :person/country 2]])
-        _  (uber/pprint g)
-        g' (uber/add-nodes* g [#d2 [2 :country/continent 3]])]
-    (uber/pprint g')
-    (uber.alg/bipartite-sets g'))
-
-
-  (mm/measure
-    [
-     [
-      [#d2 [1 :person/name "Alice"] #d2 [1 :person/country 2]]
-
-      #d2 [2 :country/name "USA"]
-      ]
-     #d2 [2 :country/continent 3]])
-  )
-
-
-(defn bifurcan-graph-init []
-  (=
-    (->
-      (g/graph #(hash (name %)) (fn [a b] (= (name a) (name b))))
-      (g/link :x :y)
-      (g/link :x :y)
-      ;(g/link "y" "x")
-      ;(g/vertices)
-      clojure.datafy/datafy)
-    (->
-      (g/graph #(hash (name %))
-        (fn [a b]
-          (println "called with" a b)
-          (= (name a) (name b))))
-      (g/link :x :y)
-      (g/link :y :x)
-      ;(g/link :x :y)
-      ;(g/link "y" "x")
-      ;(g/vertices)
-      ;clojure.datafy/datafy
-      ))
-
-  )

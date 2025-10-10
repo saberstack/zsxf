@@ -116,9 +116,10 @@
     (-> (new-hypergraph)
       (add-vertex :a)
       (add-hyperedge [:a :b :c])                            ; hedge-id 0
-      (add-hyperedge [:c :d])                               ; hedge-id 1
-      (add-hyperedge [:b :e :f])                            ; hedge-id 2
-      (add-hyperedge [:b :c])))                             ; hedge-id 3
+      ;(add-hyperedge [:c :d])                               ; hedge-id 1
+      ;(add-hyperedge [:b :e :f])                            ; hedge-id 2
+      ;(add-hyperedge [:b :c])
+      ))                             ; hedge-id 3
   )
 
 (comment
@@ -133,6 +134,15 @@
 
   (def hg
     (-> (new-hypergraph)
+      (add-hyperedge [[1 :person/name "Alice"]
+                      [1 :person/country 2]
+                      [2 :country/name "USA"]])
+      (add-hyperedge [[10 :person/name "Bob"]
+                      [10 :person/country 2]
+                      [2 :country/name "USA"]])))
+
+  (def hg-2
+    (-> (new-hypergraph)
       (add-vertex [1 :person/name "Alice"])
       (add-vertex [1 :person/country 2])
       (add-vertex [2 :country/name "USA"])
@@ -143,7 +153,9 @@
       (add-vertex [10 :person/country 2])
       (add-hyperedge [[10 :person/name "Bob"]
                       [10 :person/country 2]
-                      [2 :country/name "USA"]]))))
+                      [2 :country/name "USA"]])))
+
+  )
 
 ;TODO Continue here
 ;; can we re-use any ubergraph protocols?

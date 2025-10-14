@@ -132,6 +132,11 @@
 
 (comment
 
+  (->
+    (new-hypergraph)
+    (add-vertex [2 :country/name "USA"])
+    (add-vertex [2 :country/name "USA"]))
+
   (def hg
     (-> (new-hypergraph)
       (add-hyperedge [[1 :person/name "Alice"]
@@ -158,10 +163,7 @@
   )
 
 ;TODO Continue here
-;; can we re-use any ubergraph protocols?
-;; integrate hypergraphs with zsets
-;;
-
+;; hypergraph + zsets
 
 (defn init-hypergraph []
   (let [query1 '[:where

@@ -380,6 +380,14 @@
     (reset! an-atom query)
     :pending))
 
+(defn get-all-users-who-mention-clojure-via-datomic []
+  (dd/q '[:find ?username
+          :where
+          [?e :hn.item/by ?username]
+          [?e :hn.item/text ?txt]
+          [(clojure.string/includes? ?txt "Clojure")]]
+    (dd/db (hn-conn))))
+
 (defn get-all-clojure-mentions-by-raspasov
   {:doc "All mentions of \"Clojure\" by a specific user"}
   [an-atom]
@@ -414,6 +422,14 @@
         _     (idd/init-query-with-conn query conn)]
     (reset! an-atom query)
     :pending))
+
+(defn get-all-llm-mentions-by-raspasov-via-datomic []
+  (dd/q '[:find ?txt
+          :where
+          [?e :hn.item/text ?txt]
+          [?e :hn.item/by "raspasov"]
+          [(clojure.string/includes? ?txt "LLM")]]
+    (dd/db (hn-conn))))
 
 (defn get-all-clojure-mentions-user-count
   {:doc   "Count the comments that mention \"Clojure\", per user"
@@ -524,6 +540,8 @@
       :where
       [?e :hn.item/by ?username]]
     (dd/db (hn-conn))))
+
+
 
 (defn get-all-item-ids-via-datomic []
   (dd/q

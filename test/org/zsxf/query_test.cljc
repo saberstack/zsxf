@@ -248,6 +248,40 @@
     (zr/sample-indices zsxf-query)
     )
   )
+
+(comment
+  '{[[?ct :continent/name "North America"] 1760439478554000003] {3 #zs #{^{:zset/w 1}
+                                                                         #d2 [3 :continent/name "North America"]}},
+    [[?cy :country/continent ?ct] 1760439478554000001]          {2 #zs #{^{:zset/w 1} #d2 [2 :country/continent 3]}},
+    [[?cy :country/continent ?ct] 1760439478554000002]          {3 #zs #{^{:zset/w 1}
+                                                                         [^{:xf.clause [?p :person/country ?cy]}
+                                                                          [^{:xf.clause [?p :person/country ?cy]}
+                                                                           [^{:xf.clause [?p :person/name ?ne]}
+                                                                            #d2 [1 :person/name "Alice"]
+                                                                            ^{:xf.clause [?p :person/country ?cy]}
+                                                                            #d2 [1 :person/country 2]]
+                                                                           ^{:xf.clause [?cy :country/name "USA"]}
+                                                                           #d2 [2 :country/name "USA"]]
+                                                                          ^{:xf.clause [?cy :country/continent ?ct]}
+                                                                          #d2 [2 :country/continent 3]]}},
+    [[?p :person/country ?cy] 1760439478553000000]              {2 #zs #{^{:zset/w 1}
+                                                                         [^{:xf.clause [?p :person/name ?ne]}
+                                                                          #d2 [1 :person/name "Alice"]
+                                                                          ^{:xf.clause [?p :person/country ?cy]}
+                                                                          #d2 [1 :person/country 2]]}},
+    [[?p :person/name ?ne] 1760439478552000000]                 {1  #zs #{^{:zset/w 1} #d2 [1 :person/name "Alice"]},
+                                                                 10 #zs #{^{:zset/w 1} #d2 [10 :person/name "Bob"]}},
+    [[?cy :country/name "USA"] 1760439478553000001]             {2 #zs #{^{:zset/w 1} #d2 [2 :country/name "USA"]}},
+    [[?p :person/country ?cy] 1760439478552000001]              {1 #zs #{^{:zset/w 1} #d2 [1 :person/country 2]}},
+    [[?p :person/country ?cy] 1760439478554000000]              {2 #zs #{^{:zset/w 1}
+                                                                         [^{:xf.clause [?p :person/country ?cy]}
+                                                                          [^{:xf.clause [?p :person/name ?ne]}
+                                                                           #d2 [1 :person/name "Alice"]
+                                                                           ^{:xf.clause [?p :person/country ?cy]}
+                                                                           #d2 [1 :person/country 2]]
+                                                                          ^{:xf.clause [?cy :country/name "USA"]}
+                                                                          #d2 [2 :country/name "USA"]]}}})
+
 (comment
   (q/get-result zsxf-query)
 

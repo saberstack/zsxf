@@ -160,6 +160,30 @@
                       [10 :person/country 2]
                       [2 :country/name "USA"]])))
 
+
+  (comment
+    ;Hypergraph example with granular hyperedges
+    (->
+      (new-hypergraph)
+
+      (add-vertex [1 :person/name "Alice"])
+      (add-vertex [1 :person/country 2])
+      (add-vertex [2 :country/name "USA"])
+
+      (add-hyperedge [[1 :person/name "Alice"]
+                      [1 :person/country 2]])
+      (add-hyperedge [[1 :person/country 2]
+                      [2 :country/name "USA"]])
+
+      (add-vertex [10 :person/name "Bob"])
+      (add-vertex [10 :person/country 2])
+      (add-hyperedge [[10 :person/name "Bob"]
+                      [10 :person/country 2]])
+      (add-hyperedge [[10 :person/country 2]
+                      [2 :country/name "USA"]])
+      )
+    )
+
   )
 
 ;TODO Continue here

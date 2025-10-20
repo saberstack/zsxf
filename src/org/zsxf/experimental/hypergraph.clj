@@ -1,6 +1,8 @@
 (ns org.zsxf.experimental.hypergraph
   (:require [clj-memory-meter.core :as mm]
+            [datomic.api :as dd]
             [datomic.api :as d]
+            [org.zsxf.datomic.cdc :as dd.cdc]
             [taoensso.timbre :as timbre]
             [ubergraph.core :as uber]
             [bifurcan-clj.graph :as g]
@@ -11,7 +13,7 @@
            (org.zsxf.type.zset ZSet)))
 
 
-
+(timbre/set-ns-min-level! :error)
 (defprotocol IHypergraph
   "Defines the core operations for a hypergraph data structure."
   (add-vertex [this v] "Adds a vertex to the hypergraph. Returns the new hypergraph.")
@@ -103,11 +105,56 @@
   (incident? [this v hedge-id]
     (contains? (get-vertices-for-edge this hedge-id) v)))
 
+
 ;; Public constructor function
 (defn new-hypergraph
   "Creates a new, empty hypergraph."
   []
   (->Hypergraph {} {} 0))
+
+(comment)
+
+(defn delete-and-init-datomic! []
+  (let [datomic-schema
+                       [{:db/ident       :person/name
+                         :db/valueType   :db.type/string
+                         :db/cardinality :db.cardinality/one}
+                        {:db/ident       :country/name
+                         :db/valueType   :db.type/string
+                         :db/cardinality :db.cardinality/one
+                         :db/unique      :db.unique/value
+                         }
+                        {:db/ident       :person/country
+                         :db/valueType   :db.type/ref
+                         :db/cardinality :db.cardinality/one}]
+        ^String db-uri (dd.cdc/uri-sqlite "hypergraph-test-1")
+        _              (dd/delete-database db-uri)
+        _              (dd/create-database db-uri)
+        conn           (dd/connect db-uri)
+        ret            (dd/transact conn datomic-schema)
+        ret            (dd/transact conn
+                         [{:country/name "USA"}])
+        ret            (dd/transact conn
+                         [{:person/name    "Alice"
+                           :person/country [:country/name "USA"]}])
+        ret            (dd/q
+                         '[:find ?country-name
+                           :where
+                           [?p :person/name "Alice"]
+                           [?p :person/country ?c]
+                           [?c :country/name ?country-name]]
+                         (dd/db conn))
+        ret            (dd/transact conn [[:db/retract [:country/name "USA"] :country/name]])
+        ret            (dd/q
+                         '[:find (pull ?p [*])
+                           :where
+                           ;[?p :person/name "Alice"]
+                           [?p :person/country ?c]
+                           ;[?c :country/name ?country-name]
+                           ]
+                         (dd/db conn))
+        ret (dd/pull (dd/db conn) '[*] 17592186045418)]
+    ret))
 
 (comment
 
@@ -116,10 +163,10 @@
     (-> (new-hypergraph)
       (add-vertex :a)
       (add-hyperedge [:a :b :c])                            ; hedge-id 0
-      ;(add-hyperedge [:c :d])                               ; hedge-id 1
+      #_(add-hyperedge [:c :d])                             ; hedge-id 1
       ;(add-hyperedge [:b :e :f])                            ; hedge-id 2
       ;(add-hyperedge [:b :c])
-      ))                             ; hedge-id 3
+      ))                                                    ; hedge-id 3
   )
 
 (comment
@@ -163,6 +210,8 @@
 
   (comment
     ;Hypergraph example with granular hyperedges
+    ;TODO Continue here
+
     (->
       (new-hypergraph)
 
@@ -186,7 +235,6 @@
 
   )
 
-;TODO Continue here
 ;; hypergraph + zsets
 
 (defn init-hypergraph []

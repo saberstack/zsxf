@@ -236,7 +236,6 @@
   )
 
 ;; hypergraph + zsets
-
 (defn init-hypergraph []
   (let [query1 '[:where
                  [?p :person]
@@ -250,3 +249,14 @@
                  [?p :person-lives-in-district ?d]
                  [?d :district "Queens"]]]
     ))
+
+;Goal: store most (all?) datoms and incremental query intermediary state in a single (or very few) hypergraphs.
+;Benefits:
+;- Reduce memory use 5-10x. Reuse incremental query computation across queries.
+;- Hypergraphs are self-normalizing
+;- Removing a datom (a vertex) removes it from all relevant hyperedges
+;- Are directed hyperedges useful for the purpose of self-normalization?
+;- TODO check by looking at tx-data
+;- A set of connected hyperedges is a *query* - yes/no?
+;- Specifically, `:where` clauses
+;- Can all hypergraph changes be expressed via zsets?

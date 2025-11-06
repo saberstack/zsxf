@@ -19,6 +19,7 @@
   (add-vertex [this v] "Adds a vertex to the hypergraph. Returns the new hypergraph.")
   (add-hyperedge [this hedge] "Adds a hyperedge (a set of vertices) to the hypergraph. Returns the new hypergraph.")
   (remove-vertex [this v] "Removes a vertex and its appearances in any hyperedges. Returns the new hypergraph.")
+
   (remove-hyperedge [this hedge-id] "Removes a hyperedge by its ID. Returns the new hypergraph.")
   (get-vertices [this] "Returns a set of all vertices in the hypergraph.")
   (get-hyperedges [this] "Returns a map of all hyperedges (ID -> set of vertices).")
@@ -213,6 +214,20 @@
     ; - granular hyperedges are hyperedges with only two items
     ;Which cases benefit from the use of 3 or more items in a hyperedge?
     '[?p :person/name ?name]                                ;looking for ?name
+    ;Example case with 3 or more items in a hyperedge
+    (->
+      (new-hypergraph)
+
+      (add-vertex [1 :person/name "Alice"])
+      (add-vertex [2 :person/name "Bob"])
+      (add-vertex [3 :country/name "Clark"])
+
+      (add-hyperedge [[1 :person/name "Alice"]
+                      [2 :person/name "Bob"]
+                      [3 :country/name "Clark"]])
+      )
+
+
     ;TODO Continue here
 
     (->
@@ -233,6 +248,18 @@
                       [10 :person/country 2]])
       (add-hyperedge [[10 :person/country 2]
                       [2 :country/name "USA"]])
+      )
+
+    (->
+      (new-hypergraph)
+
+      (add-vertex [1 :person/name "Alice"])
+      (add-vertex [2 :person/name "Bob"])
+      (add-vertex [3 :country/name "Clark"])
+
+      (add-hyperedge [[1 :person/name "Alice"]
+                      [2 :person/name "Bob"]
+                      [3 :country/name "Clark"]])
       )
     )
 
@@ -261,6 +288,11 @@
 ;- Removing a datom (a vertex) removes it from all relevant hyperedges
 ;- Are directed hyperedges useful for the purpose of self-normalization?
 ;- TODO check by looking at tx-data
-;- A set of connected hyperedges is a *query* - yes/no?
+;- A set of connected hyperedges is a *query* - likely yes
+; TODO Hyperedge expansion (aka update)
+;  - update (general) vs conj, disj, et al?
+; TODO Support hyperedge metadata
+;  - currently hyperedges are represented as Longs
+;  - represent them as a collection to support metadata
 ;- Specifically, `:where` clauses
 ;- Can all hypergraph changes be expressed via zsets?

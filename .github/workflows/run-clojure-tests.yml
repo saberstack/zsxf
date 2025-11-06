@@ -22,11 +22,11 @@ jobs:
       - name: sudo apt-get update && sudo apt-get install screen -y
         run: sudo apt-get update && sudo apt-get install screen -y
 
-      - name: Download JDK 24
-        run: curl -L -O https://download.oracle.com/java/24/latest/jdk-24_linux-x64_bin.deb
+      - name: Download JDK 25
+        run: curl -L -O https://download.oracle.com/java/25/latest/jdk-25_linux-x64_bin.deb
 
-      - name: Install JDK 24
-        run: sudo apt install ./jdk-24_linux-x64_bin.deb
+      - name: Install JDK 25
+        run: sudo apt install ./jdk-25_linux-x64_bin.deb
 
       - name: sudo update-alternatives --auto java
         run: sudo update-alternatives --auto java

@@ -250,6 +250,7 @@
                  [?d :district "Queens"]]]
     ))
 
+
 ;Goal: store most (all?) datoms and incremental query intermediary state in a single (or very few) hypergraphs.
 ;Benefits:
 ;- Reduce memory use 5-10x. Reuse incremental query computation across queries.

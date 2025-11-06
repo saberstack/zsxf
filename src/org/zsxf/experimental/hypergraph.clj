@@ -210,6 +210,9 @@
 
   (comment
     ;Hypergraph example with granular hyperedges
+    ; - granular hyperedges are hyperedges with only two items
+    ;Which cases benefit from the use of 3 or more items in a hyperedge?
+    '[?p :person/name ?name]                                ;looking for ?name
     ;TODO Continue here
 
     (->

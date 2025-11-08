@@ -296,3 +296,6 @@
 ;  - represent them as a collection to support metadata
 ;- Specifically, `:where` clauses
 ;- Can all hypergraph changes be expressed via zsets?
+;Hypergraph visualization:
+; - PAOHvis
+;  - https://inria.hal.science/hal-02264960/file/Paohvis.pdf

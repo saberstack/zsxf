@@ -299,6 +299,7 @@
 ;Hypergraph visualization:
 ; - PAOHvis
 ;  - https://inria.hal.science/hal-02264960/file/Paohvis.pdf
+;TODO ZHypergraph
 
 ;ZSXF Hypergraph example as a table
 ;https://docs.google.com/spreadsheets/d/1Rz701-w95PXhWhNTv23YLkZYkCsW2ZHxz0YGXiW3Ngw/edit?gid=0#gid=0

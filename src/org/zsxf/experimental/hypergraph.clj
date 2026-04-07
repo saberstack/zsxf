@@ -4,11 +4,9 @@
             [datomic.api :as d]
             [org.zsxf.datomic.cdc :as dd.cdc]
             [taoensso.timbre :as timbre]
-            [ubergraph.core :as uber]
-            [bifurcan-clj.graph :as g]
+
             [org.zsxf.type.zset :as zs]
-            [tech.v3.dataset :as ds]
-            [ubergraph.alg :as uber.alg])
+            [tech.v3.dataset :as ds])
   (:import (clojure.lang IPersistentMap)
            (org.zsxf.type.zset ZSet)))
 
@@ -19,7 +17,6 @@
   (add-vertex [this v] "Adds a vertex to the hypergraph. Returns the new hypergraph.")
   (add-hyperedge [this hedge] "Adds a hyperedge (a set of vertices) to the hypergraph. Returns the new hypergraph.")
   (remove-vertex [this v] "Removes a vertex and its appearances in any hyperedges. Returns the new hypergraph.")
-
   (remove-hyperedge [this hedge-id] "Removes a hyperedge by its ID. Returns the new hypergraph.")
   (get-vertices [this] "Returns a set of all vertices in the hypergraph.")
   (get-hyperedges [this] "Returns a map of all hyperedges (ID -> set of vertices).")

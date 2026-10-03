@@ -1,5 +1,5 @@
 (ns org.zsxf.experimental.prolly
-  (:import (clojure.lang ILookup)
+  (:import (clojure.lang ILookup MapEntry Seqable)
            (java.security MessageDigest)))
 
 ;WIP
@@ -16,21 +16,50 @@
   ;; BuzHash rolling window over a continuous stream of keys.
   (zero? (bit-and (first (hash-bytes key-bytes)) 0x3F)))
 
+;; =============================================================================
+;; Node interfaces & deftypes
+;; =============================================================================
+
 (definterface IProllyNode
   (^int nodeLevel [])
   (^objects nodeKeys [])
   (^objects nodeVals []))
 
-(deftype ProllyLeaf [^int level ^objects keys ^objects vals]
+(deftype LeafNode [^int level ^objects keys ^objects vals]
   IProllyNode
   (nodeLevel [_this] level)
   (nodeKeys [_this] keys)
   (nodeVals [_this] vals)
 
   ILookup
-  (valAt [this k] (.valAt this k nil))
+  (valAt [_this k] (.valAt _this k nil))
+  (valAt [_this k not-found]
+    ;TODO
+    )
+
+  Seqable
+  (seq [_]
+    (let [len (alength keys)]
+      (when (< 0 len)
+        (map #(MapEntry/create (aget keys %) (aget vals %)) (range len)))))
   )
 
-(deftype InternalNode [])
+(deftype InternalNode [^int level ^objects keys ^objects children-content-ids]
+  IProllyNode
+  (nodeLevel [_this] level)
+  (nodeKeys [_this] keys)
+  (nodeVals [_this] children-content-ids))
 
-(deftype LeafNode [])
+;; =============================================================================
+;; Serialization
+;; =============================================================================
+
+(defn serialize-node ^bytes [^IProllyNode node]
+  ;; TODO convert node instance -> deterministic byte array (e.g., via Nippy)
+  ;; mock
+  #_(byte-array 0))
+
+(defn deserialize-node [^bytes b]
+  ;; TODO  Read bytes -> return instantiated prolly LeafNode or InternalNode
+  ;; mock
+  #_(LeafNode. 0 (object-array []) (object-array [])))

@@ -21,9 +21,10 @@
 ;; =============================================================================
 
 (definterface IProllyNode
-  (^int nodeLevel [])
-  (^objects nodeKeys [])
-  (^objects nodeVals []))
+  ;TODO type hints
+  (nodeLevel [])
+  (nodeKeys [])
+  (nodeVals []))
 
 (deftype LeafNode [^int level ^objects keys ^objects vals]
   IProllyNode

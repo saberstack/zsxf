@@ -1,7 +1,7 @@
 {:paths   ["src" "resources"]
- :deps    {org.clojure/clojure        {:mvn/version "1.12.5"}
-           org.clojure/clojurescript  {:mvn/version "1.12.42"}
-           org.clojure/core.async     {:mvn/version "1.9.808-alpha1"}
+ :deps    {org.clojure/clojure        {:mvn/version "1.13.0-alpha8"}
+           org.clojure/clojurescript  {:mvn/version "1.12.145"}
+           org.clojure/core.async     {:mvn/version "1.10.874-alpha3"}
            saberstack/loop            {:git/url "https://github.com/saberstack/loop"
                                        :git/sha "b274507bdc7e3167e1f3a00b542a8cb819a4f7c8"}
            net.cgrand/xforms          {:mvn/version "0.19.4"}

@@ -1,5 +1,6 @@
 (ns org.zsxf.experimental.prolly
-  (:import (clojure.lang ILookup MapEntry Seqable)
+  (:require [clojure.core.rrb-vector.nodes :refer [first-child]])
+  (:import (clojure.lang ILookup IPersistentMap MapEntry Seqable)
            (java.security MessageDigest)))
 
 ;WIP
@@ -64,3 +65,24 @@
   ;; TODO  Read bytes -> return instantiated prolly LeafNode or InternalNode
   ;; mock
   #_(LeafNode. 0 (object-array []) (object-array [])))
+
+(defn build-tree [store sorted-kv-pairs]
+  ;; TODO tree building
+  ;;mock
+  )
+
+(deftype ProllyTree [store root-content-id]
+  Seqable
+  (seq [_]
+    ;TODO traverse the leftmost children to the leaves
+    (when root-content-id
+      (seq ^LeafNode (deserialize-node (get-block store root-content-id)))))
+
+  IPersistentMap
+  (assoc [this k v]
+    (let [current-seq (or (seq this) [])
+          new-seq     (->>
+                        (conj current-seq [k v])
+                        (into {})
+                        (sort-by first))]
+      (ProllyTree. store (build-tree store new-seq)))))

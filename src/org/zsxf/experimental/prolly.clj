@@ -76,7 +76,8 @@
   (seq [_]
     ;TODO traverse the leftmost children to the leaves
     (when root-content-id
-      (seq ^LeafNode (deserialize-node (get-block store root-content-id)))))
+      (let [node (deserialize-node (get-block store root-content-id))]
+        (seq ^LeafNode node))))
 
   IPersistentMap
   (assoc [this k v]
@@ -86,3 +87,5 @@
                         (into {})
                         (sort-by first))]
       (ProllyTree. store (build-tree store new-seq)))))
+
+;TODO NEXT: streaming chunker
